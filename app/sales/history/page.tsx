@@ -2,6 +2,13 @@
 
 import { useEffect, useState } from "react";
 
+type BatchDetail = {
+  batchId: number;
+  quantity: number;
+  purchasePrice: number;
+  sellingPrice: number;
+};
+
 type SaleItem = {
   productId: number;
   product: string;
@@ -9,12 +16,12 @@ type SaleItem = {
   purchasePrice: number;
   quantity: number;
   amount: number;
+  batchDetails?: BatchDetail[];
 };
 
 type Sale = {
   id: number;
 
-  // New multi-product format
   items?: SaleItem[];
   subtotal?: number;
 
@@ -33,6 +40,14 @@ type Sale = {
   customerName?: string;
 };
 
+type StockBatch = {
+  id: number;
+  quantity: number;
+  purchasePrice: number;
+  sellingPrice: number;
+  date: string;
+};
+
 type Product = {
   id: number;
   name: string;
@@ -40,6 +55,7 @@ type Product = {
   purchasePrice: number;
   sellingPrice: number;
   stock: number;
+  batches?: StockBatch[];
 };
 
 type Customer = {
@@ -68,7 +84,7 @@ export default function SalesHistoryPage() {
   }, []);
 
   function loadSales() {
-    const savedSales = JSON.parse(
+    const savedSales: Sale[] = JSON.parse(
       localStorage.getItem(
         "hisabpro_sales"
       ) || "[]"
@@ -80,7 +96,7 @@ export default function SalesHistoryPage() {
   }
 
   /*
-   * Converts old single-product sale
+   * Convert old single-product sale
    * into the new items format.
    */
   function getSaleItems(
@@ -101,7 +117,8 @@ export default function SalesHistoryPage() {
           price: sale.price || 0,
           purchasePrice:
             sale.purchasePrice || 0,
-          quantity: sale.quantity || 1,
+          quantity:
+            sale.quantity || 1,
           amount:
             (sale.price || 0) *
             (sale.quantity || 1),
@@ -127,7 +144,8 @@ export default function SalesHistoryPage() {
         sum +
         items.reduce(
           (itemSum, item) =>
-            itemSum + item.quantity,
+            itemSum +
+            item.quantity,
           0
         )
       );
@@ -153,8 +171,11 @@ export default function SalesHistoryPage() {
       getSaleItems(sale);
 
     /*
-     * Remove sale from sales history
+     * =====================================
+     * 1. REMOVE SALE FROM SALES HISTORY
+     * =====================================
      */
+
     const savedSales: Sale[] =
       JSON.parse(
         localStorage.getItem(
@@ -180,8 +201,11 @@ export default function SalesHistoryPage() {
     );
 
     /*
-     * Restore stock for ALL products
+     * =====================================
+     * 2. RESTORE STOCK BATCH-WISE
+     * =====================================
      */
+
     const savedProducts: Product[] =
       JSON.parse(
         localStorage.getItem(
@@ -192,22 +216,327 @@ export default function SalesHistoryPage() {
     const updatedProducts =
       savedProducts.map(
         (product) => {
-          const saleItem =
-            items.find(
+
+          const productItems =
+            items.filter(
               (item) =>
                 item.productId ===
                 product.id
             );
 
-          if (!saleItem) {
+          if (
+            productItems.length === 0
+          ) {
             return product;
           }
+
+          /*
+           * New batch-aware sale
+           */
+          const hasBatchDetails =
+            productItems.some(
+              (item) =>
+                item.batchDetails &&
+                item.batchDetails.length >
+                  0
+            );
+
+          if (hasBatchDetails) {
+
+            let batches: StockBatch[] =
+              product.batches
+                ? [...product.batches]
+                : [];
+
+            productItems.forEach(
+              (item) => {
+
+                /*
+                 * Restore exact quantities
+                 * into their original batches.
+                 */
+                if (
+                  item.batchDetails &&
+                  item.batchDetails.length >
+                    0
+                ) {
+
+                  item.batchDetails.forEach(
+                    (soldBatch) => {
+
+                      const batchIndex =
+                        batches.findIndex(
+                          (batch) =>
+                            batch.id ===
+                            soldBatch.batchId
+                        );
+
+                      if (
+                        batchIndex !== -1
+                      ) {
+
+                        batches[
+                          batchIndex
+                        ] = {
+                          ...batches[
+                            batchIndex
+                          ],
+                          quantity:
+                            batches[
+                              batchIndex
+                            ].quantity +
+                            soldBatch.quantity,
+                        };
+
+                      } else {
+
+                        /*
+                         * If original batch was
+                         * removed, recreate it.
+                         */
+                        batches.push({
+                          id:
+                            soldBatch.batchId,
+
+                          quantity:
+                            soldBatch.quantity,
+
+                          purchasePrice:
+                            soldBatch.purchasePrice,
+
+                          sellingPrice:
+                            soldBatch.sellingPrice,
+
+                          date:
+                            sale.date,
+                        });
+
+                      }
+                    }
+                  );
+
+                } else {
+
+                  /*
+                   * Fallback for an item without
+                   * batchDetails.
+                   */
+                  const fallbackBatchIndex =
+                    batches.findIndex(
+                      (batch) =>
+                        batch.sellingPrice ===
+                        item.price
+                    );
+
+                  if (
+                    fallbackBatchIndex !==
+                    -1
+                  ) {
+
+                    batches[
+                      fallbackBatchIndex
+                    ] = {
+                      ...batches[
+                        fallbackBatchIndex
+                      ],
+                      quantity:
+                        batches[
+                          fallbackBatchIndex
+                        ].quantity +
+                        item.quantity,
+                    };
+
+                  } else {
+
+                    batches.push({
+                      id:
+                        Date.now() +
+                        Math.floor(
+                          Math.random() *
+                            1000
+                        ),
+
+                      quantity:
+                        item.quantity,
+
+                      purchasePrice:
+                        item.purchasePrice,
+
+                      sellingPrice:
+                        item.price,
+
+                      date:
+                        sale.date,
+                    });
+
+                  }
+
+                }
+              }
+            );
+
+            /*
+             * Recalculate total stock
+             */
+            const totalStock =
+              batches.reduce(
+                (sum, batch) =>
+                  sum +
+                  Number(
+                    batch.quantity
+                  ),
+                0
+              );
+
+            /*
+             * Latest remaining batch
+             * becomes current display rate.
+             */
+            const sortedBatches =
+              [...batches].sort(
+                (a, b) =>
+                  new Date(
+                    b.date
+                  ).getTime() -
+                  new Date(
+                    a.date
+                  ).getTime()
+              );
+
+            const latestBatch =
+              sortedBatches[0];
+
+            return {
+              ...product,
+
+              stock:
+                totalStock,
+
+              batches,
+
+              purchasePrice:
+                latestBatch
+                  ? latestBatch.purchasePrice
+                  : product.purchasePrice,
+
+              sellingPrice:
+                latestBatch
+                  ? latestBatch.sellingPrice
+                  : product.sellingPrice,
+            };
+
+          }
+
+          /*
+           * =================================
+           * OLD SALE COMPATIBILITY
+           * =================================
+           *
+           * Old sales did not contain batchDetails.
+           * Restore their quantity normally.
+           */
+
+          const totalQuantity =
+            productItems.reduce(
+              (sum, item) =>
+                sum +
+                item.quantity,
+              0
+            );
+
+          /*
+           * If old product has no batches,
+           * simply restore stock.
+           */
+          if (
+            !product.batches ||
+            product.batches.length === 0
+          ) {
+
+            return {
+              ...product,
+              stock:
+                product.stock +
+                totalQuantity,
+            };
+
+          }
+
+          /*
+           * If batches exist but old sale
+           * has no batch information, restore
+           * into a matching selling-price batch.
+           */
+          const batches =
+            [...product.batches];
+
+          productItems.forEach(
+            (item) => {
+
+              const batchIndex =
+                batches.findIndex(
+                  (batch) =>
+                    batch.sellingPrice ===
+                    item.price
+                );
+
+              if (
+                batchIndex !== -1
+              ) {
+
+                batches[
+                  batchIndex
+                ] = {
+                  ...batches[
+                    batchIndex
+                  ],
+                  quantity:
+                    batches[
+                      batchIndex
+                    ].quantity +
+                    item.quantity,
+                };
+
+              } else {
+
+                batches.push({
+                  id:
+                    Date.now() +
+                    Math.floor(
+                      Math.random() *
+                        1000
+                    ),
+
+                  quantity:
+                    item.quantity,
+
+                  purchasePrice:
+                    item.purchasePrice,
+
+                  sellingPrice:
+                    item.price,
+
+                  date:
+                    sale.date,
+                });
+
+              }
+            }
+          );
+
+          const totalStock =
+            batches.reduce(
+              (sum, batch) =>
+                sum +
+                batch.quantity,
+              0
+            );
 
           return {
             ...product,
             stock:
-              product.stock +
-              saleItem.quantity,
+              totalStock,
+            batches,
           };
         }
       );
@@ -220,13 +549,17 @@ export default function SalesHistoryPage() {
     );
 
     /*
-     * Reverse customer due
+     * =====================================
+     * 3. REVERSE CUSTOMER DUE
+     * =====================================
      */
+
     if (
       sale.paymentType ===
         "credit" &&
       sale.customerId
     ) {
+
       const savedCustomers:
         Customer[] =
         JSON.parse(
@@ -259,11 +592,11 @@ export default function SalesHistoryPage() {
       );
 
       /*
-       * Remove matching credit transaction
-       *
-       * New transaction note:
-       * Credit Sale - Product 1, Product 2
+       * =================================
+       * 4. REMOVE CREDIT TRANSACTION
+       * =================================
        */
+
       const productNames =
         items
           .map(
@@ -289,6 +622,7 @@ export default function SalesHistoryPage() {
       const updatedTransactions =
         savedTransactions.filter(
           (transaction) => {
+
             if (
               transaction.customerId ===
                 sale.customerId &&
@@ -304,6 +638,7 @@ export default function SalesHistoryPage() {
               ) &&
               !transactionRemoved
             ) {
+
               transactionRemoved =
                 true;
 
@@ -322,8 +657,14 @@ export default function SalesHistoryPage() {
       );
     }
 
+    /*
+     * =====================================
+     * SUCCESS
+     * =====================================
+     */
+
     setMessage(
-      "Bill deleted, stock & Khata updated successfully ✅"
+      "Bill deleted, original stock batches & Khata updated successfully ✅"
     );
   }
 
@@ -495,35 +836,65 @@ export default function SalesHistoryPage() {
                   <div className="history-products">
 
                     {items.map(
-                      (item) => (
-                        <div
-                          key={
-                            item.productId
-                          }
-                          className="history-product-row"
-                        >
+                      (item, itemIndex) => {
 
-                          <span>
-                            {item.product}
-                          </span>
+                        const hasBatches =
+                          item.batchDetails &&
+                          item.batchDetails
+                            .length > 0;
 
-                          <span>
-                            {item.quantity}
-                            {" × ₹"}
-                            {item.price.toLocaleString(
-                              "en-IN"
+                        return (
+                          <div
+                            key={`${item.productId}-${itemIndex}`}
+                            className="history-product-row"
+                          >
+
+                            <span>
+                              {item.product}
+                            </span>
+
+                            <span>
+                              {item.quantity}
+                              {" × ₹"}
+                              {item.price.toLocaleString(
+                                "en-IN"
+                              )}
+                            </span>
+
+                            <strong>
+                              ₹
+                              {item.amount.toLocaleString(
+                                "en-IN"
+                              )}
+                            </strong>
+
+                            {hasBatches && (
+                              <small
+                                style={{
+                                  gridColumn:
+                                    "1 / -1",
+                                  color:
+                                    "#687386",
+                                  fontSize:
+                                    "10px",
+                                }}
+                              >
+                                {item.batchDetails!
+                                  .map(
+                                    (batch) =>
+                                      `${batch.quantity} × ₹${batch.sellingPrice.toLocaleString(
+                                        "en-IN"
+                                      )}`
+                                  )
+                                  .join(
+                                    " + "
+                                  )}
+                              </small>
                             )}
-                          </span>
 
-                          <strong>
-                            ₹
-                            {item.amount.toLocaleString(
-                              "en-IN"
-                            )}
-                          </strong>
-
-                        </div>
-                      )
+                          </div>
+                        );
+                      }
                     )}
 
                   </div>
