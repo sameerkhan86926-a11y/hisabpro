@@ -1,13 +1,18 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
     <main className="app">
+
       <header className="header">
         <div>
           <h1>HisabPro</h1>
           <p>Sales • Stock • Khata • Profit</p>
         </div>
 
-        <button className="notification">🔔</button>
+        <button className="notification">
+          🔔
+        </button>
       </header>
 
       <section className="welcome">
@@ -16,6 +21,7 @@ export default function Home() {
       </section>
 
       <section className="stats">
+
         <div className="card sales">
           <span>Today's Sales</span>
           <strong>₹12,450</strong>
@@ -39,33 +45,58 @@ export default function Home() {
           <strong>₹18,700</strong>
           <small>12 customers</small>
         </div>
+
       </section>
 
       <section className="section">
+
         <div className="section-title">
           <h3>Quick Actions</h3>
         </div>
 
         <div className="actions">
-          <button>＋<span>New Sale</span></button>
-          <button>＋<span>Add Product</span></button>
-          <button>＋<span>Add Expense</span></button>
-          <button>＋<span>Add Customer</span></button>
+
+          <Link href="/hisabpro/sales/" className="action-link">
+            ＋
+            <span>New Sale</span>
+          </Link>
+
+          <Link href="/hisabpro/stock/" className="action-link">
+            ＋
+            <span>Add Product</span>
+          </Link>
+
+          <button>
+            ＋
+            <span>Add Expense</span>
+          </button>
+
+          <button>
+            ＋
+            <span>Add Customer</span>
+          </button>
+
         </div>
+
       </section>
 
       <section className="section">
+
         <div className="section-title">
           <h3>Business Summary</h3>
-          <button>View All</button>
+
+          <Link href="/hisabpro/sales/history/">
+            View All
+          </Link>
         </div>
 
         <div className="summary">
-          <div>
+
+          <Link href="/hisabpro/stock/">
             <span>📦</span>
             <p>Low Stock</p>
-            <strong>8 Products</strong>
-          </div>
+            <strong>View Stock</strong>
+          </Link>
 
           <div>
             <span>👥</span>
@@ -73,21 +104,48 @@ export default function Home() {
             <strong>126</strong>
           </div>
 
-          <div>
+          <Link href="/hisabpro/sales/history/">
             <span>🧾</span>
             <p>Total Bills</p>
-            <strong>48</strong>
-          </div>
+            <strong>View Sales</strong>
+          </Link>
+
         </div>
+
       </section>
 
       <nav className="bottom-nav">
-        <a className="active">⌂<span>Home</span></a>
-        <a>₹<span>Sales</span></a>
-        <a>📦<span>Stock</span></a>
-        <a>👥<span>Khata</span></a>
-        <a>☰<span>More</span></a>
+
+        <Link
+          href="/hisabpro/"
+          className="active"
+        >
+          ⌂
+          <span>Home</span>
+        </Link>
+
+        <Link href="/hisabpro/sales/">
+          ₹
+          <span>Sales</span>
+        </Link>
+
+        <Link href="/hisabpro/stock/">
+          📦
+          <span>Stock</span>
+        </Link>
+
+        <button>
+          👥
+          <span>Khata</span>
+        </button>
+
+        <button>
+          ☰
+          <span>More</span>
+        </button>
+
       </nav>
+
     </main>
   );
 }
