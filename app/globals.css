@@ -754,3 +754,10 @@ button {
     font-size: 16px;
   }
 }
+
+.stock-available {
+  margin-top: 7px;
+  color: #138a50;
+  font-size: 13px;
+  font-weight: 600;
+}
