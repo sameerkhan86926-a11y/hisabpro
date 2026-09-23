@@ -1,196 +1,253 @@
 "use client";
 
-function HomeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M3 10.5 12 3l9 7.5" />
-      <path d="M5 9.5V21h14V9.5" />
-      <path d="M9 21v-6h6v6" />
-    </svg>
-  );
-}
+import { useEffect, useState } from "react";
 
-function SalesIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 3v18" />
-      <path d="M17 7.5c0-1.7-2.2-3-5-3s-5 1.3-5 3 2.2 3 5 3 5 1.3 5 3-2.2 3-5 3-5-1.3-5-3" />
-    </svg>
-  );
-}
+type Sale = {
+  id: number;
+  product: string;
+  price: number;
+  purchasePrice: number;
+  quantity: number;
+  discount: number;
+  total: number;
+  date: string;
+};
 
-function StockIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="m3 7 9-4 9 4-9 4-9-4Z" />
-      <path d="M3 7v10l9 4 9-4V7" />
-      <path d="M12 11v10" />
-    </svg>
-  );
-}
+type Product = {
+  id: number;
+  name: string;
+  category: string;
+  purchasePrice: number;
+  sellingPrice: number;
+  stock: number;
+};
 
-function UsersIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="9" cy="8" r="3" />
-      <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
-      <path d="M16 5.5a3 3 0 0 1 0 5.8" />
-      <path d="M18 14c1.8.8 3 2.4 3 4.5" />
-    </svg>
-  );
-}
+type Customer = {
+  id: number;
+  name: string;
+  phone: string;
+  due: number;
+  createdAt: string;
+};
 
-function MoreIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="5" cy="12" r="1.5" />
-      <circle cx="12" cy="12" r="1.5" />
-      <circle cx="19" cy="12" r="1.5" />
-    </svg>
-  );
-}
+export default function Dashboard() {
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
 
-function PlusIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 5v14" />
-      <path d="M5 12h14" />
-    </svg>
-  );
-}
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
 
-function PackageIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="m3 7 9-4 9 4-9 4-9-4Z" />
-      <path d="M3 7v10l9 4 9-4V7" />
-      <path d="M12 11v10" />
-    </svg>
-  );
-}
+  function loadDashboardData() {
+    const savedSales = JSON.parse(
+      localStorage.getItem("hisabpro_sales") || "[]"
+    );
 
-function ReceiptIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M5 3h14v18l-3-2-4 2-4-2-3 2V3Z" />
-      <path d="M8 8h8" />
-      <path d="M8 12h8" />
-      <path d="M8 16h5" />
-    </svg>
-  );
-}
+    const savedProducts = JSON.parse(
+      localStorage.getItem("hisabpro_products") || "[]"
+    );
 
-function BellIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-      <path d="M10 21h4" />
-    </svg>
-  );
-}
+    const savedCustomers = JSON.parse(
+      localStorage.getItem("hisabpro_customers") || "[]"
+    );
 
-export default function Home() {
+    setSales(savedSales);
+    setProducts(savedProducts);
+    setCustomers(savedCustomers);
+  }
+
+  const today = new Date();
+
+  const todaysSales = sales.filter((sale) => {
+    const saleDate = new Date(sale.date);
+
+    return (
+      saleDate.getDate() === today.getDate() &&
+      saleDate.getMonth() === today.getMonth() &&
+      saleDate.getFullYear() === today.getFullYear()
+    );
+  });
+
+  const todaySalesAmount = todaysSales.reduce(
+    (sum, sale) => sum + sale.total,
+    0
+  );
+
+  const totalSales = sales.reduce(
+    (sum, sale) => sum + sale.total,
+    0
+  );
+
+  const totalProfit = sales.reduce(
+    (sum, sale) =>
+      sum +
+      (sale.price - sale.purchasePrice) * sale.quantity -
+      sale.discount,
+    0
+  );
+
+  const totalStock = products.reduce(
+    (sum, product) => sum + product.stock,
+    0
+  );
+
+  const stockValue = products.reduce(
+    (sum, product) =>
+      sum + product.purchasePrice * product.stock,
+    0
+  );
+
+  const totalDue = customers.reduce(
+    (sum, customer) => sum + customer.due,
+    0
+  );
+
   return (
     <main className="app">
 
-      {/* HEADER */}
-
       <header className="header">
+
         <div>
           <h1>HisabPro</h1>
           <p>Sales • Stock • Khata • Profit</p>
         </div>
 
-        <button
-          className="notification"
-          aria-label="Notifications"
-        >
-          <BellIcon />
+        <button className="notification">
+          <svg viewBox="0 0 24 24">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+          </svg>
         </button>
+
       </header>
 
-
-      {/* WELCOME */}
-
       <section className="welcome">
+
         <p>Good Morning 👋</p>
+
         <h2>Business Overview</h2>
+
       </section>
-
-
-      {/* STATS */}
 
       <section className="stats">
 
         <div className="card sales">
+
           <span>Today's Sales</span>
-          <strong>₹12,450</strong>
-          <small>+12.5% from yesterday</small>
+
+          <strong>
+            ₹{todaySalesAmount.toLocaleString("en-IN")}
+          </strong>
+
+          <small>
+            {todaysSales.length} bills today
+          </small>
+
         </div>
 
-        <div className="card">
-          <span>Expenses</span>
-          <strong>₹4,200</strong>
-          <small>Today's expenses</small>
+        <div className="card sales">
+
+          <span>Total Sales</span>
+
+          <strong>
+            ₹{totalSales.toLocaleString("en-IN")}
+          </strong>
+
+          <small>
+            {sales.length} total bills
+          </small>
+
         </div>
 
         <div className="card profit">
-          <span>Today's Profit</span>
-          <strong>₹8,250</strong>
-          <small>66.2% margin</small>
+
+          <span>Total Profit</span>
+
+          <strong>
+            ₹{Math.max(0, totalProfit).toLocaleString("en-IN")}
+          </strong>
+
+          <small>
+            Based on recorded sales
+          </small>
+
         </div>
 
         <div className="card">
-          <span>Customer Due</span>
-          <strong>₹18,700</strong>
-          <small>12 customers</small>
+
+          <span>Customers Due</span>
+
+          <strong>
+            ₹{totalDue.toLocaleString("en-IN")}
+          </strong>
+
+          <small>
+            {customers.length} customers
+          </small>
+
         </div>
 
       </section>
 
-
-      {/* QUICK ACTIONS */}
-
       <section className="section">
 
         <div className="section-title">
+
           <h3>Quick Actions</h3>
+
         </div>
 
         <div className="actions">
 
           <a
-            href="/hisabpro/sales/"
             className="action-link"
+            href="/hisabpro/sales/"
           >
-            <PlusIcon />
+            <svg viewBox="0 0 24 24">
+              <path d="M12 5v14" />
+              <path d="M5 12h14" />
+            </svg>
+
             <span>New Sale</span>
           </a>
 
-
           <a
-            href="/hisabpro/stock/"
             className="action-link"
+            href="/hisabpro/stock/"
           >
-            <PackageIcon />
+            <svg viewBox="0 0 24 24">
+              <path d="M3 9l9-5 9 5-9 5-9-5z" />
+              <path d="M3 9v10l9 5 9-5V9" />
+              <path d="M12 14v10" />
+            </svg>
+
             <span>Add Product</span>
           </a>
 
-
           <a
-            href="/hisabpro/expenses/"
             className="action-link"
+            href="/hisabpro/expenses/"
           >
-            <PlusIcon />
+            <svg viewBox="0 0 24 24">
+              <path d="M12 1v22" />
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
+
             <span>Add Expense</span>
           </a>
 
-
           <a
-            href="/hisabpro/khata/"
             className="action-link"
+            href="/hisabpro/khata/"
           >
-            <PlusIcon />
+            <svg viewBox="0 0 24 24">
+              <circle cx="9" cy="8" r="4" />
+              <path d="M3 21a6 6 0 0 1 12 0" />
+              <path d="M16 11a4 4 0 0 1 5 4" />
+              <path d="M16 21h5" />
+            </svg>
+
             <span>Add Customer</span>
           </a>
 
@@ -198,48 +255,67 @@ export default function Home() {
 
       </section>
 
-
-      {/* BUSINESS SUMMARY */}
-
       <section className="section">
 
         <div className="section-title">
+
           <h3>Business Summary</h3>
 
-          <a href="/hisabpro/sales/history/">
-            View All
-          </a>
         </div>
-
 
         <div className="summary">
 
           <a href="/hisabpro/stock/">
-            <PackageIcon />
-            <p>Low Stock</p>
-            <strong>View Stock</strong>
+
+            <svg viewBox="0 0 24 24">
+              <path d="M3 9l9-5 9 5-9 5-9-5z" />
+              <path d="M3 9v10l9 5 9-5V9" />
+              <path d="M12 14v10" />
+            </svg>
+
+            <p>Total Stock</p>
+
+            <strong>
+              {totalStock} units
+            </strong>
+
           </a>
 
+          <a href="/hisabpro/stock/">
+
+            <svg viewBox="0 0 24 24">
+              <path d="M12 2v20" />
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
+
+            <p>Stock Value</p>
+
+            <strong>
+              ₹{stockValue.toLocaleString("en-IN")}
+            </strong>
+
+          </a>
 
           <a href="/hisabpro/khata/">
-            <UsersIcon />
-            <p>Total Customers</p>
-            <strong>126</strong>
-          </a>
 
+            <svg viewBox="0 0 24 24">
+              <circle cx="9" cy="8" r="4" />
+              <path d="M3 21a6 6 0 0 1 12 0" />
+              <path d="M16 11a4 4 0 0 1 5 4" />
+              <path d="M16 21h5" />
+            </svg>
 
-          <a href="/hisabpro/sales/history/">
-            <ReceiptIcon />
-            <p>Total Bills</p>
-            <strong>View Sales</strong>
+            <p>Customers Due</p>
+
+            <strong>
+              ₹{totalDue.toLocaleString("en-IN")}
+            </strong>
+
           </a>
 
         </div>
 
       </section>
-
-
-      {/* BOTTOM NAVIGATION */}
 
       <nav className="bottom-nav">
 
@@ -247,31 +323,55 @@ export default function Home() {
           href="/hisabpro/"
           className="active"
         >
-          <HomeIcon />
+          <svg viewBox="0 0 24 24">
+            <path d="M3 10.5L12 3l9 7.5" />
+            <path d="M5 9v11h14V9" />
+          </svg>
+
           <span>Home</span>
         </a>
 
-
         <a href="/hisabpro/sales/">
-          <SalesIcon />
+
+          <svg viewBox="0 0 24 24">
+            <path d="M6 2h12v20H6z" />
+            <path d="M9 6h6" />
+            <path d="M9 10h6" />
+            <path d="M9 14h6" />
+          </svg>
+
           <span>Sales</span>
         </a>
 
-
         <a href="/hisabpro/stock/">
-          <StockIcon />
+
+          <svg viewBox="0 0 24 24">
+            <path d="M3 9l9-5 9 5-9 5-9-5z" />
+            <path d="M3 9v10l9 5 9-5V9" />
+          </svg>
+
           <span>Stock</span>
         </a>
 
-
         <a href="/hisabpro/khata/">
-          <UsersIcon />
+
+          <svg viewBox="0 0 24 24">
+            <circle cx="9" cy="8" r="4" />
+            <path d="M3 21a6 6 0 0 1 12 0" />
+            <path d="M16 11a4 4 0 0 1 5 4" />
+          </svg>
+
           <span>Khata</span>
         </a>
 
-
         <a href="/hisabpro/more/">
-          <MoreIcon />
+
+          <svg viewBox="0 0 24 24">
+            <circle cx="5" cy="12" r="1.5" />
+            <circle cx="12" cy="12" r="1.5" />
+            <circle cx="19" cy="12" r="1.5" />
+          </svg>
+
           <span>More</span>
         </a>
 
