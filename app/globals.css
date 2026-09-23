@@ -3649,3 +3649,74 @@ button {
     padding: 10px;
   }
 }
+/* Custom Date Filter */
+
+.custom-date-filter {
+  width: min(1100px, 92%);
+  margin: 16px auto 0;
+  padding: 16px;
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 4px 20px rgba(20, 40, 80, 0.05);
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.custom-date-filter > div {
+  flex: 1;
+}
+
+.custom-date-filter label {
+  display: block;
+  margin-bottom: 6px;
+  color: #687386;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.custom-date-filter input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid #dce2eb;
+  border-radius: 9px;
+  background: white;
+  color: #172033;
+  outline: none;
+  font-size: 13px;
+}
+
+.custom-date-filter input:focus {
+  border-color: #1559b7;
+}
+
+.clear-date-button {
+  padding: 11px 16px;
+  border-radius: 9px;
+  background: #eef1f6;
+  color: #263247;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.clear-date-button:hover {
+  background: #e2e6ed;
+}
+
+/* Mobile */
+
+@media (max-width: 600px) {
+  .custom-date-filter {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .custom-date-filter > div {
+    width: 100%;
+  }
+
+  .clear-date-button {
+    width: 100%;
+  }
+}
