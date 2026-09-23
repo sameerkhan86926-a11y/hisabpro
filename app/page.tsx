@@ -2,13 +2,26 @@
 
 import { useEffect, useState } from "react";
 
-type Sale = {
-  id: number;
+type SaleItem = {
+  productId: number;
   product: string;
   price: number;
   purchasePrice: number;
   quantity: number;
-  discount: number;
+  amount: number;
+};
+
+type Sale = {
+  id: number;
+  items?: SaleItem[];
+
+  // Old sale format compatibility
+  product?: string;
+  price?: number;
+  purchasePrice?: number;
+  quantity?: number;
+
+  discount?: number;
   total: number;
   date: string;
 };
@@ -39,6 +52,49 @@ type Expense = {
   date: string;
 };
 
+function getSaleItems(sale: Sale): SaleItem[] {
+  if (sale.items && sale.items.length > 0) {
+    return sale.items;
+  }
+
+  // Old single-product sale support
+  if (sale.product) {
+    const quantity = sale.quantity || 1;
+    const price = sale.price || 0;
+    const purchasePrice = sale.purchasePrice || 0;
+
+    return [
+      {
+        productId: 0,
+        product: sale.product,
+        price,
+        purchasePrice,
+        quantity,
+        amount: price * quantity,
+      },
+    ];
+  }
+
+  return [];
+}
+
+function isToday(dateString: string) {
+  const date = new Date(dateString);
+  const now = new Date();
+
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  );
+}
+
+function formatMoney(value: number) {
+  return `₹${value.toLocaleString("en-IN", {
+    maximumFractionDigits: 2,
+  })}`;
+}
+
 export default function Dashboard() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -46,117 +102,121 @@ export default function Dashboard() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
 
   useEffect(() => {
-    loadDashboardData();
+    try {
+      const savedSales = JSON.parse(
+        localStorage.getItem("hisabpro_sales") || "[]"
+      );
+
+      const savedProducts = JSON.parse(
+        localStorage.getItem("hisabpro_products") || "[]"
+      );
+
+      const savedCustomers = JSON.parse(
+        localStorage.getItem("hisabpro_customers") || "[]"
+      );
+
+      const savedExpenses = JSON.parse(
+        localStorage.getItem("hisabpro_expenses") || "[]"
+      );
+
+      setSales(Array.isArray(savedSales) ? savedSales : []);
+      setProducts(Array.isArray(savedProducts) ? savedProducts : []);
+      setCustomers(Array.isArray(savedCustomers) ? savedCustomers : []);
+      setExpenses(Array.isArray(savedExpenses) ? savedExpenses : []);
+    } catch (error) {
+      console.error("Dashboard data error:", error);
+    }
   }, []);
 
-  function loadDashboardData() {
-    const savedSales = JSON.parse(
-      localStorage.getItem("hisabpro_sales") || "[]"
-    );
-
-    const savedProducts = JSON.parse(
-      localStorage.getItem("hisabpro_products") || "[]"
-    );
-
-    const savedCustomers = JSON.parse(
-      localStorage.getItem("hisabpro_customers") || "[]"
-    );
-
-    const savedExpenses = JSON.parse(
-      localStorage.getItem("hisabpro_expenses") || "[]"
-    );
-
-    setSales(savedSales);
-    setProducts(savedProducts);
-    setCustomers(savedCustomers);
-    setExpenses(savedExpenses);
-  }
-
-  const today = new Date();
-
-  const todaysSales = sales.filter((sale) => {
-    const saleDate = new Date(sale.date);
-
-    return (
-      saleDate.getDate() === today.getDate() &&
-      saleDate.getMonth() === today.getMonth() &&
-      saleDate.getFullYear() === today.getFullYear()
-    );
-  });
-
-  const todaySalesAmount = todaysSales.reduce(
-    (sum, sale) => sum + sale.total,
-    0
-  );
+  // -----------------------------
+  // SALES
+  // -----------------------------
 
   const totalSales = sales.reduce(
-    (sum, sale) => sum + sale.total,
+    (sum, sale) => sum + Number(sale.total || 0),
     0
   );
 
-  /*
-   * Gross Profit
-   *
-   * Selling amount - Purchase amount - Discount
-   */
-  const grossProfit = sales.reduce(
-    (sum, sale) =>
-      sum +
-      (sale.price - sale.purchasePrice) * sale.quantity -
-      sale.discount,
-    0
-  );
+  const todaySales = sales
+    .filter((sale) => isToday(sale.date))
+    .reduce(
+      (sum, sale) => sum + Number(sale.total || 0),
+      0
+    );
 
-  /*
-   * Total Expenses
-   */
+  // -----------------------------
+  // GROSS PROFIT
+  // -----------------------------
+
+  const grossProfit = sales.reduce((saleTotal, sale) => {
+    const items = getSaleItems(sale);
+
+    const itemProfit = items.reduce(
+      (itemTotal, item) => {
+        const sellingPrice = Number(item.price || 0);
+        const purchasePrice = Number(
+          item.purchasePrice || 0
+        );
+        const quantity = Number(item.quantity || 0);
+
+        return (
+          itemTotal +
+          (sellingPrice - purchasePrice) * quantity
+        );
+      },
+      0
+    );
+
+    const discount = Number(sale.discount || 0);
+
+    return saleTotal + itemProfit - discount;
+  }, 0);
+
+  // -----------------------------
+  // EXPENSES
+  // -----------------------------
+
   const totalExpenses = expenses.reduce(
-    (sum, expense) => sum + expense.amount,
+    (sum, expense) =>
+      sum + Number(expense.amount || 0),
     0
   );
 
-  /*
-   * Net Profit
-   */
+  const todayExpenses = expenses
+    .filter((expense) => isToday(expense.date))
+    .reduce(
+      (sum, expense) =>
+        sum + Number(expense.amount || 0),
+      0
+    );
+
   const netProfit = grossProfit - totalExpenses;
 
-  /*
-   * Today's Expenses
-   */
-  const todayExpenses = expenses.filter((expense) => {
-    const expenseDate = new Date(expense.date);
+  // -----------------------------
+  // STOCK
+  // -----------------------------
 
-    return (
-      expenseDate.getDate() === today.getDate() &&
-      expenseDate.getMonth() === today.getMonth() &&
-      expenseDate.getFullYear() === today.getFullYear()
-    );
-  });
-
-  const todayExpenseAmount = todayExpenses.reduce(
-    (sum, expense) => sum + expense.amount,
-    0
-  );
-
-  /*
-   * Stock
-   */
   const totalStock = products.reduce(
-    (sum, product) => sum + product.stock,
+    (sum, product) =>
+      sum + Number(product.stock || 0),
     0
   );
 
   const stockValue = products.reduce(
     (sum, product) =>
-      sum + product.purchasePrice * product.stock,
+      sum +
+      Number(product.stock || 0) *
+        Number(product.purchasePrice || 0),
     0
   );
 
-  /*
-   * Khata
-   */
-  const totalDue = customers.reduce(
-    (sum, customer) => sum + customer.due,
+  // -----------------------------
+  // CUSTOMER DUE
+  // -----------------------------
+
+  const totalCustomerDue = customers.reduce(
+    (sum, customer) =>
+      sum + Number(customer.due || 0),
     0
   );
 
@@ -164,486 +224,230 @@ export default function Dashboard() {
     <main className="app">
 
       {/* HEADER */}
-
       <header className="header">
-
         <div>
           <h1>HisabPro</h1>
-
-          <p>
-            Sales • Stock • Khata • Profit
-          </p>
+          <p>Sales • Stock • Khata • Profit</p>
         </div>
 
         <button className="notification">
-
-          <svg viewBox="0 0 24 24">
-
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
             <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-
-            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-
+            <path d="M10 21h4" />
           </svg>
-
         </button>
-
       </header>
 
-
       {/* WELCOME */}
-
       <section className="welcome">
-
-        <p>
-          Good Morning 👋
-        </p>
-
-        <h2>
-          Business Overview
-        </h2>
-
+        <p>Good day 👋</p>
+        <h2>Business Dashboard</h2>
       </section>
 
-
       {/* MAIN STATS */}
-
       <section className="stats">
 
         <div className="card sales">
-
-          <span>
-            Today's Sales
-          </span>
-
-          <strong>
-            ₹{todaySalesAmount.toLocaleString("en-IN")}
-          </strong>
-
-          <small>
-            {todaysSales.length} bills today
-          </small>
-
+          <span>Today's Sales</span>
+          <strong>{formatMoney(todaySales)}</strong>
+          <small>Today's business</small>
         </div>
 
-
-        <div className="card sales">
-
-          <span>
-            Total Sales
-          </span>
-
-          <strong>
-            ₹{totalSales.toLocaleString("en-IN")}
-          </strong>
-
-          <small>
-            {sales.length} total bills
-          </small>
-
+        <div className="card">
+          <span>Total Sales</span>
+          <strong>{formatMoney(totalSales)}</strong>
+          <small>{sales.length} bills</small>
         </div>
-
 
         <div className="card profit">
-
-          <span>
-            Gross Profit
-          </span>
-
-          <strong>
-            ₹{grossProfit.toLocaleString("en-IN")}
-          </strong>
-
+          <span>Net Profit</span>
+          <strong>{formatMoney(netProfit)}</strong>
           <small>
-            Before expenses
+            Gross {formatMoney(grossProfit)}
           </small>
-
         </div>
 
-
-        <div className="card profit">
-
-          <span>
-            Net Profit
-          </span>
-
-          <strong>
-            ₹{netProfit.toLocaleString("en-IN")}
-          </strong>
-
+        <div className="card">
+          <span>Expenses</span>
+          <strong>{formatMoney(totalExpenses)}</strong>
           <small>
-            After expenses
+            Today {formatMoney(todayExpenses)}
           </small>
-
         </div>
 
       </section>
 
-
       {/* QUICK ACTIONS */}
-
       <section className="section">
 
         <div className="section-title">
-
-          <h3>
-            Quick Actions
-          </h3>
-
+          <h3>Quick Actions</h3>
         </div>
-
 
         <div className="actions">
 
-
           <a
-            className="action-link"
             href="/hisabpro/sales/"
+            className="action-link"
           >
-
             <svg viewBox="0 0 24 24">
-
-              <path d="M12 5v14" />
-
-              <path d="M5 12h14" />
-
+              <path d="M4 4h16v16H4z" />
+              <path d="M8 8h8M8 12h8M8 16h5" />
             </svg>
 
-            <span>
-              New Sale
-            </span>
-
+            <span>New Sale</span>
           </a>
 
-
           <a
-            className="action-link"
             href="/hisabpro/stock/"
+            className="action-link"
           >
-
             <svg viewBox="0 0 24 24">
-
-              <path d="M3 9l9-5 9 5-9 5-9-5z" />
-
-              <path d="M3 9v10l9 5 9-5V9" />
-
-              <path d="M12 14v10" />
-
+              <path d="M3 7l9-4 9 4-9 4-9-4z" />
+              <path d="M3 7v10l9 4 9-4V7" />
+              <path d="M12 11v10" />
             </svg>
 
-            <span>
-              Add Product
-            </span>
-
+            <span>Add Product</span>
           </a>
 
-
           <a
-            className="action-link"
             href="/hisabpro/expenses/"
+            className="action-link"
           >
-
             <svg viewBox="0 0 24 24">
-
-              <path d="M12 1v22" />
-
-              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-
+              <path d="M4 5h16v14H4z" />
+              <path d="M8 9h8M8 13h5" />
             </svg>
 
-            <span>
-              Add Expense
-            </span>
-
+            <span>Add Expense</span>
           </a>
 
-
           <a
-            className="action-link"
             href="/hisabpro/khata/"
+            className="action-link"
           >
-
             <svg viewBox="0 0 24 24">
-
-              <circle cx="9" cy="8" r="4" />
-
-              <path d="M3 21a6 6 0 0 1 12 0" />
-
-              <path d="M16 11a4 4 0 0 1 5 4" />
-
-              <path d="M16 21h5" />
-
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 21c0-4 3-7 8-7s8 3 8 7" />
             </svg>
 
-            <span>
-              Add Customer
-            </span>
-
+            <span>Add Customer</span>
           </a>
 
         </div>
-
       </section>
 
-
       {/* BUSINESS SUMMARY */}
-
       <section className="section">
 
         <div className="section-title">
-
-          <h3>
-            Business Summary
-          </h3>
-
+          <h3>Business Summary</h3>
         </div>
-
 
         <div className="summary">
 
-
-          {/* STOCK */}
-
           <a href="/hisabpro/stock/">
-
             <svg viewBox="0 0 24 24">
-
-              <path d="M3 9l9-5 9 5-9 5-9-5z" />
-
-              <path d="M3 9v10l9 5 9-5V9" />
-
-              <path d="M12 14v10" />
-
+              <path d="M3 7l9-4 9 4-9 4-9-4z" />
+              <path d="M3 7v10l9 4 9-4V7" />
+              <path d="M12 11v10" />
             </svg>
 
-            <p>
-              Total Stock
-            </p>
+            <p>Total Stock</p>
+            <strong>{totalStock} items</strong>
 
-            <strong>
-              {totalStock} units
-            </strong>
-
+            <small>
+              Value: {formatMoney(stockValue)}
+            </small>
           </a>
-
-
-          {/* STOCK VALUE */}
-
-          <a href="/hisabpro/stock/">
-
-            <svg viewBox="0 0 24 24">
-
-              <path d="M12 2v20" />
-
-              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-
-            </svg>
-
-            <p>
-              Stock Value
-            </p>
-
-            <strong>
-              ₹{stockValue.toLocaleString("en-IN")}
-            </strong>
-
-          </a>
-
-
-          {/* CUSTOMER DUE */}
 
           <a href="/hisabpro/khata/">
-
             <svg viewBox="0 0 24 24">
-
-              <circle cx="9" cy="8" r="4" />
-
-              <path d="M3 21a6 6 0 0 1 12 0" />
-
-              <path d="M16 11a4 4 0 0 1 5 4" />
-
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 21c0-4 3-7 8-7s8 3 8 7" />
             </svg>
 
-            <p>
-              Customers Due
-            </p>
-
+            <p>Customer Due</p>
             <strong>
-              ₹{totalDue.toLocaleString("en-IN")}
+              {formatMoney(totalCustomerDue)}
             </strong>
 
+            <small>
+              {customers.length} customers
+            </small>
           </a>
 
-
-          {/* EXPENSES */}
-
-          <a href="/hisabpro/expenses/">
-
+          <a href="/hisabpro/reports/">
             <svg viewBox="0 0 24 24">
-
-              <path d="M12 1v22" />
-
-              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-
+              <path d="M4 19V5" />
+              <path d="M4 19h16" />
+              <path d="M7 15l3-4 3 2 5-6" />
             </svg>
 
-            <p>
-              Total Expenses
-            </p>
-
+            <p>Profit Report</p>
             <strong>
-              ₹{totalExpenses.toLocaleString("en-IN")}
+              {formatMoney(netProfit)}
             </strong>
 
-          </a>
-
-
-          {/* TODAY EXPENSE */}
-
-          <a href="/hisabpro/expenses/">
-
-            <svg viewBox="0 0 24 24">
-
-              <path d="M12 1v22" />
-
-              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-
-            </svg>
-
-            <p>
-              Today's Expenses
-            </p>
-
-            <strong>
-              ₹{todayExpenseAmount.toLocaleString("en-IN")}
-            </strong>
-
-          </a>
-
-
-          {/* NET PROFIT */}
-
-          <a href="/hisabpro/expenses/">
-
-            <svg viewBox="0 0 24 24">
-
-              <path d="M3 17l6-6 4 4 8-9" />
-
-              <path d="M15 6h6v6" />
-
-            </svg>
-
-            <p>
-              Net Profit
-            </p>
-
-            <strong>
-              ₹{netProfit.toLocaleString("en-IN")}
-            </strong>
-
+            <small>
+              Net profit
+            </small>
           </a>
 
         </div>
-
       </section>
 
-
       {/* BOTTOM NAV */}
-
       <nav className="bottom-nav">
 
         <a
           href="/hisabpro/"
           className="active"
         >
-
           <svg viewBox="0 0 24 24">
-
-            <path d="M3 10.5L12 3l9 7.5" />
-
-            <path d="M5 9v11h14V9" />
-
+            <path d="M3 11l9-8 9 8" />
+            <path d="M5 10v10h14V10" />
+            <path d="M9 20v-6h6v6" />
           </svg>
-
-          <span>
-            Home
-          </span>
-
+          <span>Home</span>
         </a>
-
 
         <a href="/hisabpro/sales/">
-
           <svg viewBox="0 0 24 24">
-
-            <path d="M6 2h12v20H6z" />
-
-            <path d="M9 6h6" />
-
-            <path d="M9 10h6" />
-
-            <path d="M9 14h6" />
-
+            <path d="M4 4h16v16H4z" />
+            <path d="M8 8h8M8 12h8M8 16h5" />
           </svg>
-
-          <span>
-            Sales
-          </span>
-
+          <span>Sales</span>
         </a>
-
 
         <a href="/hisabpro/stock/">
-
           <svg viewBox="0 0 24 24">
-
-            <path d="M3 9l9-5 9 5-9 5-9-5z" />
-
-            <path d="M3 9v10l9 5 9-5V9" />
-
+            <path d="M3 7l9-4 9 4-9 4-9-4z" />
+            <path d="M3 7v10l9 4 9-4V7" />
+            <path d="M12 11v10" />
           </svg>
-
-          <span>
-            Stock
-          </span>
-
+          <span>Stock</span>
         </a>
-
 
         <a href="/hisabpro/khata/">
-
           <svg viewBox="0 0 24 24">
-
-            <circle cx="9" cy="8" r="4" />
-
-            <path d="M3 21a6 6 0 0 1 12 0" />
-
-            <path d="M16 11a4 4 0 0 1 5 4" />
-
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 21c0-4 3-7 8-7s8 3 8 7" />
           </svg>
-
-          <span>
-            Khata
-          </span>
-
+          <span>Khata</span>
         </a>
 
-
         <a href="/hisabpro/more/">
-
           <svg viewBox="0 0 24 24">
-
             <circle cx="5" cy="12" r="1.5" />
-
             <circle cx="12" cy="12" r="1.5" />
-
             <circle cx="19" cy="12" r="1.5" />
-
           </svg>
-
-          <span>
-            More
-          </span>
-
+          <span>More</span>
         </a>
 
       </nav>
