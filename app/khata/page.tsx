@@ -83,7 +83,9 @@ export default function KhataPage() {
     <main className="khata-page">
 
       <header className="khata-header">
-        <a href="/hisabpro/">← Dashboard</a>
+        <a href="/hisabpro/">
+          ← Dashboard
+        </a>
 
         <h1>Khata</h1>
 
@@ -99,6 +101,7 @@ export default function KhataPage() {
 
         <div>
           <span>Total Due</span>
+
           <strong>
             ₹{totalDue.toLocaleString("en-IN")}
           </strong>
@@ -159,6 +162,7 @@ export default function KhataPage() {
 
         {customers.length === 0 ? (
           <div className="empty-customers">
+
             <div>👤</div>
 
             <h3>No Customers Yet</h3>
@@ -166,9 +170,11 @@ export default function KhataPage() {
             <p>
               Add your first customer to start Khata.
             </p>
+
           </div>
         ) : (
           customers.map((customer) => (
+
             <div
               className="customer-item"
               key={customer.id}
@@ -180,9 +186,13 @@ export default function KhataPage() {
 
               <div className="customer-info">
 
-                <strong>{customer.name}</strong>
+                <strong>
+                  {customer.name}
+                </strong>
 
-                <span>{customer.phone}</span>
+                <span>
+                  {customer.phone}
+                </span>
 
                 <small>
                   Added{" "}
@@ -205,17 +215,29 @@ export default function KhataPage() {
                     : "No Due"}
                 </span>
 
-                <button
-                  onClick={() =>
-                    deleteCustomer(customer.id)
-                  }
-                >
-                  Delete
-                </button>
+                <div className="customer-actions">
+
+                  <a
+                    href={`/hisabpro/khata/customer/?id=${customer.id}`}
+                    className="view-customer"
+                  >
+                    View
+                  </a>
+
+                  <button
+                    onClick={() =>
+                      deleteCustomer(customer.id)
+                    }
+                  >
+                    Delete
+                  </button>
+
+                </div>
 
               </div>
 
             </div>
+
           ))
         )}
 
