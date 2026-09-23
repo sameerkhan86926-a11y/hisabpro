@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 type Business = {
+  id: number;
   businessName: string;
   ownerName: string;
   phone: string;
@@ -11,7 +12,7 @@ type Business = {
   email: string;
 };
 
-const emptyBusiness: Business = {
+const emptyBusiness: Omit<Business, "id"> = {
   businessName: "",
   ownerName: "",
   phone: "",
@@ -21,23 +22,118 @@ const emptyBusiness: Business = {
 };
 
 export default function SettingsPage() {
+  const [businesses, setBusinesses] =
+    useState<Business[]>([]);
+
+  const [activeBusinessId, setActiveBusinessId] =
+    useState<number | null>(null);
+
   const [business, setBusiness] =
-    useState<Business>(emptyBusiness);
-
-  const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    const saved = localStorage.getItem(
-      "hisabpro_business"
+    useState<Omit<Business, "id">>(
+      emptyBusiness
     );
 
-    if (saved) {
-      setBusiness(JSON.parse(saved));
-    }
+  const [editingId, setEditingId] =
+    useState<number | null>(null);
+
+  const [message, setMessage] =
+    useState("");
+
+  useEffect(() => {
+    loadBusinesses();
   }, []);
 
+  function loadBusinesses() {
+    const saved =
+      localStorage.getItem(
+        "hisabpro_businesses"
+      );
+
+    const oldSaved =
+      localStorage.getItem(
+        "hisabpro_business"
+      );
+
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+
+        if (Array.isArray(parsed)) {
+          setBusinesses(parsed);
+        }
+      } catch {
+        console.log(
+          "Business data could not be loaded."
+        );
+      }
+    } else if (oldSaved) {
+      /*
+       * Migrate old single business
+       * to new multiple-business system.
+       */
+
+      try {
+        const oldBusiness =
+          JSON.parse(oldSaved);
+
+        const migratedBusiness: Business = {
+          id: Date.now(),
+          businessName:
+            oldBusiness.businessName || "",
+          ownerName:
+            oldBusiness.ownerName || "",
+          phone:
+            oldBusiness.phone || "",
+          address:
+            oldBusiness.address || "",
+          gstin:
+            oldBusiness.gstin || "",
+          email:
+            oldBusiness.email || "",
+        };
+
+        setBusinesses([
+          migratedBusiness,
+        ]);
+
+        setActiveBusinessId(
+          migratedBusiness.id
+        );
+
+        localStorage.setItem(
+          "hisabpro_businesses",
+          JSON.stringify([
+            migratedBusiness,
+          ])
+        );
+
+        localStorage.setItem(
+          "hisabpro_active_business",
+          String(
+            migratedBusiness.id
+          )
+        );
+      } catch {
+        console.log(
+          "Old business data could not be migrated."
+        );
+      }
+    }
+
+    const savedActive =
+      localStorage.getItem(
+        "hisabpro_active_business"
+      );
+
+    if (savedActive) {
+      setActiveBusinessId(
+        Number(savedActive)
+      );
+    }
+  }
+
   function handleChange(
-    field: keyof Business,
+    field: keyof Omit<Business, "id">,
     value: string
   ) {
     setBusiness((prev) => ({
@@ -49,34 +145,262 @@ export default function SettingsPage() {
   }
 
   function saveBusiness() {
-    localStorage.setItem(
-      "hisabpro_business",
-      JSON.stringify(business)
-    );
+    if (
+      !business.businessName.trim() &&
+      !business.ownerName.trim()
+    ) {
+      setMessage(
+        "Please enter Business Name or Owner Name."
+      );
 
-    setMessage(
-      "Business details saved successfully ✅"
-    );
-  }
-
-  function clearBusiness() {
-    const confirmClear = window.confirm(
-      "Clear all business details?"
-    );
-
-    if (!confirmClear) {
       return;
     }
 
-    localStorage.removeItem(
-      "hisabpro_business"
+    let updatedBusinesses: Business[];
+
+    if (editingId !== null) {
+      updatedBusinesses =
+        businesses.map((item) =>
+          item.id === editingId
+            ? {
+                ...item,
+                ...business,
+              }
+            : item
+        );
+    } else {
+      const newBusiness: Business = {
+        id: Date.now(),
+        ...business,
+      };
+
+      updatedBusinesses = [
+        ...businesses,
+        newBusiness,
+      ];
+
+      /*
+       * First business automatically
+       * becomes active.
+       */
+
+      if (businesses.length === 0) {
+        setActiveBusinessId(
+          newBusiness.id
+        );
+
+        localStorage.setItem(
+          "hisabpro_active_business",
+          String(newBusiness.id)
+        );
+      }
+    }
+
+    setBusinesses(
+      updatedBusinesses
     );
 
-    setBusiness(emptyBusiness);
+    localStorage.setItem(
+      "hisabpro_businesses",
+      JSON.stringify(
+        updatedBusinesses
+      )
+    );
+
+    /*
+     * Keep old key updated with
+     * active business for compatibility.
+     */
+
+    const activeId =
+      activeBusinessId ??
+      updatedBusinesses[0]?.id;
+
+    const activeBusiness =
+      updatedBusinesses.find(
+        (item) =>
+          item.id === activeId
+      );
+
+    if (activeBusiness) {
+      localStorage.setItem(
+        "hisabpro_business",
+        JSON.stringify(
+          activeBusiness
+        )
+      );
+    }
+
+    setBusiness(
+      emptyBusiness
+    );
+
+    setEditingId(null);
 
     setMessage(
-      "Business details cleared successfully."
+      editingId !== null
+        ? "Business details updated successfully ✅"
+        : "Business added successfully ✅"
     );
+  }
+
+  function editBusiness(
+    item: Business
+  ) {
+    setBusiness({
+      businessName:
+        item.businessName,
+      ownerName:
+        item.ownerName,
+      phone:
+        item.phone,
+      address:
+        item.address,
+      gstin:
+        item.gstin,
+      email:
+        item.email,
+    });
+
+    setEditingId(item.id);
+
+    setMessage("");
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
+
+  function deleteBusiness(
+    id: number
+  ) {
+    const confirmDelete =
+      window.confirm(
+        "Delete this business profile?"
+      );
+
+    if (!confirmDelete) {
+      return;
+    }
+
+    const updatedBusinesses =
+      businesses.filter(
+        (item) =>
+          item.id !== id
+      );
+
+    setBusinesses(
+      updatedBusinesses
+    );
+
+    localStorage.setItem(
+      "hisabpro_businesses",
+      JSON.stringify(
+        updatedBusinesses
+      )
+    );
+
+    /*
+     * If active business was deleted,
+     * select first remaining business.
+     */
+
+    if (activeBusinessId === id) {
+      const nextBusiness =
+        updatedBusinesses[0];
+
+      if (nextBusiness) {
+        setActiveBusinessId(
+          nextBusiness.id
+        );
+
+        localStorage.setItem(
+          "hisabpro_active_business",
+          String(
+            nextBusiness.id
+          )
+        );
+
+        localStorage.setItem(
+          "hisabpro_business",
+          JSON.stringify(
+            nextBusiness
+          )
+        );
+      } else {
+        setActiveBusinessId(
+          null
+        );
+
+        localStorage.removeItem(
+          "hisabpro_active_business"
+        );
+
+        localStorage.removeItem(
+          "hisabpro_business"
+        );
+      }
+    }
+
+    if (editingId === id) {
+      setBusiness(
+        emptyBusiness
+      );
+
+      setEditingId(null);
+    }
+
+    setMessage(
+      "Business deleted successfully."
+    );
+  }
+
+  function selectBusiness(
+    id: number
+  ) {
+    const selected =
+      businesses.find(
+        (item) =>
+          item.id === id
+      );
+
+    if (!selected) {
+      return;
+    }
+
+    setActiveBusinessId(id);
+
+    localStorage.setItem(
+      "hisabpro_active_business",
+      String(id)
+    );
+
+    /*
+     * Save selected business
+     * to old key too.
+     */
+
+    localStorage.setItem(
+      "hisabpro_business",
+      JSON.stringify(
+        selected
+      )
+    );
+
+    setMessage(
+      "Active business changed successfully ✅"
+    );
+  }
+
+  function cancelEdit() {
+    setBusiness(
+      emptyBusiness
+    );
+
+    setEditingId(null);
+
+    setMessage("");
   }
 
   return (
@@ -85,50 +409,75 @@ export default function SettingsPage() {
       <header className="settings-header">
 
         <button
-          onClick={() => window.history.back()}
+          onClick={() =>
+            window.history.back()
+          }
           className="back-button"
         >
           ← Back
         </button>
 
-        <h1>Business Settings</h1>
+        <h1>
+          Business Settings
+        </h1>
 
         <span></span>
 
       </header>
 
+      {/* BUSINESS FORM */}
+
       <section className="settings-box">
 
         <div className="settings-title">
+
           <div className="settings-icon">
             🏪
           </div>
 
           <div>
-            <h2>Business Details</h2>
+            <h2>
+              {editingId !== null
+                ? "Edit Business"
+                : "Add Business"}
+            </h2>
+
             <p>
-              These details will appear on your invoices.
+              Save multiple business
+              profiles in one app.
             </p>
           </div>
+
         </div>
 
         <div className="settings-note">
-          <strong>Optional</strong>
+
+          <strong>
+            Optional
+          </strong>
+
           <span>
-            You can leave any field blank. Only filled
-            details will appear on the invoice.
+            You can leave any field
+            blank. Only filled details
+            will appear on the invoice.
           </span>
+
         </div>
 
         <div className="settings-form">
 
           <div className="form-group">
-            <label>Business / Shop Name</label>
+
+            <label>
+              Business / Shop Name
+            </label>
 
             <input
               type="text"
               placeholder="e.g. Sameer Garments"
-              value={business.businessName}
+              value={
+                business.businessName
+              }
               onChange={(e) =>
                 handleChange(
                   "businessName",
@@ -136,15 +485,21 @@ export default function SettingsPage() {
                 )
               }
             />
+
           </div>
 
           <div className="form-group">
-            <label>Owner Name</label>
+
+            <label>
+              Owner Name
+            </label>
 
             <input
               type="text"
               placeholder="e.g. Sameer Khan"
-              value={business.ownerName}
+              value={
+                business.ownerName
+              }
               onChange={(e) =>
                 handleChange(
                   "ownerName",
@@ -152,15 +507,21 @@ export default function SettingsPage() {
                 )
               }
             />
+
           </div>
 
           <div className="form-group">
-            <label>Phone Number</label>
+
+            <label>
+              Phone Number
+            </label>
 
             <input
               type="tel"
               placeholder="e.g. 9876543210"
-              value={business.phone}
+              value={
+                business.phone
+              }
               onChange={(e) =>
                 handleChange(
                   "phone",
@@ -168,14 +529,20 @@ export default function SettingsPage() {
                 )
               }
             />
+
           </div>
 
           <div className="form-group">
-            <label>Address</label>
+
+            <label>
+              Address
+            </label>
 
             <textarea
               placeholder="Shop / Business address"
-              value={business.address}
+              value={
+                business.address
+              }
               onChange={(e) =>
                 handleChange(
                   "address",
@@ -184,15 +551,21 @@ export default function SettingsPage() {
               }
               rows={3}
             />
+
           </div>
 
           <div className="form-group">
-            <label>GSTIN</label>
+
+            <label>
+              GSTIN
+            </label>
 
             <input
               type="text"
               placeholder="Optional"
-              value={business.gstin}
+              value={
+                business.gstin
+              }
               onChange={(e) =>
                 handleChange(
                   "gstin",
@@ -200,15 +573,21 @@ export default function SettingsPage() {
                 )
               }
             />
+
           </div>
 
           <div className="form-group">
-            <label>Email</label>
+
+            <label>
+              Email
+            </label>
 
             <input
               type="email"
               placeholder="Optional"
-              value={business.email}
+              value={
+                business.email
+              }
               onChange={(e) =>
                 handleChange(
                   "email",
@@ -216,28 +595,205 @@ export default function SettingsPage() {
                 )
               }
             />
+
           </div>
 
         </div>
 
-        <button
-          className="save-business"
-          onClick={saveBusiness}
-        >
-          Save Business Details
-        </button>
+        <div className="business-form-actions">
 
-        <button
-          className="clear-business"
-          onClick={clearBusiness}
-        >
-          Clear Details
-        </button>
+          <button
+            className="save-business"
+            onClick={
+              saveBusiness
+            }
+          >
+            {editingId !== null
+              ? "Update Business"
+              : "Save Business Details"}
+          </button>
+
+          {editingId !== null && (
+            <button
+              className="cancel-business"
+              onClick={
+                cancelEdit
+              }
+            >
+              Cancel
+            </button>
+          )}
+
+        </div>
 
         {message && (
           <p className="settings-message">
             {message}
           </p>
+        )}
+
+      </section>
+
+      {/* BUSINESS LIST */}
+
+      <section className="business-list-section">
+
+        <div className="business-list-title">
+
+          <div>
+            <h2>
+              Business Profiles
+            </h2>
+
+            <p>
+              Select the business
+              that should appear
+              on invoices.
+            </p>
+          </div>
+
+          <span>
+            {businesses.length}
+          </span>
+
+        </div>
+
+        {businesses.length ===
+        0 ? (
+          <div className="business-empty">
+
+            <div>
+              🏪
+            </div>
+
+            <strong>
+              No business profiles
+            </strong>
+
+            <p>
+              Add your first business
+              above.
+            </p>
+
+          </div>
+        ) : (
+          <div className="business-list">
+
+            {businesses.map(
+              (item) => {
+
+                const isActive =
+                  activeBusinessId ===
+                  item.id;
+
+                return (
+                  <div
+                    className={
+                      isActive
+                        ? "business-profile active"
+                        : "business-profile"
+                    }
+                    key={item.id}
+                  >
+
+                    <div className="business-profile-top">
+
+                      <div className="business-profile-icon">
+                        🏪
+                      </div>
+
+                      <div className="business-profile-info">
+
+                        <strong>
+                          {item.businessName ||
+                            "Unnamed Business"}
+                        </strong>
+
+                        {item.ownerName && (
+                          <span>
+                            Owner:{" "}
+                            {
+                              item.ownerName
+                            }
+                          </span>
+                        )}
+
+                        {item.phone && (
+                          <span>
+                            📞{" "}
+                            {item.phone}
+                          </span>
+                        )}
+
+                      </div>
+
+                      {isActive && (
+                        <span className="active-business-badge">
+                          ACTIVE
+                        </span>
+                      )}
+
+                    </div>
+
+                    {item.address && (
+                      <p className="business-address">
+                        📍{" "}
+                        {item.address}
+                      </p>
+                    )}
+
+                    {item.gstin && (
+                      <p className="business-gstin">
+                        GSTIN:{" "}
+                        {item.gstin}
+                      </p>
+                    )}
+
+                    <div className="business-profile-actions">
+
+                      {!isActive && (
+                        <button
+                          className="select-business"
+                          onClick={() =>
+                            selectBusiness(
+                              item.id
+                            )
+                          }
+                        >
+                          Use This Business
+                        </button>
+                      )}
+
+                      <button
+                        className="edit-business"
+                        onClick={() =>
+                          editBusiness(
+                            item
+                          )
+                        }
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        className="delete-business"
+                        onClick={() =>
+                          deleteBusiness(
+                            item.id
+                          )
+                        }
+                      >
+                        Delete
+                      </button>
+
+                    </div>
+
+                  </div>
+                );
+              }
+            )}
+
+          </div>
         )}
 
       </section>
