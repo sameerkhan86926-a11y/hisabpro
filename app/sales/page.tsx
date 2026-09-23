@@ -130,10 +130,12 @@ export default function SalesPage() {
       "hisabpro_sales",
       JSON.stringify(oldSales)
     );
+
+    // Save latest sale for invoice
     localStorage.setItem(
-  "hisabpro_last_invoice",
-  JSON.stringify(sale)
-);
+      "hisabpro_last_invoice",
+      JSON.stringify(sale)
+    );
 
     // Reduce stock
     const updatedProducts = products.map((product) =>
@@ -206,6 +208,9 @@ export default function SalesPage() {
     setQuantity(1);
     setDiscount(0);
     setPaymentType("cash");
+
+    // Open invoice automatically
+    window.location.href = "/hisabpro/invoice/";
   }
 
   return (
@@ -214,12 +219,11 @@ export default function SalesPage() {
       <header className="sales-header">
 
         <button
-  onClick={() => window.history.back()}
-  className="back-button"
->
-  ← Back
-</button>
-        
+          onClick={() => window.history.back()}
+          className="back-button"
+        >
+          ← Back
+        </button>
 
         <h1>New Sale</h1>
 
@@ -242,13 +246,11 @@ export default function SalesPage() {
             setMessage("");
           }}
         >
-
           <option value="">
             Select Product
           </option>
 
           {products.map((product) => (
-
             <option
               key={product.id}
               value={product.id}
@@ -259,9 +261,7 @@ export default function SalesPage() {
               {" | Stock: "}
               {product.stock}
             </option>
-
           ))}
-
         </select>
 
         {selectedProduct && (
@@ -308,7 +308,6 @@ export default function SalesPage() {
             setMessage("");
           }}
         >
-
           <option value="cash">
             Cash
           </option>
@@ -316,7 +315,6 @@ export default function SalesPage() {
           <option value="credit">
             Credit / Udhaar
           </option>
-
         </select>
 
         {paymentType === "credit" && (
@@ -330,13 +328,11 @@ export default function SalesPage() {
                 setMessage("");
               }}
             >
-
               <option value="">
                 Select Customer
               </option>
 
               {customers.map((customer) => (
-
                 <option
                   key={customer.id}
                   value={customer.id}
@@ -344,9 +340,7 @@ export default function SalesPage() {
                   {customer.name} — Due ₹
                   {customer.due.toLocaleString("en-IN")}
                 </option>
-
               ))}
-
             </select>
 
             {selectedCustomer && (
@@ -364,7 +358,6 @@ export default function SalesPage() {
 
           <div>
             <span>Price</span>
-
             <strong>
               ₹
               {selectedProduct
@@ -377,7 +370,6 @@ export default function SalesPage() {
 
           <div>
             <span>Quantity</span>
-
             <strong>
               {quantity}
             </strong>
@@ -385,7 +377,6 @@ export default function SalesPage() {
 
           <div>
             <span>Subtotal</span>
-
             <strong>
               ₹{subtotal.toLocaleString("en-IN")}
             </strong>
@@ -393,20 +384,16 @@ export default function SalesPage() {
 
           <div>
             <span>Discount</span>
-
             <strong>
               ₹{discount.toLocaleString("en-IN")}
             </strong>
           </div>
 
           <div className="sale-total">
-
             <span>Total</span>
-
             <strong>
               ₹{total.toLocaleString("en-IN")}
             </strong>
-
           </div>
 
         </div>
