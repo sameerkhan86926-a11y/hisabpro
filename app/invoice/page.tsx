@@ -38,6 +38,7 @@ type Sale = {
 };
 
 type Business = {
+  id?: number;
   businessName: string;
   ownerName: string;
   phone: string;
@@ -64,31 +65,154 @@ const defaultBusiness: Business = {
 };
 
 export default function InvoicePage() {
-  const [sale, setSale] = useState<Sale | null>(null);
+  const [sale, setSale] =
+    useState<Sale | null>(null);
 
   const [business, setBusiness] =
-    useState<Business>(defaultBusiness);
+    useState<Business>(
+      defaultBusiness
+    );
 
   useEffect(() => {
-    const savedSale = localStorage.getItem(
-      "hisabpro_last_invoice"
-    );
+    /*
+     * =====================================
+     * LOAD LAST INVOICE
+     * =====================================
+     */
+
+    const savedSale =
+      localStorage.getItem(
+        "hisabpro_last_invoice"
+      );
 
     if (savedSale) {
-      setSale(JSON.parse(savedSale));
+      try {
+        setSale(
+          JSON.parse(savedSale)
+        );
+      } catch {
+        console.log(
+          "Invoice data could not be loaded."
+        );
+      }
     }
 
-    const savedBusiness = localStorage.getItem(
-      "hisabpro_business"
-    );
+    /*
+     * =====================================
+     * LOAD ACTIVE BUSINESS
+     * =====================================
+     *
+     * New system:
+     * hisabpro_businesses
+     * +
+     * hisabpro_active_business
+     *
+     * Old system fallback:
+     * hisabpro_business
+     */
 
-    if (savedBusiness) {
-      setBusiness({
-        ...defaultBusiness,
-        ...JSON.parse(savedBusiness),
-      });
+    const savedBusinesses =
+      localStorage.getItem(
+        "hisabpro_businesses"
+      );
+
+    const savedActiveId =
+      localStorage.getItem(
+        "hisabpro_active_business"
+      );
+
+    if (savedBusinesses) {
+      try {
+        const businesses =
+          JSON.parse(
+            savedBusinesses
+          );
+
+        if (
+          Array.isArray(
+            businesses
+          ) &&
+          businesses.length > 0
+        ) {
+          let activeBusiness:
+            | Business
+            | undefined;
+
+          /*
+           * If active business ID exists,
+           * use that business.
+           */
+
+          if (savedActiveId) {
+            const activeId =
+              Number(
+                savedActiveId
+              );
+
+            activeBusiness =
+              businesses.find(
+                (item: Business) =>
+                  Number(item.id) ===
+                  activeId
+              );
+          }
+
+          /*
+           * If no active business was found,
+           * use the first business.
+           */
+
+          if (!activeBusiness) {
+            activeBusiness =
+              businesses[0];
+          }
+
+          if (activeBusiness) {
+            setBusiness({
+              ...defaultBusiness,
+              ...activeBusiness,
+            });
+          }
+        }
+      } catch {
+        console.log(
+          "Business profiles could not be loaded."
+        );
+      }
+    } else {
+      /*
+       * =====================================
+       * OLD SINGLE BUSINESS FALLBACK
+       * =====================================
+       */
+
+      const savedBusiness =
+        localStorage.getItem(
+          "hisabpro_business"
+        );
+
+      if (savedBusiness) {
+        try {
+          setBusiness({
+            ...defaultBusiness,
+            ...JSON.parse(
+              savedBusiness
+            ),
+          });
+        } catch {
+          console.log(
+            "Business details could not be loaded."
+          );
+        }
+      }
     }
   }, []);
+
+  /*
+   * =====================================
+   * NO INVOICE
+   * =====================================
+   */
 
   if (!sale) {
     return (
@@ -97,13 +221,17 @@ export default function InvoicePage() {
         <header className="invoice-header">
 
           <button
-            onClick={() => window.history.back()}
+            onClick={() =>
+              window.history.back()
+            }
             className="back-button"
           >
             ← Back
           </button>
 
-          <h1>Invoice</h1>
+          <h1>
+            Invoice
+          </h1>
 
           <span></span>
 
@@ -111,12 +239,17 @@ export default function InvoicePage() {
 
         <div className="invoice-empty">
 
-          <div>🧾</div>
+          <div>
+            🧾
+          </div>
 
-          <h2>No Invoice Found</h2>
+          <h2>
+            No Invoice Found
+          </h2>
 
           <p>
-            Create a sale first to generate an invoice.
+            Create a sale first to
+            generate an invoice.
           </p>
 
           <a href="/hisabpro/sales/">
@@ -130,21 +263,32 @@ export default function InvoicePage() {
   }
 
   /*
-   * Convert old single-product sale
-   * into the new items format.
+   * =====================================
+   * SALE ITEMS
+   * =====================================
+   *
+   * Supports both:
+   * 1. New multi-item sale
+   * 2. Old single-product sale
    */
+
   const items: SaleItem[] =
-    sale.items && sale.items.length > 0
+    sale.items &&
+    sale.items.length > 0
       ? sale.items
       : sale.product
         ? [
             {
               productId: 0,
-              product: sale.product,
-              price: sale.price || 0,
+              product:
+                sale.product,
+              price:
+                sale.price || 0,
               purchasePrice:
-                sale.purchasePrice || 0,
-              quantity: sale.quantity || 1,
+                sale.purchasePrice ||
+                0,
+              quantity:
+                sale.quantity || 1,
               amount:
                 (sale.price || 0) *
                 (sale.quantity || 1),
@@ -153,70 +297,135 @@ export default function InvoicePage() {
         : [];
 
   /*
-   * Convert batch-aware sale items into
-   * invoice lines.
+   * =====================================
+   * INVOICE LINES
+   * =====================================
    *
-   * If one product was sold from multiple
-   * batches at different rates, each batch
-   * will appear as a separate invoice line.
+   * Batch-aware sale:
+   * Same product can appear at
+   * different rates.
    */
-  const invoiceLines: InvoiceLine[] = [];
 
-  items.forEach((item, itemIndex) => {
-    if (
-      item.batchDetails &&
-      item.batchDetails.length > 0
-    ) {
-      item.batchDetails.forEach(
-        (batch, batchIndex) => {
-          invoiceLines.push({
-            key: `${item.productId}-${itemIndex}-${batch.batchId}-${batchIndex}`,
-            product: item.product,
-            quantity: batch.quantity,
-            price: batch.sellingPrice,
-            amount:
-              batch.sellingPrice *
-              batch.quantity,
-          });
-        }
-      );
-    } else {
-      invoiceLines.push({
-        key: `${item.productId}-${itemIndex}`,
-        product: item.product,
-        quantity: item.quantity,
-        price: item.price,
-        amount: item.amount,
-      });
+  const invoiceLines:
+    InvoiceLine[] = [];
+
+  items.forEach(
+    (
+      item,
+      itemIndex
+    ) => {
+
+      if (
+        item.batchDetails &&
+        item.batchDetails.length >
+          0
+      ) {
+        item.batchDetails.forEach(
+          (
+            batch,
+            batchIndex
+          ) => {
+
+            invoiceLines.push({
+              key:
+                `${item.productId}-${itemIndex}-${batch.batchId}-${batchIndex}`,
+
+              product:
+                item.product,
+
+              quantity:
+                batch.quantity,
+
+              price:
+                batch.sellingPrice,
+
+              amount:
+                batch.sellingPrice *
+                batch.quantity,
+            });
+
+          }
+        );
+      } else {
+        invoiceLines.push({
+          key:
+            `${item.productId}-${itemIndex}`,
+
+          product:
+            item.product,
+
+          quantity:
+            item.quantity,
+
+          price:
+            item.price,
+
+          amount:
+            item.amount,
+        });
+      }
     }
-  });
+  );
 
-  const whatsappItems = invoiceLines
-    .map(
-      (item) =>
-        `${item.product} × ${item.quantity} @ ₹${item.price.toLocaleString(
-          "en-IN"
-        )} = ₹${item.amount.toLocaleString(
-          "en-IN"
-        )}`
-    )
-    .join("\n");
+  /*
+   * =====================================
+   * WHATSAPP MESSAGE
+   * =====================================
+   */
 
-  const whatsappText = `Invoice #${sale.id}
+  const whatsappItems =
+    invoiceLines
+      .map(
+        (item) =>
+          `${item.product} × ${item.quantity} @ ₹${item.price.toLocaleString(
+            "en-IN"
+          )} = ₹${item.amount.toLocaleString(
+            "en-IN"
+          )}`
+      )
+      .join("\n");
+
+  const whatsappText =
+    `Invoice #${sale.id}
 ${business.businessName || "HisabPro"}
-${business.phone ? `Phone: ${business.phone}` : ""}
-${business.address ? `Address: ${business.address}` : ""}
+${
+  business.ownerName
+    ? `Owner: ${business.ownerName}`
+    : ""
+}
+${
+  business.phone
+    ? `Phone: ${business.phone}`
+    : ""
+}
+${
+  business.address
+    ? `Address: ${business.address}`
+    : ""
+}
 
 ${whatsappItems}
 
-Subtotal: ₹${sale.subtotal.toLocaleString("en-IN")}
-Discount: ₹${sale.discount.toLocaleString("en-IN")}
-Total: ₹${sale.total.toLocaleString("en-IN")}
+Subtotal: ₹${sale.subtotal.toLocaleString(
+      "en-IN"
+    )}
+Discount: ₹${sale.discount.toLocaleString(
+      "en-IN"
+    )}
+Total: ₹${sale.total.toLocaleString(
+      "en-IN"
+    )}
 Payment: ${
-    sale.paymentType === "credit"
-      ? "Credit / Udhaar"
-      : "Cash"
-  }`;
+      sale.paymentType === "credit"
+        ? "Credit / Udhaar"
+        : "Cash"
+    }`;
+
+  /*
+   * =====================================
+   * INVOICE UI
+   * =====================================
+   */
 
   return (
     <main className="invoice-page">
@@ -226,16 +435,22 @@ Payment: ${
       <header className="invoice-header">
 
         <button
-          onClick={() => window.history.back()}
+          onClick={() =>
+            window.history.back()
+          }
           className="back-button"
         >
           ← Back
         </button>
 
-        <h1>Invoice</h1>
+        <h1>
+          Invoice
+        </h1>
 
         <button
-          onClick={() => window.print()}
+          onClick={() =>
+            window.print()
+          }
           className="print-button"
         >
           🖨 Print
@@ -254,7 +469,10 @@ Payment: ${
           <div>
 
             <h2>
-              {business.businessName || "HisabPro"}
+              {
+                business.businessName ||
+                "HisabPro"
+              }
             </h2>
 
             <p>
@@ -263,13 +481,15 @@ Payment: ${
 
             {business.ownerName && (
               <p className="business-detail">
-                Owner: {business.ownerName}
+                Owner:{" "}
+                {business.ownerName}
               </p>
             )}
 
             {business.phone && (
               <p className="business-detail">
-                Phone: {business.phone}
+                Phone:{" "}
+                {business.phone}
               </p>
             )}
 
@@ -281,13 +501,15 @@ Payment: ${
 
             {business.email && (
               <p className="business-detail">
-                Email: {business.email}
+                Email:{" "}
+                {business.email}
               </p>
             )}
 
             {business.gstin && (
               <p className="business-detail">
-                GSTIN: {business.gstin}
+                GSTIN:{" "}
+                {business.gstin}
               </p>
             )}
 
@@ -295,7 +517,9 @@ Payment: ${
 
           <div className="invoice-number">
 
-            <span>Invoice No.</span>
+            <span>
+              Invoice No.
+            </span>
 
             <strong>
               #{sale.id}
@@ -311,22 +535,29 @@ Payment: ${
 
           <div>
 
-            <span>Date</span>
+            <span>
+              Date
+            </span>
 
             <strong>
               {new Date(
                 sale.date
-              ).toLocaleString("en-IN")}
+              ).toLocaleString(
+                "en-IN"
+              )}
             </strong>
 
           </div>
 
           <div>
 
-            <span>Payment</span>
+            <span>
+              Payment
+            </span>
 
             <strong>
-              {sale.paymentType === "credit"
+              {sale.paymentType ===
+              "credit"
                 ? "Credit / Udhaar"
                 : "Cash"}
             </strong>
@@ -340,7 +571,9 @@ Payment: ${
         {sale.customerName && (
           <div className="invoice-customer">
 
-            <span>Customer</span>
+            <span>
+              Customer
+            </span>
 
             <strong>
               {sale.customerName}
@@ -355,46 +588,56 @@ Payment: ${
 
           <div className="invoice-row invoice-table-head">
 
-            <span>Item</span>
+            <span>
+              Item
+            </span>
 
-            <span>Qty</span>
+            <span>
+              Qty
+            </span>
 
-            <span>Rate</span>
+            <span>
+              Rate
+            </span>
 
-            <span>Amount</span>
+            <span>
+              Amount
+            </span>
 
           </div>
 
-          {invoiceLines.map((item) => (
-            <div
-              className="invoice-row"
-              key={item.key}
-            >
+          {invoiceLines.map(
+            (item) => (
+              <div
+                className="invoice-row"
+                key={item.key}
+              >
 
-              <span>
-                {item.product}
-              </span>
+                <span>
+                  {item.product}
+                </span>
 
-              <span>
-                {item.quantity}
-              </span>
+                <span>
+                  {item.quantity}
+                </span>
 
-              <span>
-                ₹
-                {item.price.toLocaleString(
-                  "en-IN"
-                )}
-              </span>
+                <span>
+                  ₹
+                  {item.price.toLocaleString(
+                    "en-IN"
+                  )}
+                </span>
 
-              <span>
-                ₹
-                {item.amount.toLocaleString(
-                  "en-IN"
-                )}
-              </span>
+                <span>
+                  ₹
+                  {item.amount.toLocaleString(
+                    "en-IN"
+                  )}
+                </span>
 
-            </div>
-          ))}
+              </div>
+            )
+          )}
 
         </div>
 
@@ -404,7 +647,9 @@ Payment: ${
 
           <div>
 
-            <span>Subtotal</span>
+            <span>
+              Subtotal
+            </span>
 
             <strong>
               ₹
@@ -417,7 +662,9 @@ Payment: ${
 
           <div>
 
-            <span>Discount</span>
+            <span>
+              Discount
+            </span>
 
             <strong>
               ₹
@@ -430,7 +677,9 @@ Payment: ${
 
           <div className="grand-total">
 
-            <span>Total</span>
+            <span>
+              Total
+            </span>
 
             <strong>
               ₹
@@ -464,7 +713,9 @@ Payment: ${
       <div className="invoice-actions">
 
         <button
-          onClick={() => window.print()}
+          onClick={() =>
+            window.print()
+          }
         >
           🖨 Print / Save PDF
         </button>
