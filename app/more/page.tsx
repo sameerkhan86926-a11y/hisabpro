@@ -13,37 +13,72 @@ export default function MorePage() {
         <h2>Business</h2>
 
         <div className="more-grid">
-          <a href="/hisabpro/reports/" className="more-card">
+
+          <a
+            href="/hisabpro/reports/"
+            className="more-card"
+          >
             <div className="more-icon">📊</div>
             <div>
               <strong>Reports</strong>
-              <span>Sales, profit & business reports</span>
+              <span>
+                Sales, profit & business reports
+              </span>
             </div>
           </a>
 
-          <a href="/hisabpro/expenses/" className="more-card">
+          <a
+            href="/hisabpro/expenses/"
+            className="more-card"
+          >
             <div className="more-icon">💰</div>
             <div>
               <strong>Expenses</strong>
-              <span>Manage business expenses</span>
+              <span>
+                Manage business expenses
+              </span>
             </div>
           </a>
 
-          <a href="/hisabpro/stock/" className="more-card">
+          <a
+            href="/hisabpro/stock/"
+            className="more-card"
+          >
             <div className="more-icon">📦</div>
             <div>
               <strong>Stock</strong>
-              <span>Products & inventory</span>
+              <span>
+                Products & inventory
+              </span>
             </div>
           </a>
 
-          <a href="/hisabpro/khata/" className="more-card">
+          <a
+            href="/hisabpro/khata/"
+            className="more-card"
+          >
             <div className="more-icon">👤</div>
             <div>
               <strong>Khata</strong>
-              <span>Customers & outstanding dues</span>
+              <span>
+                Customers & outstanding dues
+              </span>
             </div>
           </a>
+
+          <a
+            href="/hisabpro/settings/"
+            className="more-card"
+          >
+            <div className="more-icon">🏪</div>
+            <div>
+              <strong>Business Settings</strong>
+              <span>
+                Shop name, phone, address & GSTIN
+              </span>
+            </div>
+          </a>
+
         </div>
       </section>
 
@@ -51,11 +86,17 @@ export default function MorePage() {
         <h2>Sales</h2>
 
         <div className="more-grid">
-          <a href="/hisabpro/sales/" className="more-card">
+
+          <a
+            href="/hisabpro/sales/"
+            className="more-card"
+          >
             <div className="more-icon">🧾</div>
             <div>
               <strong>New Sale</strong>
-              <span>Create a new bill</span>
+              <span>
+                Create a new bill
+              </span>
             </div>
           </a>
 
@@ -66,9 +107,12 @@ export default function MorePage() {
             <div className="more-icon">📋</div>
             <div>
               <strong>Sales History</strong>
-              <span>View previous sales</span>
+              <span>
+                View previous sales
+              </span>
             </div>
           </a>
+
         </div>
       </section>
 
@@ -76,15 +120,34 @@ export default function MorePage() {
         <h2>Quick Links</h2>
 
         <div className="more-links">
-          <a href="/hisabpro/">🏠 Dashboard</a>
-          <a href="/hisabpro/sales/">🧾 New Sale</a>
-          <a href="/hisabpro/stock/">📦 Stock</a>
-          <a href="/hisabpro/khata/">📒 Khata</a>
-          <a href="/hisabpro/reports/">📊 Reports</a>
+          <a href="/hisabpro/">
+            🏠 Dashboard
+          </a>
+
+          <a href="/hisabpro/sales/">
+            🧾 New Sale
+          </a>
+
+          <a href="/hisabpro/stock/">
+            📦 Stock
+          </a>
+
+          <a href="/hisabpro/khata/">
+            📒 Khata
+          </a>
+
+          <a href="/hisabpro/reports/">
+            📊 Reports
+          </a>
+
+          <a href="/hisabpro/settings/">
+            🏪 Business Settings
+          </a>
         </div>
       </section>
 
       <nav className="bottom-nav">
+
         <a href="/hisabpro/">
           <svg viewBox="0 0 24 24">
             <path d="M3 10.5L12 3l9 7.5" />
@@ -120,7 +183,10 @@ export default function MorePage() {
           <span>Khata</span>
         </a>
 
-        <a href="/hisabpro/more/" className="active">
+        <a
+          href="/hisabpro/more/"
+          className="active"
+        >
           <svg viewBox="0 0 24 24">
             <circle cx="5" cy="12" r="1.5" />
             <circle cx="12" cy="12" r="1.5" />
@@ -128,6 +194,7 @@ export default function MorePage() {
           </svg>
           <span>More</span>
         </a>
+
       </nav>
     </main>
   );
