@@ -215,7 +215,7 @@ export default function SalesPage() {
 >
   ← Back
 </button>
-        </a>
+        
 
         <h1>New Sale</h1>
 
