@@ -2,6 +2,14 @@
 
 import { useEffect, useState } from "react";
 
+type StockBatch = {
+  id: number;
+  quantity: number;
+  purchasePrice: number;
+  sellingPrice: number;
+  date: string;
+};
+
 type Product = {
   id: number;
   name: string;
@@ -9,43 +17,94 @@ type Product = {
   purchasePrice: number;
   sellingPrice: number;
   stock: number;
+  batches?: StockBatch[];
 };
 
 export default function StockPage() {
   const [products, setProducts] = useState<Product[]>([]);
 
-  // Add Product form
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [purchasePrice, setPurchasePrice] = useState(0);
   const [sellingPrice, setSellingPrice] = useState(0);
   const [stock, setStock] = useState(0);
 
-  // Add stock
   const [stockProductId, setStockProductId] = useState<number | null>(null);
-  const [addStockQuantity, setAddStockQuantity] = useState(0);
-  const [addStockPurchasePrice, setAddStockPurchasePrice] = useState(0);
+  const [addQuantity, setAddQuantity] = useState(0);
+  const [addPurchasePrice, setAddPurchasePrice] = useState(0);
+  const [addSellingPrice, setAddSellingPrice] = useState(0);
+
+  const [historyProductId, setHistoryProductId] = useState<number | null>(
+    null
+  );
+
+  const [editProductId, setEditProductId] = useState<number | null>(null);
+  const [editSellingPrice, setEditSellingPrice] = useState(0);
 
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    loadProducts();
+  }, []);
+
+  function loadProducts() {
     try {
-      const savedProducts = JSON.parse(
+      const saved = JSON.parse(
         localStorage.getItem("hisabpro_products") || "[]"
       );
 
-      setProducts(
-        Array.isArray(savedProducts) ? savedProducts : []
+      if (!Array.isArray(saved)) {
+        setProducts([]);
+        return;
+      }
+
+      // Existing old products ko automatically batch format me convert
+      const migrated: Product[] = saved.map((product: Product) => {
+        if (product.batches && product.batches.length > 0) {
+          return product;
+        }
+
+        return {
+          ...product,
+          batches:
+            Number(product.stock || 0) > 0
+              ? [
+                  {
+                    id: product.id,
+                    quantity: Number(product.stock || 0),
+                    purchasePrice: Number(product.purchasePrice || 0),
+                    sellingPrice: Number(product.sellingPrice || 0),
+                    date: new Date().toISOString(),
+                  },
+                ]
+              : [],
+        };
+      });
+
+      setProducts(migrated);
+
+      localStorage.setItem(
+        "hisabpro_products",
+        JSON.stringify(migrated)
       );
     } catch (error) {
       console.error("Stock loading error:", error);
       setProducts([]);
     }
-  }, []);
+  }
 
-  // -----------------------------
+  function saveProducts(updated: Product[]) {
+    setProducts(updated);
+
+    localStorage.setItem(
+      "hisabpro_products",
+      JSON.stringify(updated)
+    );
+  }
+
+  // --------------------------------
   // ADD NEW PRODUCT
-  // -----------------------------
+  // --------------------------------
 
   function addProduct() {
     setMessage("");
@@ -60,23 +119,35 @@ export default function StockPage() {
       return;
     }
 
-    const product: Product = {
+    if (stock > 0 && purchasePrice <= 0) {
+      setMessage("Purchase price enter karein.");
+      return;
+    }
+
+    const newProduct: Product = {
       id: Date.now(),
       name: name.trim(),
       category: category.trim() || "General",
-      purchasePrice: Math.max(0, purchasePrice),
-      sellingPrice: Math.max(0, sellingPrice),
+      purchasePrice,
+      sellingPrice,
       stock: Math.max(0, stock),
+      batches:
+        stock > 0
+          ? [
+              {
+                id: Date.now(),
+                quantity: stock,
+                purchasePrice,
+                sellingPrice,
+                date: new Date().toISOString(),
+              },
+            ]
+          : [],
     };
 
-    const updatedProducts = [...products, product];
+    const updated = [...products, newProduct];
 
-    setProducts(updatedProducts);
-
-    localStorage.setItem(
-      "hisabpro_products",
-      JSON.stringify(updatedProducts)
-    );
+    saveProducts(updated);
 
     setName("");
     setCategory("");
@@ -87,109 +158,155 @@ export default function StockPage() {
     setMessage("Product added successfully ✅");
   }
 
-  // -----------------------------
+  // --------------------------------
   // OPEN ADD STOCK
-  // -----------------------------
+  // --------------------------------
 
   function openAddStock(product: Product) {
     setStockProductId(product.id);
 
-    setAddStockQuantity(0);
+    setAddQuantity(0);
 
-    setAddStockPurchasePrice(
+    setAddPurchasePrice(
       Number(product.purchasePrice || 0)
     );
 
+    setAddSellingPrice(
+      Number(product.sellingPrice || 0)
+    );
+
+    setEditProductId(null);
+    setHistoryProductId(null);
     setMessage("");
   }
 
-  // -----------------------------
-  // ADD STOCK TO EXISTING PRODUCT
-  // -----------------------------
+  // --------------------------------
+  // ADD NEW STOCK BATCH
+  // --------------------------------
 
-  function addStockToProduct() {
-    setMessage("");
+  function addStock() {
+    if (stockProductId === null) return;
 
-    if (stockProductId === null) {
+    if (addQuantity <= 0) {
+      setMessage("Quantity enter karein.");
       return;
     }
 
-    if (addStockQuantity <= 0) {
-      setMessage("Stock quantity enter karein.");
-      return;
-    }
-
-    if (addStockPurchasePrice <= 0) {
+    if (addPurchasePrice <= 0) {
       setMessage("Purchase price enter karein.");
       return;
     }
 
-    const updatedProducts = products.map((product) => {
+    if (addSellingPrice <= 0) {
+      setMessage("Selling price enter karein.");
+      return;
+    }
+
+    const updated = products.map((product) => {
       if (product.id !== stockProductId) {
         return product;
       }
 
+      const newBatch: StockBatch = {
+        id: Date.now(),
+        quantity: addQuantity,
+        purchasePrice: addPurchasePrice,
+        sellingPrice: addSellingPrice,
+        date: new Date().toISOString(),
+      };
+
+      const existingBatches = product.batches || [];
+
       return {
         ...product,
 
-        // Existing stock + new stock
         stock:
-          Number(product.stock || 0) +
-          Number(addStockQuantity),
+          Number(product.stock || 0) + addQuantity,
 
-        // Latest purchase price
-        purchasePrice: Number(addStockPurchasePrice),
+        // Latest rate for product display
+        purchasePrice: addPurchasePrice,
+        sellingPrice: addSellingPrice,
+
+        batches: [
+          ...existingBatches,
+          newBatch,
+        ],
       };
     });
 
-    setProducts(updatedProducts);
-
-    localStorage.setItem(
-      "hisabpro_products",
-      JSON.stringify(updatedProducts)
-    );
+    saveProducts(updated);
 
     setStockProductId(null);
-    setAddStockQuantity(0);
-    setAddStockPurchasePrice(0);
+    setAddQuantity(0);
+    setAddPurchasePrice(0);
+    setAddSellingPrice(0);
 
-    setMessage("Stock added successfully ✅");
+    setMessage("New stock batch added successfully ✅");
   }
 
-  // -----------------------------
+  // --------------------------------
+  // EDIT SELLING PRICE
+  // --------------------------------
+
+  function openEditPrice(product: Product) {
+    setEditProductId(product.id);
+    setEditSellingPrice(product.sellingPrice);
+
+    setStockProductId(null);
+    setHistoryProductId(null);
+    setMessage("");
+  }
+
+  function saveSellingPrice(productId: number) {
+    if (editSellingPrice <= 0) {
+      setMessage("Selling price enter karein.");
+      return;
+    }
+
+    const updated = products.map((product) => {
+      if (product.id !== productId) {
+        return product;
+      }
+
+      // Current/future display rate update.
+      // Existing batches remain unchanged.
+      return {
+        ...product,
+        sellingPrice: editSellingPrice,
+      };
+    });
+
+    saveProducts(updated);
+
+    setEditProductId(null);
+    setEditSellingPrice(0);
+
+    setMessage("Selling price updated ✅");
+  }
+
+  // --------------------------------
   // DELETE PRODUCT
-  // -----------------------------
+  // --------------------------------
 
   function deleteProduct(id: number) {
     const confirmed = window.confirm(
       "Kya aap is product ko delete karna chahte hain?"
     );
 
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
-    const updatedProducts = products.filter(
+    const updated = products.filter(
       (product) => product.id !== id
     );
 
-    setProducts(updatedProducts);
-
-    localStorage.setItem(
-      "hisabpro_products",
-      JSON.stringify(updatedProducts)
-    );
-
-    if (stockProductId === id) {
-      setStockProductId(null);
-    }
+    saveProducts(updated);
 
     setMessage("Product deleted.");
   }
 
-  // -----------------------------
-  // STATS
-  // -----------------------------
+  // --------------------------------
+  // CALCULATIONS
+  // --------------------------------
 
   const totalProducts = products.length;
 
@@ -200,7 +317,8 @@ export default function StockPage() {
   );
 
   const lowStock = products.filter(
-    (product) => Number(product.stock || 0) <= 5
+    (product) =>
+      Number(product.stock || 0) <= 5
   ).length;
 
   return (
@@ -256,7 +374,9 @@ export default function StockPage() {
           type="text"
           placeholder="Example: T-Shirt"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) =>
+            setName(e.target.value)
+          }
         />
 
         <label>Category</label>
@@ -265,7 +385,9 @@ export default function StockPage() {
           type="text"
           placeholder="Example: Clothing"
           value={category}
-          onChange={(e) => setCategory(e.target.value)}
+          onChange={(e) =>
+            setCategory(e.target.value)
+          }
         />
 
         <label>Purchase Price</label>
@@ -276,7 +398,10 @@ export default function StockPage() {
           value={purchasePrice}
           onChange={(e) =>
             setPurchasePrice(
-              Math.max(0, Number(e.target.value))
+              Math.max(
+                0,
+                Number(e.target.value)
+              )
             )
           }
         />
@@ -289,7 +414,10 @@ export default function StockPage() {
           value={sellingPrice}
           onChange={(e) =>
             setSellingPrice(
-              Math.max(0, Number(e.target.value))
+              Math.max(
+                0,
+                Number(e.target.value)
+              )
             )
           }
         />
@@ -302,7 +430,10 @@ export default function StockPage() {
           value={stock}
           onChange={(e) =>
             setStock(
-              Math.max(0, Number(e.target.value))
+              Math.max(
+                0,
+                Number(e.target.value)
+              )
             )
           }
         />
@@ -341,168 +472,362 @@ export default function StockPage() {
 
         ) : (
 
-          products.map((product) => (
+          products.map((product) => {
 
-            <div
-              className="product-item"
-              key={product.id}
-            >
+            const batches =
+              product.batches || [];
 
-              <div className="product-icon">
-                📦
-              </div>
+            return (
+              <div
+                className="product-item"
+                key={product.id}
+              >
 
-              <div className="product-info">
+                <div className="product-icon">
+                  📦
+                </div>
 
-                <strong>
-                  {product.name}
-                </strong>
+                <div className="product-info">
 
-                <span>
-                  {product.category}
-                </span>
-
-                <small>
-                  Buy ₹
-                  {Number(
-                    product.purchasePrice || 0
-                  ).toLocaleString("en-IN")}
-
-                  {" • "}
-
-                  Sell ₹
-                  {Number(
-                    product.sellingPrice || 0
-                  ).toLocaleString("en-IN")}
-                </small>
-
-              </div>
-
-              <div className="product-stock">
-
-                <strong>
-                  {product.stock}
-                </strong>
-
-                <span>
-                  {product.stock <= 0
-                    ? "Out of Stock"
-                    : product.stock <= 5
-                    ? "Low Stock"
-                    : "In Stock"}
-                </span>
-
-                <button
-                  className="add-stock-button"
-                  onClick={() =>
-                    openAddStock(product)
-                  }
-                >
-                  + Stock
-                </button>
-
-                <button
-                  onClick={() =>
-                    deleteProduct(product.id)
-                  }
-                >
-                  Delete
-                </button>
-
-              </div>
-
-              {/* ADD STOCK PANEL */}
-
-              {stockProductId === product.id && (
-
-                <div className="add-stock-panel">
-
-                  <h3>
-                    Add Stock
-                  </h3>
-
-                  <p>
+                  <strong>
                     {product.name}
-                  </p>
+                  </strong>
 
-                  <label>
-                    Current Stock
-                  </label>
+                  <span>
+                    {product.category}
+                  </span>
 
-                  <input
-                    type="number"
-                    value={product.stock}
-                    disabled
-                  />
+                  <small>
+                    Latest Buy ₹
+                    {Number(
+                      product.purchasePrice || 0
+                    ).toLocaleString("en-IN")}
 
-                  <label>
-                    Quantity to Add
-                  </label>
+                    {" • "}
 
-                  <input
-                    type="number"
-                    min="1"
-                    placeholder="Example: 20"
-                    value={
-                      addStockQuantity || ""
-                    }
-                    onChange={(e) =>
-                      setAddStockQuantity(
-                        Math.max(
-                          0,
-                          Number(e.target.value)
-                        )
-                      )
-                    }
-                  />
-
-                  <label>
-                    Purchase Price
-                  </label>
-
-                  <input
-                    type="number"
-                    min="0"
-                    value={
-                      addStockPurchasePrice
-                    }
-                    onChange={(e) =>
-                      setAddStockPurchasePrice(
-                        Math.max(
-                          0,
-                          Number(e.target.value)
-                        )
-                      )
-                    }
-                  />
-
-                  <div className="add-stock-actions">
-
-                    <button
-                      onClick={
-                        addStockToProduct
-                      }
-                    >
-                      Add Stock
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        setStockProductId(null)
-                      }
-                    >
-                      Cancel
-                    </button>
-
-                  </div>
+                    Latest Sell ₹
+                    {Number(
+                      product.sellingPrice || 0
+                    ).toLocaleString("en-IN")}
+                  </small>
 
                 </div>
 
-              )}
+                <div className="product-stock">
 
-            </div>
+                  <strong>
+                    {product.stock}
+                  </strong>
 
-          ))
+                  <span>
+                    {product.stock <= 0
+                      ? "Out of Stock"
+                      : product.stock <= 5
+                      ? "Low Stock"
+                      : "In Stock"}
+                  </span>
+
+                  <button
+                    className="add-stock-button"
+                    onClick={() =>
+                      openAddStock(product)
+                    }
+                  >
+                    + Stock
+                  </button>
+
+                  <button
+                    className="edit-price-button"
+                    onClick={() =>
+                      openEditPrice(product)
+                    }
+                  >
+                    Edit Sale
+                  </button>
+
+                  <button
+                    className="history-button"
+                    onClick={() => {
+                      setHistoryProductId(
+                        historyProductId === product.id
+                          ? null
+                          : product.id
+                      );
+
+                      setStockProductId(null);
+                      setEditProductId(null);
+                    }}
+                  >
+                    History
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      deleteProduct(product.id)
+                    }
+                  >
+                    Delete
+                  </button>
+
+                </div>
+
+                {/* ADD STOCK */}
+
+                {stockProductId === product.id && (
+
+                  <div className="add-stock-panel">
+
+                    <h3>
+                      Add New Stock
+                    </h3>
+
+                    <p>
+                      New purchase ko separate batch
+                      ke roop me save kiya jayega.
+                    </p>
+
+                    <label>
+                      Current Stock
+                    </label>
+
+                    <input
+                      type="number"
+                      value={product.stock}
+                      disabled
+                    />
+
+                    <label>
+                      New Quantity
+                    </label>
+
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="Example: 20"
+                      value={
+                        addQuantity || ""
+                      }
+                      onChange={(e) =>
+                        setAddQuantity(
+                          Math.max(
+                            0,
+                            Number(
+                              e.target.value
+                            )
+                          )
+                        )
+                      }
+                    />
+
+                    <label>
+                      New Purchase Price
+                    </label>
+
+                    <input
+                      type="number"
+                      min="0"
+                      value={
+                        addPurchasePrice
+                      }
+                      onChange={(e) =>
+                        setAddPurchasePrice(
+                          Math.max(
+                            0,
+                            Number(
+                              e.target.value
+                            )
+                          )
+                        )
+                      }
+                    />
+
+                    <label>
+                      New Selling Price
+                    </label>
+
+                    <input
+                      type="number"
+                      min="0"
+                      value={
+                        addSellingPrice
+                      }
+                      onChange={(e) =>
+                        setAddSellingPrice(
+                          Math.max(
+                            0,
+                            Number(
+                              e.target.value
+                            )
+                          )
+                        )
+                      }
+                    />
+
+                    <div className="add-stock-actions">
+
+                      <button
+                        onClick={addStock}
+                      >
+                        Add Stock
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          setStockProductId(null)
+                        }
+                      >
+                        Cancel
+                      </button>
+
+                    </div>
+
+                  </div>
+
+                )}
+
+                {/* EDIT SELLING PRICE */}
+
+                {editProductId === product.id && (
+
+                  <div className="add-stock-panel">
+
+                    <h3>
+                      Edit Selling Price
+                    </h3>
+
+                    <p>
+                      Existing batches ke rates
+                      change nahi honge.
+                    </p>
+
+                    <label>
+                      New Selling Price
+                    </label>
+
+                    <input
+                      type="number"
+                      min="1"
+                      value={
+                        editSellingPrice
+                      }
+                      onChange={(e) =>
+                        setEditSellingPrice(
+                          Math.max(
+                            0,
+                            Number(
+                              e.target.value
+                            )
+                          )
+                        )
+                      }
+                    />
+
+                    <div className="add-stock-actions">
+
+                      <button
+                        onClick={() =>
+                          saveSellingPrice(
+                            product.id
+                          )
+                        }
+                      >
+                        Save Price
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          setEditProductId(null)
+                        }
+                      >
+                        Cancel
+                      </button>
+
+                    </div>
+
+                  </div>
+
+                )}
+
+                {/* BATCH HISTORY */}
+
+                {historyProductId === product.id && (
+
+                  <div className="batch-history">
+
+                    <h3>
+                      Stock Purchase History
+                    </h3>
+
+                    {batches.length === 0 ? (
+
+                      <p>
+                        No stock purchase history.
+                      </p>
+
+                    ) : (
+
+                      [...batches]
+                        .reverse()
+                        .map((batch) => (
+
+                          <div
+                            className="batch-row"
+                            key={batch.id}
+                          >
+
+                            <div>
+                              <strong>
+                                {batch.quantity} pcs
+                              </strong>
+
+                              <span>
+                                {new Date(
+                                  batch.date
+                                ).toLocaleDateString(
+                                  "en-IN"
+                                )}
+                              </span>
+                            </div>
+
+                            <div>
+                              <span>
+                                Buy
+                              </span>
+
+                              <strong>
+                                ₹
+                                {batch.purchasePrice.toLocaleString(
+                                  "en-IN"
+                                )}
+                              </strong>
+                            </div>
+
+                            <div>
+                              <span>
+                                Sell
+                              </span>
+
+                              <strong>
+                                ₹
+                                {batch.sellingPrice.toLocaleString(
+                                  "en-IN"
+                                )}
+                              </strong>
+                            </div>
+
+                          </div>
+
+                        ))
+
+                    )}
+
+                  </div>
+
+                )}
+
+              </div>
+            );
+          })
 
         )}
 
