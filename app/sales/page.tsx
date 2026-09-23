@@ -209,8 +209,12 @@ export default function SalesPage() {
 
       <header className="sales-header">
 
-        <a href="/hisabpro/">
-          ← Dashboard
+        <button
+  onClick={() => window.history.back()}
+  className="back-button"
+>
+  ← Back
+</button>
         </a>
 
         <h1>New Sale</h1>
