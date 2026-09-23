@@ -157,9 +157,12 @@ export default function CustomerPage() {
     return (
       <main className="customer-detail-page">
         <header className="customer-detail-header">
-          <a href="/hisabpro/khata/">
-            ← Khata
-          </a>
+          <button
+  onClick={() => window.history.back()}
+  className="back-button"
+>
+  ← Back
+</button>
 
           <h1>Customer</h1>
 
