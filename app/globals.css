@@ -761,3 +761,39 @@ button {
   font-size: 13px;
   font-weight: 600;
 }
+.action-link {
+  background: white;
+  padding: 20px 10px;
+  border-radius: 15px;
+  color: #1559b7;
+  font-size: 27px;
+  box-shadow: 0 4px 20px rgba(20, 40, 80, 0.05);
+  text-decoration: none;
+  text-align: center;
+}
+
+.action-link span {
+  display: block;
+  margin-top: 8px;
+  color: #263247;
+  font-size: 13px;
+}
+
+.summary a {
+  background: white;
+  padding: 20px;
+  border-radius: 15px;
+  text-decoration: none;
+  color: #172033;
+}
+
+.summary a p {
+  margin-top: 10px;
+  color: #687386;
+  font-size: 13px;
+}
+
+.summary a strong {
+  display: block;
+  margin-top: 5px;
+}
