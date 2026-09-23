@@ -339,3 +339,191 @@ button {
   color: #138a50;
   font-weight: 600;
 }
+
+.history-page {
+  min-height: 100vh;
+  background: #f5f7fb;
+  padding-bottom: 40px;
+}
+
+.history-header {
+  background: #102a56;
+  color: white;
+  padding: 22px 6%;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+}
+
+.history-header h1 {
+  text-align: center;
+  font-size: 24px;
+}
+
+.history-header a {
+  color: white;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.history-header a:last-child {
+  text-align: right;
+}
+
+.history-stats {
+  width: min(1100px, 92%);
+  margin: 25px auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+}
+
+.history-card {
+  background: white;
+  padding: 20px;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(20, 40, 80, 0.06);
+}
+
+.history-card span {
+  display: block;
+  color: #687386;
+  font-size: 13px;
+}
+
+.history-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 24px;
+  color: #138a50;
+}
+
+.sales-list {
+  width: min(1100px, 92%);
+  margin: 30px auto;
+}
+
+.history-title {
+  margin-bottom: 15px;
+}
+
+.history-title h2 {
+  font-size: 20px;
+}
+
+.sale-history-item {
+  background: white;
+  padding: 17px;
+  border-radius: 15px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  box-shadow: 0 3px 15px rgba(20, 40, 80, 0.05);
+}
+
+.sale-icon {
+  width: 45px;
+  height: 45px;
+  border-radius: 12px;
+  background: #eef4ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.sale-info {
+  flex: 1;
+}
+
+.sale-info strong {
+  display: block;
+  font-size: 15px;
+}
+
+.sale-info span {
+  display: block;
+  margin-top: 4px;
+  color: #687386;
+  font-size: 13px;
+}
+
+.sale-info small {
+  display: block;
+  margin-top: 4px;
+  color: #9aa2ae;
+  font-size: 11px;
+}
+
+.sale-right {
+  text-align: right;
+}
+
+.sale-right strong {
+  display: block;
+  color: #138a50;
+}
+
+.sale-right button {
+  margin-top: 6px;
+  background: none;
+  color: #d33;
+  font-size: 12px;
+}
+
+.empty-sales {
+  background: white;
+  padding: 50px 20px;
+  text-align: center;
+  border-radius: 18px;
+}
+
+.empty-sales div {
+  font-size: 40px;
+}
+
+.empty-sales h3 {
+  margin-top: 12px;
+}
+
+.empty-sales p {
+  margin-top: 6px;
+  color: #687386;
+}
+
+.empty-sales a {
+  display: inline-block;
+  margin-top: 20px;
+  padding: 12px 20px;
+  background: #1559b7;
+  color: white;
+  border-radius: 9px;
+  text-decoration: none;
+}
+
+@media (max-width: 700px) {
+  .history-header {
+    padding: 18px 15px;
+  }
+
+  .history-header h1 {
+    font-size: 19px;
+  }
+
+  .history-header a {
+    font-size: 12px;
+  }
+
+  .history-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .sale-history-item {
+    padding: 13px;
+  }
+
+  .sale-right strong {
+    font-size: 14px;
+  }
+}
