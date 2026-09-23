@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+
+type StockBatch = {
+  id: number;
+  quantity: number;
+  purchasePrice: number;
+  sellingPrice: number;
+  date: string;
+};
 
 type Product = {
   id: number;
@@ -9,6 +17,7 @@ type Product = {
   purchasePrice: number;
   sellingPrice: number;
   stock: number;
+  batches?: StockBatch[];
 };
 
 type Customer = {
@@ -16,16 +25,6 @@ type Customer = {
   name: string;
   phone: string;
   due: number;
-  createdAt: string;
-};
-
-type Transaction = {
-  id: number;
-  customerId: number;
-  type: "credit" | "payment";
-  amount: number;
-  note: string;
-  date: string;
 };
 
 type PaymentType = "cash" | "credit";
@@ -33,10 +32,16 @@ type PaymentType = "cash" | "credit";
 type CartItem = {
   productId: number;
   product: string;
+  quantity: number;
   price: number;
   purchasePrice: number;
-  quantity: number;
   amount: number;
+  batchDetails: {
+    batchId: number;
+    quantity: number;
+    purchasePrice: number;
+    sellingPrice: number;
+  }[];
 };
 
 export default function SalesPage() {
@@ -57,133 +62,314 @@ export default function SalesPage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    const savedProducts = JSON.parse(
-      localStorage.getItem("hisabpro_products") || "[]"
-    );
-
-    const savedCustomers = JSON.parse(
-      localStorage.getItem("hisabpro_customers") || "[]"
-    );
-
-    setProducts(savedProducts);
-    setCustomers(savedCustomers);
+    loadData();
   }, []);
 
-  const selectedProduct = products.find(
-    (product) => product.id === Number(productId)
-  );
+  function loadData() {
+    try {
+      const savedProducts = JSON.parse(
+        localStorage.getItem("hisabpro_products") || "[]"
+      );
 
-  const selectedCustomer = customers.find(
-    (customer) => customer.id === Number(customerId)
-  );
+      const savedCustomers = JSON.parse(
+        localStorage.getItem("hisabpro_customers") || "[]"
+      );
 
-  const subtotal = useMemo(() => {
-    return cart.reduce(
-      (sum, item) => sum + item.amount,
-      0
+      setProducts(
+        Array.isArray(savedProducts)
+          ? savedProducts
+          : []
+      );
+
+      setCustomers(
+        Array.isArray(savedCustomers)
+          ? savedCustomers
+          : []
+      );
+    } catch (error) {
+      console.error("Sales loading error:", error);
+    }
+  }
+
+  function getProductBatches(
+    product: Product
+  ): StockBatch[] {
+    if (
+      product.batches &&
+      product.batches.length > 0
+    ) {
+      return [...product.batches]
+        .filter(
+          (batch) =>
+            Number(batch.quantity) > 0
+        )
+        .sort(
+          (a, b) =>
+            new Date(a.date).getTime() -
+            new Date(b.date).getTime()
+        );
+    }
+
+    // Old product compatibility
+    if (Number(product.stock) > 0) {
+      return [
+        {
+          id: product.id,
+          quantity: Number(product.stock),
+          purchasePrice: Number(
+            product.purchasePrice || 0
+          ),
+          sellingPrice: Number(
+            product.sellingPrice || 0
+          ),
+          date: new Date().toISOString(),
+        },
+      ];
+    }
+
+    return [];
+  }
+
+  function getAvailableQuantity(
+    product: Product
+  ) {
+    const alreadyInCart = cart
+      .filter(
+        (item) =>
+          item.productId === product.id
+      )
+      .reduce(
+        (sum, item) =>
+          sum + item.quantity,
+        0
+      );
+
+    return (
+      Number(product.stock || 0) -
+      alreadyInCart
     );
-  }, [cart]);
+  }
 
-  const totalQuantity = useMemo(() => {
-    return cart.reduce(
-      (sum, item) => sum + item.quantity,
-      0
-    );
-  }, [cart]);
-
-  const total = Math.max(
-    subtotal - discount,
-    0
-  );
+  // --------------------------------
+  // ADD PRODUCT TO BILL
+  // --------------------------------
 
   function addToBill() {
     setMessage("");
 
-    if (!selectedProduct) {
-      setMessage("Please select a product.");
+    if (!productId) {
+      setMessage("Product select karein.");
       return;
     }
 
-    if (selectedProduct.stock <= 0) {
-      setMessage("This product is out of stock.");
+    if (quantity <= 0) {
+      setMessage("Quantity enter karein.");
       return;
     }
 
-    if (quantity > selectedProduct.stock) {
-      setMessage(
-        `Only ${selectedProduct.stock} items available in stock.`
-      );
-      return;
-    }
-
-    const existingItem = cart.find(
+    const product = products.find(
       (item) =>
-        item.productId === selectedProduct.id
+        item.id === Number(productId)
     );
 
-    const existingQuantity =
-      existingItem?.quantity || 0;
+    if (!product) {
+      setMessage("Product nahi mila.");
+      return;
+    }
 
-    if (
-      existingQuantity + quantity >
-      selectedProduct.stock
-    ) {
+    const available =
+      getAvailableQuantity(product);
+
+    if (quantity > available) {
       setMessage(
-        `Only ${selectedProduct.stock} items available in stock.`
+        `Available stock sirf ${available} hai.`
       );
       return;
     }
 
-    if (existingItem) {
-      setCart(
-        cart.map((item) =>
-          item.productId === selectedProduct.id
-            ? {
-                ...item,
-                quantity:
-                  item.quantity + quantity,
-                amount:
-                  (item.quantity + quantity) *
-                  item.price,
-              }
-            : item
-        )
+    const batches =
+      getProductBatches(product);
+
+    let remaining = quantity;
+
+    const batchDetails: CartItem["batchDetails"] =
+      [];
+
+    for (const batch of batches) {
+      if (remaining <= 0) break;
+
+      const take = Math.min(
+        remaining,
+        Number(batch.quantity)
       );
-    } else {
-      const newItem: CartItem = {
-        productId: selectedProduct.id,
-        product: selectedProduct.name,
-        price: selectedProduct.sellingPrice,
+
+      batchDetails.push({
+        batchId: batch.id,
+        quantity: take,
         purchasePrice:
-          selectedProduct.purchasePrice,
-        quantity,
+          Number(batch.purchasePrice),
+        sellingPrice:
+          Number(batch.sellingPrice),
+      });
+
+      remaining -= take;
+    }
+
+    if (remaining > 0) {
+      setMessage(
+        "Stock batches me available quantity nahi mili."
+      );
+      return;
+    }
+
+    /*
+      Selling price:
+      FIFO me agar multiple batches hain,
+      to har batch ka selling rate alag ho sakta hai.
+
+      Isliye ek hi cart line me different
+      selling rates possible hain.
+
+      Display ke liye weighted average selling
+      price calculate kar rahe hain.
+    */
+
+    const totalAmount =
+      batchDetails.reduce(
+        (sum, batch) =>
+          sum +
+          batch.quantity *
+            batch.sellingPrice,
+        0
+      );
+
+    const totalPurchaseCost =
+      batchDetails.reduce(
+        (sum, batch) =>
+          sum +
+          batch.quantity *
+            batch.purchasePrice,
+        0
+      );
+
+    const averageSellingPrice =
+      quantity > 0
+        ? totalAmount / quantity
+        : 0;
+
+    const averagePurchasePrice =
+      quantity > 0
+        ? totalPurchaseCost / quantity
+        : 0;
+
+    const existingIndex =
+      cart.findIndex(
+        (item) =>
+          item.productId ===
+          product.id
+      );
+
+    if (existingIndex >= 0) {
+      const updatedCart = [...cart];
+
+      const existing =
+        updatedCart[existingIndex];
+
+      updatedCart[existingIndex] = {
+        ...existing,
+        quantity:
+          existing.quantity + quantity,
         amount:
-          selectedProduct.sellingPrice *
-          quantity,
+          existing.amount + totalAmount,
+        price:
+          (existing.amount +
+            totalAmount) /
+          (existing.quantity +
+            quantity),
+        purchasePrice:
+          (existing.purchasePrice *
+            existing.quantity +
+            averagePurchasePrice *
+              quantity) /
+          (existing.quantity +
+            quantity),
+        batchDetails: [
+          ...existing.batchDetails,
+          ...batchDetails,
+        ],
       };
 
-      setCart([...cart, newItem]);
+      setCart(updatedCart);
+    } else {
+      setCart([
+        ...cart,
+        {
+          productId: product.id,
+          product: product.name,
+          quantity,
+          price: averageSellingPrice,
+          purchasePrice:
+            averagePurchasePrice,
+          amount: totalAmount,
+          batchDetails,
+        },
+      ]);
     }
 
     setProductId("");
     setQuantity(1);
-    setMessage("");
   }
 
-  function removeFromBill(productId: number) {
+  // --------------------------------
+  // REMOVE CART ITEM
+  // --------------------------------
+
+  function removeFromBill(
+    productId: number
+  ) {
     setCart(
       cart.filter(
-        (item) => item.productId !== productId
+        (item) =>
+          item.productId !== productId
       )
     );
   }
+
+  // --------------------------------
+  // CALCULATIONS
+  // --------------------------------
+
+  const subtotal = cart.reduce(
+    (sum, item) =>
+      sum + Number(item.amount),
+    0
+  );
+
+  const safeDiscount = Math.min(
+    Math.max(0, Number(discount)),
+    subtotal
+  );
+
+  const total =
+    subtotal - safeDiscount;
+
+  const selectedCustomer =
+    customers.find(
+      (customer) =>
+        customer.id ===
+        Number(customerId)
+    );
+
+  // --------------------------------
+  // SAVE SALE
+  // --------------------------------
 
   function saveSale() {
     setMessage("");
 
     if (cart.length === 0) {
       setMessage(
-        "Please add at least one product to the bill."
+        "Bill me kam se kam ek product add karein."
       );
       return;
     }
@@ -193,51 +379,46 @@ export default function SalesPage() {
       !selectedCustomer
     ) {
       setMessage(
-        "Please select a customer for credit sale."
+        "Credit sale ke liye customer select karein."
       );
       return;
     }
 
-    // Final stock check
-    for (const item of cart) {
-      const product = products.find(
-        (p) => p.id === item.productId
-      );
-
-      if (!product) {
-        setMessage(
-          `Product "${item.product}" not found.`
-        );
-        return;
-      }
-
-      if (item.quantity > product.stock) {
-        setMessage(
-          `Not enough stock for ${item.product}.`
-        );
-        return;
-      }
-    }
-
     const saleId = Date.now();
+
+    /*
+      Sale ke andar batch details bhi save
+      kar rahe hain.
+    */
 
     const sale = {
       id: saleId,
+
       items: cart,
+
       subtotal,
-      discount,
+      discount: safeDiscount,
       total,
+
       paymentType,
+
       customerId:
         paymentType === "credit"
           ? selectedCustomer?.id
           : null,
+
       customerName:
         paymentType === "credit"
           ? selectedCustomer?.name
           : "",
-      date: new Date().toISOString(),
+
+      date:
+        new Date().toISOString(),
     };
+
+    // --------------------------------
+    // SAVE SALE HISTORY
+    // --------------------------------
 
     const oldSales = JSON.parse(
       localStorage.getItem(
@@ -245,35 +426,117 @@ export default function SalesPage() {
       ) || "[]"
     );
 
-    oldSales.push(sale);
-
     localStorage.setItem(
       "hisabpro_sales",
-      JSON.stringify(oldSales)
+      JSON.stringify([
+        ...oldSales,
+        sale,
+      ])
     );
 
-    // Save latest invoice
-    localStorage.setItem(
-      "hisabpro_last_invoice",
-      JSON.stringify(sale)
-    );
+    // --------------------------------
+    // UPDATE STOCK BATCHES
+    // --------------------------------
 
-    // Reduce stock for every product
     const updatedProducts =
       products.map((product) => {
-        const item = cart.find(
-          (cartItem) =>
-            cartItem.productId === product.id
-        );
+        const cartItem =
+          cart.find(
+            (item) =>
+              item.productId ===
+              product.id
+          );
 
-        if (!item) {
+        if (!cartItem) {
           return product;
         }
 
+        let batches =
+          getProductBatches(product);
+
+        /*
+          FIFO deduction:
+          oldest batch first
+        */
+
+        for (const soldBatch of
+          cartItem.batchDetails) {
+          let remaining =
+            soldBatch.quantity;
+
+          batches = batches.map(
+            (batch) => {
+              if (
+                batch.id !==
+                  soldBatch.batchId ||
+                remaining <= 0
+              ) {
+                return batch;
+              }
+
+              const deduction =
+                Math.min(
+                  remaining,
+                  Number(batch.quantity)
+                );
+
+              remaining -= deduction;
+
+              return {
+                ...batch,
+                quantity:
+                  Number(
+                    batch.quantity
+                  ) - deduction,
+              };
+            }
+          );
+        }
+
+        batches =
+          batches.filter(
+            (batch) =>
+              Number(batch.quantity) >
+              0
+          );
+
+        const newStock =
+          batches.reduce(
+            (sum, batch) =>
+              sum +
+              Number(batch.quantity),
+            0
+          );
+
+        /*
+          Product display rate ko
+          latest remaining batch ka rate
+          rakhenge.
+        */
+
+        const latestBatch =
+          batches.length > 0
+            ? batches[
+                batches.length - 1
+              ]
+            : null;
+
         return {
           ...product,
-          stock:
-            product.stock - item.quantity,
+
+          stock: newStock,
+
+          purchasePrice:
+            latestBatch
+              ? latestBatch.purchasePrice
+              : product.purchasePrice,
+
+          sellingPrice:
+            latestBatch
+              ? latestBatch.sellingPrice
+              : product.sellingPrice,
+
+          batches,
         };
       });
 
@@ -281,44 +544,49 @@ export default function SalesPage() {
 
     localStorage.setItem(
       "hisabpro_products",
-      JSON.stringify(updatedProducts)
+      JSON.stringify(
+        updatedProducts
+      )
     );
 
-    // Credit Sale
+    // --------------------------------
+    // CREDIT CUSTOMER
+    // --------------------------------
+
     if (
       paymentType === "credit" &&
       selectedCustomer
     ) {
-      const updatedCustomer: Customer = {
-        ...selectedCustomer,
-        due:
-          selectedCustomer.due + total,
-      };
-
       const updatedCustomers =
-        customers.map((customer) =>
-          customer.id === selectedCustomer.id
-            ? updatedCustomer
-            : customer
+        customers.map(
+          (customer) => {
+            if (
+              customer.id !==
+              selectedCustomer.id
+            ) {
+              return customer;
+            }
+
+            return {
+              ...customer,
+
+              due:
+                Number(customer.due) +
+                total,
+            };
+          }
         );
 
-      setCustomers(updatedCustomers);
+      setCustomers(
+        updatedCustomers
+      );
 
       localStorage.setItem(
         "hisabpro_customers",
-        JSON.stringify(updatedCustomers)
+        JSON.stringify(
+          updatedCustomers
+        )
       );
-
-      const transaction: Transaction = {
-        id: Date.now() + 1,
-        customerId: selectedCustomer.id,
-        type: "credit",
-        amount: total,
-        note: `Credit Sale - ${cart
-          .map((item) => item.product)
-          .join(", ")}`,
-        date: new Date().toISOString(),
-      };
 
       const oldTransactions =
         JSON.parse(
@@ -327,23 +595,56 @@ export default function SalesPage() {
           ) || "[]"
         );
 
-      oldTransactions.push(transaction);
-
       localStorage.setItem(
         "hisabpro_transactions",
-        JSON.stringify(oldTransactions)
+        JSON.stringify([
+          ...oldTransactions,
+          {
+            id: Date.now(),
+            customerId:
+              selectedCustomer.id,
+            type: "credit",
+            amount: total,
+            note:
+              `Credit Sale - ${cart
+                .map(
+                  (item) =>
+                    `${item.product} (${item.quantity})`
+                )
+                .join(", ")}`,
+            date:
+              new Date().toISOString(),
+          },
+        ])
       );
     }
 
-    // Reset form
-    setProductId("");
+    // --------------------------------
+    // SAVE LAST INVOICE
+    // --------------------------------
+
+    localStorage.setItem(
+      "hisabpro_last_invoice",
+      JSON.stringify(sale)
+    );
+
+    // --------------------------------
+    // RESET
+    // --------------------------------
+
+    setCart([]);
     setCustomerId("");
-    setQuantity(1);
     setDiscount(0);
     setPaymentType("cash");
-    setCart([]);
 
-    // Open invoice
+    setMessage(
+      "Sale saved successfully ✅"
+    );
+
+    /*
+      Invoice page par jao.
+    */
+
     window.location.href =
       "/hisabpro/invoice/";
   }
@@ -351,10 +652,14 @@ export default function SalesPage() {
   return (
     <main className="sales-page">
 
+      {/* HEADER */}
+
       <header className="sales-header">
 
         <button
-          onClick={() => window.history.back()}
+          onClick={() =>
+            window.history.back()
+          }
           className="back-button"
         >
           ← Back
@@ -362,79 +667,132 @@ export default function SalesPage() {
 
         <h1>New Sale</h1>
 
-        <a href="/hisabpro/sales/history/">
-          History
-        </a>
+        <span></span>
 
       </header>
 
-      <section className="sale-box">
+      {/* SALE FORM */}
 
-        <h2>Create New Sale</h2>
+      <section className="sale-form">
 
-        {/* PRODUCT */}
+        <h2>Add Product</h2>
 
-        <label>Product</label>
+        <label>
+          Product
+        </label>
 
         <select
           value={productId}
-          onChange={(e) => {
-            setProductId(e.target.value);
-            setMessage("");
-          }}
+          onChange={(e) =>
+            setProductId(
+              e.target.value
+            )
+          }
         >
           <option value="">
             Select Product
           </option>
 
-          {products.map((product) => (
-            <option
-              key={product.id}
-              value={product.id}
-              disabled={product.stock <= 0}
-            >
-              {product.name} — ₹
-              {product.sellingPrice.toLocaleString(
-                "en-IN"
-              )}
-              {" | Stock: "}
-              {product.stock}
-            </option>
-          ))}
+          {products.map(
+            (product) => (
+              <option
+                key={product.id}
+                value={product.id}
+                disabled={
+                  getAvailableQuantity(
+                    product
+                  ) <= 0
+                }
+              >
+                {product.name} — Stock:{" "}
+                {getAvailableQuantity(
+                  product
+                )}
+              </option>
+            )
+          )}
         </select>
 
-        {selectedProduct && (
-          <p className="stock-available">
-            Available Stock:{" "}
-            {selectedProduct.stock}
-          </p>
+        {productId && (
+          <div className="selected-product-info">
+
+            {(() => {
+              const product =
+                products.find(
+                  (item) =>
+                    item.id ===
+                    Number(
+                      productId
+                    )
+                );
+
+              if (!product)
+                return null;
+
+              const batches =
+                getProductBatches(
+                  product
+                );
+
+              return (
+                <>
+                  <strong>
+                    {product.name}
+                  </strong>
+
+                  <span>
+                    Available:{" "}
+                    {
+                      getAvailableQuantity(
+                        product
+                      )
+                    }
+                  </span>
+
+                  {batches.map(
+                    (batch) => (
+                      <small
+                        key={batch.id}
+                      >
+                        {batch.quantity} pcs
+                        {" • "}
+                        Buy ₹
+                        {batch.purchasePrice.toLocaleString(
+                          "en-IN"
+                        )}
+                        {" • "}
+                        Sell ₹
+                        {batch.sellingPrice.toLocaleString(
+                          "en-IN"
+                        )}
+                      </small>
+                    )
+                  )}
+                </>
+              );
+            })()}
+
+          </div>
         )}
 
-        {/* QUANTITY */}
-
-        <label>Quantity</label>
+        <label>
+          Quantity
+        </label>
 
         <input
           type="number"
           min="1"
-          max={
-            selectedProduct?.stock ||
-            undefined
-          }
           value={quantity}
           onChange={(e) =>
             setQuantity(
               Math.max(
                 1,
-                Number(e.target.value)
+                Number(
+                  e.target.value
+                )
               )
             )
           }
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              addToBill();
-            }
-          }}
         />
 
         <button
@@ -444,40 +802,76 @@ export default function SalesPage() {
           + Add to Bill
         </button>
 
-        {/* BILL ITEMS */}
+      </section>
 
-        {cart.length > 0 && (
+      {/* BILL */}
+
+      <section className="bill-section">
+
+        <div className="section-title">
+          <h2>
+            Bill
+          </h2>
+
+          <span>
+            {cart.length} item
+            {cart.length !== 1
+              ? "s"
+              : ""}
+          </span>
+        </div>
+
+        {cart.length === 0 ? (
+
+          <div className="empty-bill">
+            <div>🧾</div>
+
+            <p>
+              No products added yet.
+            </p>
+          </div>
+
+        ) : (
+
           <div className="bill-items">
 
-            <h3>Bill Items</h3>
+            {cart.map(
+              (item) => (
+                <div
+                  className="bill-item"
+                  key={
+                    item.productId
+                  }
+                >
 
-            {cart.map((item) => (
-              <div
-                className="bill-item"
-                key={item.productId}
-              >
+                  <div>
+                    <strong>
+                      {item.product}
+                    </strong>
 
-                <div className="bill-item-info">
+                    <small>
+                      Qty:{" "}
+                      {item.quantity}
+                    </small>
 
-                  <strong>
-                    {item.product}
-                  </strong>
-
-                  <span>
-                    {item.quantity} × ₹
-                    {item.price.toLocaleString(
-                      "en-IN"
-                    )}
-                  </span>
-
-                </div>
-
-                <div className="bill-item-right">
+                    <small>
+                      Avg. Sell ₹
+                      {item.price.toLocaleString(
+                        "en-IN",
+                        {
+                          maximumFractionDigits: 2,
+                        }
+                      )}
+                    </small>
+                  </div>
 
                   <strong>
                     ₹
                     {item.amount.toLocaleString(
-                      "en-IN"
+                      "en-IN",
+                      {
+                        maximumFractionDigits: 2,
+                      }
                     )}
                   </strong>
 
@@ -492,16 +886,101 @@ export default function SalesPage() {
                   </button>
 
                 </div>
-
-              </div>
-            ))}
+              )
+            )}
 
           </div>
         )}
 
-        {/* DISCOUNT */}
+      </section>
 
-        <label>Discount</label>
+      {/* CUSTOMER */}
+
+      <section className="sale-summary">
+
+        <label>
+          Payment Type
+        </label>
+
+        <div className="payment-buttons">
+
+          <button
+            className={
+              paymentType === "cash"
+                ? "active"
+                : ""
+            }
+            onClick={() =>
+              setPaymentType(
+                "cash"
+              )
+            }
+          >
+            💵 Cash
+          </button>
+
+          <button
+            className={
+              paymentType === "credit"
+                ? "active"
+                : ""
+            }
+            onClick={() =>
+              setPaymentType(
+                "credit"
+              )
+            }
+          >
+            📒 Credit
+          </button>
+
+        </div>
+
+        {paymentType ===
+          "credit" && (
+
+          <>
+            <label>
+              Customer
+            </label>
+
+            <select
+              value={customerId}
+              onChange={(e) =>
+                setCustomerId(
+                  e.target.value
+                )
+              }
+            >
+              <option value="">
+                Select Customer
+              </option>
+
+              {customers.map(
+                (customer) => (
+                  <option
+                    key={customer.id}
+                    value={
+                      customer.id
+                    }
+                  >
+                    {customer.name}
+                    {" — Due ₹"}
+                    {Number(
+                      customer.due
+                    ).toLocaleString(
+                      "en-IN"
+                    )}
+                  </option>
+                )
+              )}
+            </select>
+          </>
+        )}
+
+        <label>
+          Discount
+        </label>
 
         <input
           type="number"
@@ -511,127 +990,71 @@ export default function SalesPage() {
             setDiscount(
               Math.max(
                 0,
-                Number(e.target.value)
+                Number(
+                  e.target.value
+                )
               )
             )
           }
         />
 
-        {/* PAYMENT */}
-
-        <label>Payment Type</label>
-
-        <select
-          value={paymentType}
-          onChange={(e) => {
-            setPaymentType(
-              e.target.value as PaymentType
-            );
-            setMessage("");
-          }}
-        >
-          <option value="cash">
-            Cash
-          </option>
-
-          <option value="credit">
-            Credit / Udhaar
-          </option>
-        </select>
-
-        {/* CUSTOMER */}
-
-        {paymentType === "credit" && (
-          <>
-            <label>Customer</label>
-
-            <select
-              value={customerId}
-              onChange={(e) => {
-                setCustomerId(
-                  e.target.value
-                );
-                setMessage("");
-              }}
-            >
-              <option value="">
-                Select Customer
-              </option>
-
-              {customers.map((customer) => (
-                <option
-                  key={customer.id}
-                  value={customer.id}
-                >
-                  {customer.name} — Due ₹
-                  {customer.due.toLocaleString(
-                    "en-IN"
-                  )}
-                </option>
-              ))}
-            </select>
-
-            {selectedCustomer && (
-              <p className="customer-selected">
-                Current Due: ₹
-                {selectedCustomer.due.toLocaleString(
-                  "en-IN"
-                )}
-              </p>
-            )}
-          </>
-        )}
-
-        {/* SUMMARY */}
-
-        <div className="sale-summary">
+        <div className="sale-totals">
 
           <div>
-            <span>Items</span>
-            <strong>
-              {totalQuantity}
-            </strong>
-          </div>
+            <span>
+              Subtotal
+            </span>
 
-          <div>
-            <span>Subtotal</span>
             <strong>
               ₹
               {subtotal.toLocaleString(
-                "en-IN"
+                "en-IN",
+                {
+                  maximumFractionDigits: 2,
+                }
               )}
             </strong>
           </div>
 
           <div>
-            <span>Discount</span>
+            <span>
+              Discount
+            </span>
+
             <strong>
               ₹
-              {discount.toLocaleString(
-                "en-IN"
+              {safeDiscount.toLocaleString(
+                "en-IN",
+                {
+                  maximumFractionDigits: 2,
+                }
               )}
             </strong>
           </div>
 
-          <div className="sale-total">
-            <span>Total</span>
+          <div className="grand-total">
+            <span>
+              Total
+            </span>
+
             <strong>
               ₹
               {total.toLocaleString(
-                "en-IN"
+                "en-IN",
+                {
+                  maximumFractionDigits: 2,
+                }
               )}
             </strong>
           </div>
 
         </div>
 
-        {/* SAVE */}
-
         <button
           className="save-sale"
           onClick={saveSale}
         >
-          Save Sale
+          Save Sale & Generate Invoice
         </button>
 
         {message && (
