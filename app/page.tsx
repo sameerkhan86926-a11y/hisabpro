@@ -100,7 +100,7 @@ export default function Dashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
-
+  const [notificationCount, setNotificationCount] = useState(0);
   useEffect(() => {
     try {
       const savedSales = JSON.parse(
@@ -219,6 +219,19 @@ export default function Dashboard() {
       sum + Number(customer.due || 0),
     0
   );
+  const lowStockCount = savedProducts.filter(
+  (product: Product) =>
+    Number(product.stock) <= 5
+).length;
+
+const dueCount = savedCustomers.filter(
+  (customer: Customer) =>
+    Number(customer.due) > 0
+).length;
+
+setNotificationCount(
+  lowStockCount + dueCount
+);
 
   return (
     <main className="app">
@@ -229,8 +242,7 @@ export default function Dashboard() {
           <h1>HisabPro</h1>
           <p>Sales • Stock • Khata • Profit</p>
         </div>
-
-        <a
+      <a
   href="/hisabpro/notifications/"
   className="notification"
 >
@@ -241,7 +253,16 @@ export default function Dashboard() {
     <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
     <path d="M10 21h4" />
   </svg>
+
+  {notificationCount > 0 && (
+    <span className="notification-badge">
+      {notificationCount > 99
+        ? "99+"
+        : notificationCount}
+    </span>
+  )}
 </a>
+        
       </header>
 
       {/* WELCOME */}
