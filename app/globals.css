@@ -231,3 +231,111 @@ button {
     justify-content: space-around;
   }
 }
+
+.sales-page {
+  min-height: 100vh;
+  background: #f5f7fb;
+  padding-bottom: 40px;
+}
+
+.sales-header {
+  background: #102a56;
+  color: white;
+  padding: 22px 6%;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+}
+
+.sales-header a {
+  color: white;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.sales-header h1 {
+  font-size: 24px;
+  text-align: center;
+}
+
+.sale-box {
+  width: min(600px, 92%);
+  margin: 30px auto;
+  background: white;
+  padding: 25px;
+  border-radius: 18px;
+  box-shadow: 0 5px 25px rgba(20, 40, 80, 0.08);
+}
+
+.sale-box h2 {
+  margin-bottom: 25px;
+}
+
+.sale-box label {
+  display: block;
+  margin-top: 18px;
+  margin-bottom: 7px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sale-box select,
+.sale-box input {
+  width: 100%;
+  height: 48px;
+  border: 1px solid #dce1e8;
+  border-radius: 10px;
+  padding: 0 13px;
+  font-size: 15px;
+  background: white;
+}
+
+.sale-summary {
+  margin-top: 25px;
+  border-top: 1px solid #e8ebf0;
+  padding-top: 15px;
+}
+
+.sale-summary div {
+  display: flex;
+  justify-content: space-between;
+  padding: 9px 0;
+}
+
+.sale-summary span {
+  color: #687386;
+}
+
+.sale-total {
+  border-top: 1px solid #e8ebf0;
+  margin-top: 8px;
+  padding-top: 15px !important;
+}
+
+.sale-total span,
+.sale-total strong {
+  font-size: 20px;
+  color: #138a50;
+}
+
+.save-sale {
+  width: 100%;
+  height: 50px;
+  margin-top: 20px;
+  background: #1559b7;
+  color: white;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.save-sale:hover {
+  background: #0f4895;
+}
+
+.sale-message {
+  text-align: center;
+  margin-top: 15px;
+  color: #138a50;
+  font-weight: 600;
+}
