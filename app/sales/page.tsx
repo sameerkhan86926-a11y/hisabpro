@@ -112,7 +112,7 @@ export default function SalesPage() {
         <h1>New Sale</h1>
 
         <a href="/hisabpro/sales/history/">
-          History
+          
         </a>
       </header>
 
