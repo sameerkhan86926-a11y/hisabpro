@@ -2606,3 +2606,9 @@ button {
     padding: 20px;
   }
 }
+.business-detail {
+  margin-top: 4px !important;
+  color: #687386 !important;
+  font-size: 11px !important;
+  line-height: 1.4;
+}
