@@ -2,6 +2,13 @@
 
 import { useEffect, useState } from "react";
 
+type BatchDetail = {
+  batchId: number;
+  quantity: number;
+  purchasePrice: number;
+  sellingPrice: number;
+};
+
 type SaleItem = {
   productId: number;
   product: string;
@@ -9,12 +16,11 @@ type SaleItem = {
   purchasePrice: number;
   quantity: number;
   amount: number;
+  batchDetails?: BatchDetail[];
 };
 
 type Sale = {
   id: number;
-
-  // New multi-product format
   items?: SaleItem[];
   subtotal?: number;
 
@@ -44,7 +50,14 @@ type Period =
   | "today"
   | "week"
   | "month"
+  | "custom"
   | "all";
+
+type ProductReport = {
+  quantity: number;
+  sales: number;
+  profit: number;
+};
 
 export default function ReportsPage() {
   const [sales, setSales] =
@@ -55,6 +68,12 @@ export default function ReportsPage() {
 
   const [period, setPeriod] =
     useState<Period>("month");
+
+  const [fromDate, setFromDate] =
+    useState("");
+
+  const [toDate, setToDate] =
+    useState("");
 
   useEffect(() => {
     const savedSales =
@@ -76,9 +95,11 @@ export default function ReportsPage() {
   }, []);
 
   /*
-   * Convert old single-product sale
-   * into items format.
+   * =====================================
+   * SALE ITEMS
+   * =====================================
    */
+
   function getSaleItems(
     sale: Sale
   ): SaleItem[] {
@@ -97,7 +118,8 @@ export default function ReportsPage() {
           price: sale.price || 0,
           purchasePrice:
             sale.purchasePrice || 0,
-          quantity: sale.quantity || 1,
+          quantity:
+            sale.quantity || 1,
           amount:
             (sale.price || 0) *
             (sale.quantity || 1),
@@ -108,30 +130,111 @@ export default function ReportsPage() {
     return [];
   }
 
+  /*
+   * =====================================
+   * BATCH-WISE PROFIT
+   * =====================================
+   */
+
+  function getItemReport(
+    item: SaleItem
+  ) {
+    if (
+      item.batchDetails &&
+      item.batchDetails.length > 0
+    ) {
+      let sales = 0;
+      let profit = 0;
+      let quantity = 0;
+
+      item.batchDetails.forEach(
+        (batch) => {
+          const qty =
+            Number(
+              batch.quantity
+            );
+
+          const sellingPrice =
+            Number(
+              batch.sellingPrice
+            );
+
+          const purchasePrice =
+            Number(
+              batch.purchasePrice
+            );
+
+          sales +=
+            sellingPrice * qty;
+
+          profit +=
+            (sellingPrice -
+              purchasePrice) *
+            qty;
+
+          quantity += qty;
+        }
+      );
+
+      return {
+        quantity,
+        sales,
+        profit,
+      };
+    }
+
+    return {
+      quantity: item.quantity,
+      sales: item.amount,
+      profit:
+        (item.price -
+          item.purchasePrice) *
+        item.quantity,
+    };
+  }
+
+  /*
+   * =====================================
+   * DATE FILTER
+   * =====================================
+   */
+
+  function getDateOnly(
+    date: Date
+  ) {
+    return new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate()
+    );
+  }
+
   function isInPeriod(
     dateString: string
   ) {
-    if (period === "all") {
-      return true;
-    }
+    const date =
+      getDateOnly(
+        new Date(dateString)
+      );
 
-    const date = new Date(
-      dateString
-    );
+    const now =
+      getDateOnly(
+        new Date()
+      );
 
-    const now = new Date();
-
+    /*
+     * TODAY
+     */
     if (period === "today") {
       return (
-        date.getFullYear() ===
-          now.getFullYear() &&
-        date.getMonth() ===
-          now.getMonth() &&
-        date.getDate() ===
-          now.getDate()
+        date.getTime() ===
+        now.getTime()
       );
     }
 
+    /*
+     * WEEK
+     */
     if (period === "week") {
       const startOfWeek =
         new Date(now);
@@ -157,6 +260,9 @@ export default function ReportsPage() {
       return date >= startOfWeek;
     }
 
+    /*
+     * MONTH
+     */
     if (period === "month") {
       return (
         date.getFullYear() ===
@@ -166,8 +272,68 @@ export default function ReportsPage() {
       );
     }
 
+    /*
+     * CUSTOM DATE RANGE
+     */
+    if (period === "custom") {
+      if (
+        !fromDate &&
+        !toDate
+      ) {
+        return false;
+      }
+
+      const start =
+        fromDate
+          ? getDateOnly(
+              new Date(
+                `${fromDate}T00:00:00`
+              )
+            )
+          : null;
+
+      const end =
+        toDate
+          ? getDateOnly(
+              new Date(
+                `${toDate}T00:00:00`
+              )
+            )
+          : null;
+
+      if (start && end) {
+        return (
+          date >= start &&
+          date <= end
+        );
+      }
+
+      if (start) {
+        return date >= start;
+      }
+
+      if (end) {
+        return date <= end;
+      }
+
+      return false;
+    }
+
+    /*
+     * ALL TIME
+     */
+    if (period === "all") {
+      return true;
+    }
+
     return true;
   }
+
+  /*
+   * =====================================
+   * FILTERED DATA
+   * =====================================
+   */
 
   const filteredSales =
     sales.filter((sale) =>
@@ -180,8 +346,11 @@ export default function ReportsPage() {
     );
 
   /*
-   * Total Sales
+   * =====================================
+   * TOTAL SALES
+   * =====================================
    */
+
   const totalSales =
     filteredSales.reduce(
       (sum, sale) =>
@@ -190,8 +359,11 @@ export default function ReportsPage() {
     );
 
   /*
-   * Total Items
+   * =====================================
+   * TOTAL ITEMS
+   * =====================================
    */
+
   const totalItems =
     filteredSales.reduce(
       (sum, sale) => {
@@ -201,7 +373,10 @@ export default function ReportsPage() {
         return (
           sum +
           items.reduce(
-            (itemSum, item) =>
+            (
+              itemSum,
+              item
+            ) =>
               itemSum +
               item.quantity,
             0
@@ -212,28 +387,34 @@ export default function ReportsPage() {
     );
 
   /*
-   * Gross Profit
-   *
-   * Product Profit =
-   * (Selling Price - Purchase Price)
-   * × Quantity
-   *
-   * Bill discount is deducted
-   * once from the bill.
+   * =====================================
+   * GROSS PROFIT
+   * =====================================
    */
+
   const grossProfit =
     filteredSales.reduce(
       (sum, sale) => {
+
         const items =
           getSaleItems(sale);
 
         const itemProfit =
           items.reduce(
-            (itemSum, item) =>
-              itemSum +
-              (item.price -
-                item.purchasePrice) *
-                item.quantity,
+            (
+              itemSum,
+              item
+            ) => {
+              const report =
+                getItemReport(
+                  item
+                );
+
+              return (
+                itemSum +
+                report.profit
+              );
+            },
             0
           );
 
@@ -247,8 +428,11 @@ export default function ReportsPage() {
     );
 
   /*
-   * Total Expenses
+   * =====================================
+   * EXPENSES
+   * =====================================
    */
+
   const totalExpenses =
     filteredExpenses.reduce(
       (sum, expense) =>
@@ -257,15 +441,21 @@ export default function ReportsPage() {
     );
 
   /*
-   * Net Profit
+   * =====================================
+   * NET PROFIT
+   * =====================================
    */
+
   const netProfit =
     grossProfit -
     totalExpenses;
 
   /*
-   * Cash Sales
+   * =====================================
+   * CASH SALES
+   * =====================================
    */
+
   const cashSales =
     filteredSales
       .filter(
@@ -280,8 +470,11 @@ export default function ReportsPage() {
       );
 
   /*
-   * Credit Sales
+   * =====================================
+   * CREDIT SALES
+   * =====================================
    */
+
   const creditSales =
     filteredSales
       .filter(
@@ -296,70 +489,74 @@ export default function ReportsPage() {
       );
 
   /*
-   * Top Products
+   * =====================================
+   * TOP PRODUCTS
+   * =====================================
    */
+
   const productMap =
     new Map<
       string,
-      {
-        quantity: number;
-        sales: number;
-        profit: number;
-      }
+      ProductReport
     >();
 
   filteredSales.forEach(
     (sale) => {
+
       const items =
         getSaleItems(sale);
 
-      items.forEach((item) => {
-        const existing =
-          productMap.get(
-            item.product
-          );
+      items.forEach(
+        (item) => {
 
-        const itemSales =
-          item.amount;
+          const report =
+            getItemReport(
+              item
+            );
 
-        const itemProfit =
-          (item.price -
-            item.purchasePrice) *
-          item.quantity;
+          const existing =
+            productMap.get(
+              item.product
+            );
 
-        if (existing) {
-          productMap.set(
-            item.product,
-            {
-              quantity:
-                existing.quantity +
-                item.quantity,
+          if (existing) {
 
-              sales:
-                existing.sales +
-                itemSales,
+            productMap.set(
+              item.product,
+              {
+                quantity:
+                  existing.quantity +
+                  report.quantity,
 
-              profit:
-                existing.profit +
-                itemProfit,
-            }
-          );
-        } else {
-          productMap.set(
-            item.product,
-            {
-              quantity:
-                item.quantity,
+                sales:
+                  existing.sales +
+                  report.sales,
 
-              sales:
-                itemSales,
+                profit:
+                  existing.profit +
+                  report.profit,
+              }
+            );
 
-              profit:
-                itemProfit,
-            }
-          );
+          } else {
+
+            productMap.set(
+              item.product,
+              {
+                quantity:
+                  report.quantity,
+
+                sales:
+                  report.sales,
+
+                profit:
+                  report.profit,
+              }
+            );
+
+          }
         }
-      });
+      );
     }
   );
 
@@ -451,6 +648,19 @@ export default function ReportsPage() {
 
         <button
           className={
+            period === "custom"
+              ? "active"
+              : ""
+          }
+          onClick={() =>
+            setPeriod("custom")
+          }
+        >
+          📅 Custom
+        </button>
+
+        <button
+          className={
             period === "all"
               ? "active"
               : ""
@@ -463,6 +673,60 @@ export default function ReportsPage() {
         </button>
 
       </section>
+
+      {/* CUSTOM DATE */}
+
+      {period === "custom" && (
+        <section className="custom-date-filter">
+
+          <div>
+            <label>
+              From Date
+            </label>
+
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) =>
+                setFromDate(
+                  e.target.value
+                )
+              }
+            />
+          </div>
+
+          <div>
+            <label>
+              To Date
+            </label>
+
+            <input
+              type="date"
+              value={toDate}
+              min={fromDate || undefined}
+              onChange={(e) =>
+                setToDate(
+                  e.target.value
+                )
+              }
+            />
+          </div>
+
+          {(fromDate ||
+            toDate) && (
+            <button
+              className="clear-date-button"
+              onClick={() => {
+                setFromDate("");
+                setToDate("");
+              }}
+            >
+              Clear
+            </button>
+          )}
+
+        </section>
+      )}
 
       {/* MAIN STATS */}
 
@@ -558,9 +822,7 @@ export default function ReportsPage() {
 
           <div>
 
-            <span>
-              🧾
-            </span>
+            <span>🧾</span>
 
             <p>
               Total Bills
@@ -574,9 +836,7 @@ export default function ReportsPage() {
 
           <div>
 
-            <span>
-              📦
-            </span>
+            <span>📦</span>
 
             <p>
               Items Sold
@@ -590,9 +850,7 @@ export default function ReportsPage() {
 
           <div>
 
-            <span>
-              💵
-            </span>
+            <span>💵</span>
 
             <p>
               Cash Sales
@@ -609,9 +867,7 @@ export default function ReportsPage() {
 
           <div>
 
-            <span>
-              📒
-            </span>
+            <span>📒</span>
 
             <p>
               Credit Sales
