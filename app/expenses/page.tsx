@@ -110,9 +110,12 @@ export default function ExpensesPage() {
 
       <header className="expenses-header">
 
-        <a href="/hisabpro/">
-          ← Dashboard
-        </a>
+        <button
+  onClick={() => window.history.back()}
+  className="back-button"
+>
+  ← Back
+</button>
 
         <h1>Expenses</h1>
 
