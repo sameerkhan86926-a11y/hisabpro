@@ -10,6 +10,9 @@ type Sale = {
   discount: number;
   total: number;
   date: string;
+  paymentType?: "cash" | "credit";
+  customerId?: number | null;
+  customerName?: string;
 };
 
 export default function SalesHistoryPage() {
@@ -20,7 +23,7 @@ export default function SalesHistoryPage() {
       localStorage.getItem("hisabpro_sales") || "[]"
     );
 
-    setSales(savedSales.reverse());
+    setSales([...savedSales].reverse());
   }, []);
 
   const totalSales = sales.reduce(
@@ -50,19 +53,24 @@ export default function SalesHistoryPage() {
     <main className="history-page">
 
       <header className="history-header">
-        <a href="/hisabpro/">← Dashboard</a>
+
+        <a href="/hisabpro/">
+          ← Dashboard
+        </a>
 
         <h1>Sales History</h1>
 
         <a href="/hisabpro/sales/">
           + New Sale
         </a>
+
       </header>
 
       <section className="history-stats">
 
         <div className="history-card">
           <span>Total Sales</span>
+
           <strong>
             ₹{totalSales.toLocaleString("en-IN")}
           </strong>
@@ -70,12 +78,18 @@ export default function SalesHistoryPage() {
 
         <div className="history-card">
           <span>Total Bills</span>
-          <strong>{sales.length}</strong>
+
+          <strong>
+            {sales.length}
+          </strong>
         </div>
 
         <div className="history-card">
           <span>Items Sold</span>
-          <strong>{totalItems}</strong>
+
+          <strong>
+            {totalItems}
+          </strong>
         </div>
 
       </section>
@@ -87,9 +101,13 @@ export default function SalesHistoryPage() {
         </div>
 
         {sales.length === 0 ? (
+
           <div className="empty-sales">
+
             <div>🧾</div>
+
             <h3>No Sales Yet</h3>
+
             <p>
               Create your first sale to see it here.
             </p>
@@ -97,17 +115,27 @@ export default function SalesHistoryPage() {
             <a href="/hisabpro/sales/">
               Create New Sale
             </a>
+
           </div>
+
         ) : (
+
           sales.map((sale) => (
-            <div className="sale-history-item" key={sale.id}>
+
+            <div
+              className="sale-history-item"
+              key={sale.id}
+            >
 
               <div className="sale-icon">
                 🧾
               </div>
 
               <div className="sale-info">
-                <strong>{sale.product}</strong>
+
+                <strong>
+                  {sale.product}
+                </strong>
 
                 <span>
                   {sale.quantity} × ₹
@@ -115,10 +143,39 @@ export default function SalesHistoryPage() {
                 </span>
 
                 <small>
-                  {new Date(sale.date).toLocaleString(
-                    "en-IN"
-                  )}
+                  {new Date(
+                    sale.date
+                  ).toLocaleString("en-IN")}
                 </small>
+
+                {sale.paymentType === "credit" ? (
+
+                  <div className="sale-customer">
+
+                    <span className="credit-badge">
+                      Credit / Udhaar
+                    </span>
+
+                    {sale.customerName && (
+                      <span className="customer-name">
+                        👤 {sale.customerName}
+                      </span>
+                    )}
+
+                  </div>
+
+                ) : (
+
+                  <div className="sale-customer">
+
+                    <span className="cash-badge">
+                      Cash
+                    </span>
+
+                  </div>
+
+                )}
+
               </div>
 
               <div className="sale-right">
@@ -128,7 +185,9 @@ export default function SalesHistoryPage() {
                 </strong>
 
                 <button
-                  onClick={() => deleteSale(sale.id)}
+                  onClick={() =>
+                    deleteSale(sale.id)
+                  }
                 >
                   Delete
                 </button>
@@ -136,7 +195,9 @@ export default function SalesHistoryPage() {
               </div>
 
             </div>
+
           ))
+
         )}
 
       </section>
