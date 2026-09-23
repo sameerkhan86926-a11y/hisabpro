@@ -2612,3 +2612,75 @@ button {
   font-size: 11px !important;
   line-height: 1.4;
 }
+.add-to-bill {
+  width: 100%;
+  margin-top: 10px;
+  background: #edf4ff;
+  color: #1559b7;
+  padding: 12px;
+  border-radius: 9px;
+  font-weight: 700;
+}
+
+.bill-items {
+  margin-top: 22px;
+  border: 1px solid #e8ebf0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.bill-items h3 {
+  background: #f5f7fb;
+  padding: 12px 14px;
+  font-size: 14px;
+}
+
+.bill-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 14px;
+  border-top: 1px solid #e8ebf0;
+}
+
+.bill-item-info {
+  min-width: 0;
+}
+
+.bill-item-info strong {
+  display: block;
+  font-size: 13px;
+}
+
+.bill-item-info span {
+  display: block;
+  margin-top: 5px;
+  color: #687386;
+  font-size: 11px;
+}
+
+.bill-item-right {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.bill-item-right strong {
+  display: block;
+  font-size: 13px;
+}
+
+.bill-item-right button {
+  margin-top: 6px;
+  background: #fff0f0;
+  color: #d33;
+  padding: 4px 8px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+@media (max-width: 500px) {
+  .bill-item {
+    padding: 12px;
+  }
+}
