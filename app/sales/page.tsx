@@ -11,11 +11,38 @@ type Product = {
   stock: number;
 };
 
+type Customer = {
+  id: number;
+  name: string;
+  phone: string;
+  due: number;
+  createdAt: string;
+};
+
+type Transaction = {
+  id: number;
+  customerId: number;
+  type: "credit" | "payment";
+  amount: number;
+  note: string;
+  date: string;
+};
+
+type PaymentType = "cash" | "credit";
+
 export default function SalesPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+
   const [productId, setProductId] = useState("");
+  const [customerId, setCustomerId] = useState("");
+
   const [quantity, setQuantity] = useState(1);
   const [discount, setDiscount] = useState(0);
+
+  const [paymentType, setPaymentType] =
+    useState<PaymentType>("cash");
+
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -23,11 +50,20 @@ export default function SalesPage() {
       localStorage.getItem("hisabpro_products") || "[]"
     );
 
+    const savedCustomers = JSON.parse(
+      localStorage.getItem("hisabpro_customers") || "[]"
+    );
+
     setProducts(savedProducts);
+    setCustomers(savedCustomers);
   }, []);
 
   const selectedProduct = products.find(
     (product) => product.id === Number(productId)
+  );
+
+  const selectedCustomer = customers.find(
+    (customer) => customer.id === Number(customerId)
   );
 
   const subtotal = selectedProduct
@@ -37,6 +73,8 @@ export default function SalesPage() {
   const total = Math.max(subtotal - discount, 0);
 
   function saveSale() {
+    setMessage("");
+
     if (!selectedProduct) {
       setMessage("Please select a product.");
       return;
@@ -54,8 +92,15 @@ export default function SalesPage() {
       return;
     }
 
+    if (paymentType === "credit" && !selectedCustomer) {
+      setMessage("Please select a customer for credit sale.");
+      return;
+    }
+
+    const saleId = Date.now();
+
     const sale = {
-      id: Date.now(),
+      id: saleId,
       productId: selectedProduct.id,
       product: selectedProduct.name,
       price: selectedProduct.sellingPrice,
@@ -63,6 +108,15 @@ export default function SalesPage() {
       quantity,
       discount,
       total,
+      paymentType,
+      customerId:
+        paymentType === "credit"
+          ? selectedCustomer?.id
+          : null,
+      customerName:
+        paymentType === "credit"
+          ? selectedCustomer?.name
+          : "",
       date: new Date().toISOString(),
     };
 
@@ -94,17 +148,67 @@ export default function SalesPage() {
       JSON.stringify(updatedProducts)
     );
 
-    setMessage("Sale saved & stock updated successfully ✅");
+    // Credit Sale → Add customer due
+    if (paymentType === "credit" && selectedCustomer) {
+      const updatedCustomer: Customer = {
+        ...selectedCustomer,
+        due: selectedCustomer.due + total,
+      };
+
+      const updatedCustomers = customers.map(
+        (customer) =>
+          customer.id === selectedCustomer.id
+            ? updatedCustomer
+            : customer
+      );
+
+      setCustomers(updatedCustomers);
+
+      localStorage.setItem(
+        "hisabpro_customers",
+        JSON.stringify(updatedCustomers)
+      );
+
+      // Add transaction to customer history
+      const transaction: Transaction = {
+        id: Date.now() + 1,
+        customerId: selectedCustomer.id,
+        type: "credit",
+        amount: total,
+        note: `Credit Sale - ${selectedProduct.name}`,
+        date: new Date().toISOString(),
+      };
+
+      const oldTransactions = JSON.parse(
+        localStorage.getItem("hisabpro_transactions") || "[]"
+      );
+
+      oldTransactions.push(transaction);
+
+      localStorage.setItem(
+        "hisabpro_transactions",
+        JSON.stringify(oldTransactions)
+      );
+    }
+
+    setMessage(
+      paymentType === "credit"
+        ? "Credit sale saved & customer due updated successfully ✅"
+        : "Sale saved & stock updated successfully ✅"
+    );
 
     setProductId("");
+    setCustomerId("");
     setQuantity(1);
     setDiscount(0);
+    setPaymentType("cash");
   }
 
   return (
     <main className="sales-page">
 
       <header className="sales-header">
+
         <a href="/hisabpro/">
           ← Dashboard
         </a>
@@ -114,6 +218,7 @@ export default function SalesPage() {
         <a href="/hisabpro/sales/history/">
           History
         </a>
+
       </header>
 
       <section className="sale-box">
@@ -129,11 +234,13 @@ export default function SalesPage() {
             setMessage("");
           }}
         >
+
           <option value="">
             Select Product
           </option>
 
           {products.map((product) => (
+
             <option
               key={product.id}
               value={product.id}
@@ -144,7 +251,9 @@ export default function SalesPage() {
               {" | Stock: "}
               {product.stock}
             </option>
+
           ))}
+
         </select>
 
         {selectedProduct && (
@@ -180,6 +289,69 @@ export default function SalesPage() {
           }
         />
 
+        <label>Payment Type</label>
+
+        <select
+          value={paymentType}
+          onChange={(e) => {
+            setPaymentType(
+              e.target.value as PaymentType
+            );
+            setMessage("");
+          }}
+        >
+
+          <option value="cash">
+            Cash
+          </option>
+
+          <option value="credit">
+            Credit / Udhaar
+          </option>
+
+        </select>
+
+        {paymentType === "credit" && (
+          <>
+            <label>Customer</label>
+
+            <select
+              value={customerId}
+              onChange={(e) => {
+                setCustomerId(e.target.value);
+                setMessage("");
+              }}
+            >
+
+              <option value="">
+                Select Customer
+              </option>
+
+              {customers.map((customer) => (
+
+                <option
+                  key={customer.id}
+                  value={customer.id}
+                >
+                  {customer.name} — Due ₹
+                  {customer.due.toLocaleString("en-IN")}
+                </option>
+
+              ))}
+
+            </select>
+
+            {selectedCustomer && (
+              <p className="customer-selected">
+                Current Due: ₹
+                {selectedCustomer.due.toLocaleString(
+                  "en-IN"
+                )}
+              </p>
+            )}
+          </>
+        )}
+
         <div className="sale-summary">
 
           <div>
@@ -198,7 +370,9 @@ export default function SalesPage() {
           <div>
             <span>Quantity</span>
 
-            <strong>{quantity}</strong>
+            <strong>
+              {quantity}
+            </strong>
           </div>
 
           <div>
@@ -218,11 +392,13 @@ export default function SalesPage() {
           </div>
 
           <div className="sale-total">
+
             <span>Total</span>
 
             <strong>
               ₹{total.toLocaleString("en-IN")}
             </strong>
+
           </div>
 
         </div>
