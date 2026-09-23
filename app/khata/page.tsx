@@ -6,6 +6,9 @@ type Customer = {
   id: number;
   name: string;
   phone: string;
+  address?: string;
+  email?: string;
+  photo?: string;
   due: number;
   createdAt: string;
 };
@@ -15,16 +18,47 @@ export default function KhataPage() {
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [email, setEmail] = useState("");
+  const [photo, setPhoto] = useState("");
   const [due, setDue] = useState(0);
+
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    const savedCustomers = JSON.parse(
+    const savedCustomers: Customer[] = JSON.parse(
       localStorage.getItem("hisabpro_customers") || "[]"
     );
 
     setCustomers(savedCustomers);
   }, []);
+
+  function handlePhotoChange(
+    e: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setMessage("Please select an image file.");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setMessage("Photo size 2MB se kam honi chahiye.");
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      setPhoto(reader.result as string);
+      setMessage("");
+    };
+
+    reader.readAsDataURL(file);
+  }
 
   function addCustomer() {
     if (!name.trim()) {
@@ -41,11 +75,17 @@ export default function KhataPage() {
       id: Date.now(),
       name: name.trim(),
       phone: phone.trim(),
+      address: address.trim(),
+      email: email.trim(),
+      photo,
       due: Math.max(0, due),
       createdAt: new Date().toISOString(),
     };
 
-    const updatedCustomers = [...customers, customer];
+    const updatedCustomers = [
+      ...customers,
+      customer,
+    ];
 
     setCustomers(updatedCustomers);
 
@@ -56,14 +96,29 @@ export default function KhataPage() {
 
     setName("");
     setPhone("");
+    setAddress("");
+    setEmail("");
+    setPhoto("");
     setDue(0);
 
     setMessage("Customer added successfully ✅");
   }
 
   function deleteCustomer(id: number) {
+    const customer = customers.find(
+      (item) => item.id === id
+    );
+
+    if (!customer) return;
+
+    const confirmed = window.confirm(
+      `Delete ${customer.name}?`
+    );
+
+    if (!confirmed) return;
+
     const updatedCustomers = customers.filter(
-      (customer) => customer.id !== id
+      (item) => item.id !== id
     );
 
     setCustomers(updatedCustomers);
@@ -72,10 +127,13 @@ export default function KhataPage() {
       "hisabpro_customers",
       JSON.stringify(updatedCustomers)
     );
+
+    setMessage("Customer deleted.");
   }
 
   const totalDue = customers.reduce(
-    (sum, customer) => sum + customer.due,
+    (sum, customer) =>
+      sum + Number(customer.due || 0),
     0
   );
 
@@ -83,23 +141,28 @@ export default function KhataPage() {
     <main className="khata-page">
 
       <header className="khata-header">
+
         <button
-  onClick={() => window.history.back()}
-  className="back-button"
->
-  ← Back
-</button>
+          onClick={() => window.history.back()}
+          className="back-button"
+        >
+          ← Back
+        </button>
 
         <h1>Khata</h1>
 
         <span></span>
+
       </header>
 
       <section className="khata-stats">
 
         <div>
           <span>Total Customers</span>
-          <strong>{customers.length}</strong>
+
+          <strong>
+            {customers.length}
+          </strong>
         </div>
 
         <div>
@@ -116,32 +179,136 @@ export default function KhataPage() {
 
         <h2>Add Customer</h2>
 
-        <label>Customer Name</label>
+        {/* PHOTO */}
+
+        <div className="customer-photo-upload">
+
+          <div className="customer-photo-preview">
+
+            {photo ? (
+              <img
+                src={photo}
+                alt="Customer"
+              />
+            ) : (
+              <span>👤</span>
+            )}
+
+          </div>
+
+          <div className="photo-upload-content">
+
+            <strong>
+              Profile Photo
+            </strong>
+
+            <small>
+              JPG, PNG or WEBP • Max 2MB
+            </small>
+
+            <label className="photo-upload-button">
+
+              Choose Photo
+
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoChange}
+              />
+
+            </label>
+
+            {photo && (
+              <button
+                type="button"
+                className="remove-photo-button"
+                onClick={() => setPhoto("")}
+              >
+                Remove Photo
+              </button>
+            )}
+
+          </div>
+
+        </div>
+
+        {/* NAME */}
+
+        <label>
+          Customer Name
+        </label>
 
         <input
           type="text"
           placeholder="Example: Rahul Kumar"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) =>
+            setName(e.target.value)
+          }
         />
 
-        <label>Mobile Number</label>
+        {/* PHONE */}
+
+        <label>
+          Mobile Number
+        </label>
 
         <input
           type="tel"
           placeholder="Example: 9876543210"
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
+          onChange={(e) =>
+            setPhone(e.target.value)
+          }
         />
 
-        <label>Opening Due</label>
+        {/* ADDRESS */}
+
+        <label>
+          Address
+        </label>
+
+        <textarea
+          placeholder="Customer address"
+          value={address}
+          onChange={(e) =>
+            setAddress(e.target.value)
+          }
+          rows={3}
+        />
+
+        {/* EMAIL */}
+
+        <label>
+          Email
+        </label>
+
+        <input
+          type="email"
+          placeholder="Example: customer@email.com"
+          value={email}
+          onChange={(e) =>
+            setEmail(e.target.value)
+          }
+        />
+
+        {/* OPENING DUE */}
+
+        <label>
+          Opening Due
+        </label>
 
         <input
           type="number"
           min="0"
           value={due}
           onChange={(e) =>
-            setDue(Math.max(0, Number(e.target.value)))
+            setDue(
+              Math.max(
+                0,
+                Number(e.target.value)
+              )
+            )
           }
         />
 
@@ -157,25 +324,37 @@ export default function KhataPage() {
 
       </section>
 
+      {/* CUSTOMER LIST */}
+
       <section className="customer-list">
 
         <div className="customer-list-title">
-          <h2>Customers</h2>
+
+          <h2>
+            Customers
+          </h2>
+
         </div>
 
         {customers.length === 0 ? (
+
           <div className="empty-customers">
 
             <div>👤</div>
 
-            <h3>No Customers Yet</h3>
+            <h3>
+              No Customers Yet
+            </h3>
 
             <p>
-              Add your first customer to start Khata.
+              Add your first customer
+              to start Khata.
             </p>
 
           </div>
+
         ) : (
+
           customers.map((customer) => (
 
             <div
@@ -183,9 +362,30 @@ export default function KhataPage() {
               key={customer.id}
             >
 
+              {/* CUSTOMER PHOTO */}
+
               <div className="customer-icon">
-                👤
+
+                {customer.photo ? (
+
+                  <img
+                    src={customer.photo}
+                    alt={customer.name}
+                  />
+
+                ) : (
+
+                  <span>
+                    {customer.name
+                      .charAt(0)
+                      .toUpperCase()}
+                  </span>
+
+                )}
+
               </div>
+
+              {/* CUSTOMER INFO */}
 
               <div className="customer-info">
 
@@ -197,19 +397,32 @@ export default function KhataPage() {
                   {customer.phone}
                 </span>
 
+                {customer.address && (
+                  <span>
+                    {customer.address}
+                  </span>
+                )}
+
                 <small>
                   Added{" "}
                   {new Date(
                     customer.createdAt
-                  ).toLocaleDateString("en-IN")}
+                  ).toLocaleDateString(
+                    "en-IN"
+                  )}
                 </small>
 
               </div>
 
+              {/* RIGHT SIDE */}
+
               <div className="customer-right">
 
                 <strong>
-                  ₹{customer.due.toLocaleString("en-IN")}
+                  ₹
+                  {Number(
+                    customer.due || 0
+                  ).toLocaleString("en-IN")}
                 </strong>
 
                 <span>
@@ -229,7 +442,9 @@ export default function KhataPage() {
 
                   <button
                     onClick={() =>
-                      deleteCustomer(customer.id)
+                      deleteCustomer(
+                        customer.id
+                      )
                     }
                   >
                     Delete
@@ -242,6 +457,7 @@ export default function KhataPage() {
             </div>
 
           ))
+
         )}
 
       </section>
