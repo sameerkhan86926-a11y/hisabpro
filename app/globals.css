@@ -3256,3 +3256,96 @@ button {
   line-height: 1;
   border: 2px solid #102a56;
 }
+/* ADD STOCK */
+
+.product-item {
+  position: relative;
+}
+
+.add-stock-button {
+  background: #1559b7 !important;
+  color: white !important;
+  border: none;
+}
+
+.add-stock-panel {
+  width: 100%;
+  margin-top: 15px;
+  padding: 18px;
+  background: #f5f7fb;
+  border-radius: 14px;
+  border: 1px solid #e1e6ef;
+}
+
+.add-stock-panel h3 {
+  font-size: 17px;
+  margin-bottom: 4px;
+  color: #172033;
+}
+
+.add-stock-panel > p {
+  color: #687386;
+  font-size: 12px;
+  margin-bottom: 15px;
+}
+
+.add-stock-panel label {
+  display: block;
+  margin-top: 10px;
+  margin-bottom: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #263247;
+}
+
+.add-stock-panel input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid #dce2eb;
+  border-radius: 9px;
+  background: white;
+  color: #172033;
+  outline: none;
+}
+
+.add-stock-panel input:focus {
+  border-color: #1559b7;
+}
+
+.add-stock-panel input:disabled {
+  background: #e9edf3;
+  color: #687386;
+}
+
+.add-stock-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.add-stock-actions button {
+  padding: 11px 16px;
+  border-radius: 9px;
+  background: #1559b7;
+  color: white;
+  font-weight: 600;
+}
+
+.add-stock-actions button:last-child {
+  background: #e5e9ef;
+  color: #263247;
+}
+
+@media (max-width: 600px) {
+  .add-stock-panel {
+    padding: 15px;
+  }
+
+  .add-stock-actions {
+    flex-direction: column;
+  }
+
+  .add-stock-actions button {
+    width: 100%;
+  }
+}
