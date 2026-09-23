@@ -3812,4 +3812,371 @@ button {
     font-size: 8px;
   }
 }
+/* =================================
+   NEW SALE PAGE
+================================= */
+
+.sales-page {
+  min-height: 100vh;
+  background: #f5f7fb;
+  padding-bottom: 110px;
+}
+
+.sales-header {
+  background: #102a56;
+  color: white;
+  padding: 18px 20px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+}
+
+.sales-header h1 {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.sales-header .back-button {
+  justify-self: start;
+  background: transparent;
+  color: white;
+  padding: 6px 0;
+  font-size: 14px;
+}
+
+/* =================================
+   SALE FORM
+================================= */
+
+.sale-form {
+  width: min(700px, 92%);
+  margin: 25px auto 0;
+  background: white;
+  padding: 20px;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(20, 40, 80, 0.06);
+}
+
+.sale-form h2 {
+  font-size: 19px;
+  color: #172033;
+  margin-bottom: 18px;
+}
+
+.sale-form label,
+.sale-summary label {
+  display: block;
+  margin-top: 14px;
+  margin-bottom: 6px;
+  color: #263247;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sale-form select,
+.sale-form input,
+.sale-summary select,
+.sale-summary input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #dce2eb;
+  border-radius: 9px;
+  background: white;
+  color: #172033;
+  font-size: 13px;
+  outline: none;
+}
+
+.sale-form select:focus,
+.sale-form input:focus,
+.sale-summary select:focus,
+.sale-summary input:focus {
+  border-color: #1559b7;
+}
+
+/* =================================
+   SELECTED PRODUCT / BATCH
+================================= */
+
+.selected-product-info {
+  margin-top: 10px;
+  padding: 12px;
+  background: #f5f7fb;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.selected-product-info strong {
+  font-size: 13px;
+  color: #172033;
+}
+
+.selected-product-info span {
+  font-size: 11px;
+  color: #1559b7;
+}
+
+.selected-product-info small {
+  font-size: 10px;
+  color: #687386;
+}
+
+/* =================================
+   ADD TO BILL
+================================= */
+
+.add-to-bill {
+  width: 100%;
+  margin-top: 18px;
+  padding: 13px;
+  border-radius: 10px;
+  background: #eef4ff;
+  color: #1559b7;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.add-to-bill:hover {
+  background: #e2ecff;
+}
+
+/* =================================
+   BILL SECTION
+================================= */
+
+.bill-section {
+  width: min(700px, 92%);
+  margin: 25px auto 0;
+}
+
+.bill-section .section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.bill-section .section-title h2 {
+  font-size: 19px;
+  color: #172033;
+}
+
+.bill-section .section-title span {
+  color: #687386;
+  font-size: 12px;
+}
+
+.bill-items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bill-item {
+  background: white;
+  border-radius: 13px;
+  padding: 15px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 15px;
+  align-items: center;
+  box-shadow: 0 4px 18px rgba(20, 40, 80, 0.04);
+}
+
+.bill-item > div {
+  min-width: 0;
+}
+
+.bill-item > div > strong {
+  display: block;
+  color: #172033;
+  font-size: 14px;
+}
+
+.bill-item > strong {
+  color: #138a50;
+  font-size: 14px;
+}
+
+.bill-item small {
+  display: block;
+  margin-top: 4px;
+  color: #687386;
+  font-size: 10px;
+}
+
+.bill-item button {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-top: 3px;
+  padding: 6px 9px;
+  border-radius: 6px;
+  background: #fdeaea;
+  color: #c62828;
+  font-size: 10px;
+}
+
+/* =================================
+   EMPTY BILL
+================================= */
+
+.empty-bill {
+  background: white;
+  border-radius: 14px;
+  padding: 35px 20px;
+  text-align: center;
+  color: #687386;
+  box-shadow: 0 4px 18px rgba(20, 40, 80, 0.04);
+}
+
+.empty-bill div {
+  font-size: 35px;
+  margin-bottom: 8px;
+}
+
+.empty-bill p {
+  font-size: 13px;
+}
+
+/* =================================
+   SALE SUMMARY
+================================= */
+
+.sale-summary {
+  width: min(700px, 92%);
+  margin: 25px auto 0;
+  background: white;
+  padding: 20px;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(20, 40, 80, 0.06);
+}
+
+.payment-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 7px;
+}
+
+.payment-buttons button {
+  padding: 12px;
+  border-radius: 9px;
+  background: #eef1f6;
+  color: #263247;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.payment-buttons button.active {
+  background: #1559b7;
+  color: white;
+}
+
+/* =================================
+   TOTALS
+================================= */
+
+.sale-totals {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f5f7fb;
+  border-radius: 12px;
+}
+
+.sale-totals > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 0;
+}
+
+.sale-totals span {
+  color: #687386;
+  font-size: 12px;
+}
+
+.sale-totals strong {
+  color: #172033;
+  font-size: 13px;
+}
+
+.sale-totals .grand-total {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #dce2eb;
+}
+
+.sale-totals .grand-total span,
+.sale-totals .grand-total strong {
+  color: #138a50;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+/* =================================
+   SAVE SALE
+================================= */
+
+.save-sale {
+  width: 100%;
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 10px;
+  background: #1559b7;
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.save-sale:hover {
+  background: #104b9c;
+}
+
+.sale-message {
+  margin-top: 12px;
+  text-align: center;
+  color: #1559b7;
+  font-size: 12px;
+}
+
+/* =================================
+   MOBILE
+================================= */
+
+@media (max-width: 600px) {
+
+  .sales-header {
+    padding: 18px 20px;
+  }
+
+  .sales-header h1 {
+    font-size: 20px;
+  }
+
+  .sale-form,
+  .sale-summary {
+    width: 92%;
+    padding: 17px;
+  }
+
+  .bill-section {
+    width: 92%;
+  }
+
+  .payment-buttons {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .selected-product-info {
+    padding: 10px;
+  }
+
+  .bill-item {
+    padding: 13px;
+  }
+
+}
  
