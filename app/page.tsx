@@ -1,4 +1,4 @@
-import Link from "next/link";
+"use client";
 
 function HomeIcon() {
   return (
@@ -80,6 +80,15 @@ function ReceiptIcon() {
   );
 }
 
+function BellIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+      <path d="M10 21h4" />
+    </svg>
+  );
+}
+
 export default function Home() {
   return (
     <main className="app">
@@ -92,13 +101,14 @@ export default function Home() {
           <p>Sales • Stock • Khata • Profit</p>
         </div>
 
-        <button className="notification" aria-label="Notifications">
-          <svg viewBox="0 0 24 24">
-            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-            <path d="M10 21h4" />
-          </svg>
+        <button
+          className="notification"
+          aria-label="Notifications"
+        >
+          <BellIcon />
         </button>
       </header>
+
 
       {/* WELCOME */}
 
@@ -106,6 +116,7 @@ export default function Home() {
         <p>Good Morning 👋</p>
         <h2>Business Overview</h2>
       </section>
+
 
       {/* STATS */}
 
@@ -137,6 +148,7 @@ export default function Home() {
 
       </section>
 
+
       {/* QUICK ACTIONS */}
 
       <section className="section">
@@ -147,41 +159,45 @@ export default function Home() {
 
         <div className="actions">
 
-          <Link
+          <a
             href="/hisabpro/sales/"
             className="action-link"
           >
             <PlusIcon />
             <span>New Sale</span>
-          </Link>
+          </a>
 
-          <Link
+
+          <a
             href="/hisabpro/stock/"
             className="action-link"
           >
             <PackageIcon />
             <span>Add Product</span>
-          </Link>
+          </a>
 
-          <Link
+
+          <a
             href="/hisabpro/expenses/"
             className="action-link"
           >
             <PlusIcon />
             <span>Add Expense</span>
-          </Link>
+          </a>
 
-          <Link
+
+          <a
             href="/hisabpro/khata/"
             className="action-link"
           >
             <PlusIcon />
             <span>Add Customer</span>
-          </Link>
+          </a>
 
         </div>
 
       </section>
+
 
       {/* BUSINESS SUMMARY */}
 
@@ -190,66 +206,74 @@ export default function Home() {
         <div className="section-title">
           <h3>Business Summary</h3>
 
-          <Link href="/hisabpro/sales/history/">
+          <a href="/hisabpro/sales/history/">
             View All
-          </Link>
+          </a>
         </div>
+
 
         <div className="summary">
 
-          <Link href="/hisabpro/stock/">
+          <a href="/hisabpro/stock/">
             <PackageIcon />
             <p>Low Stock</p>
             <strong>View Stock</strong>
-          </Link>
+          </a>
 
-          <Link href="/hisabpro/khata/">
+
+          <a href="/hisabpro/khata/">
             <UsersIcon />
             <p>Total Customers</p>
             <strong>126</strong>
-          </Link>
+          </a>
 
-          <Link href="/hisabpro/sales/history/">
+
+          <a href="/hisabpro/sales/history/">
             <ReceiptIcon />
             <p>Total Bills</p>
             <strong>View Sales</strong>
-          </Link>
+          </a>
 
         </div>
 
       </section>
 
+
       {/* BOTTOM NAVIGATION */}
 
       <nav className="bottom-nav">
 
-        <Link
+        <a
           href="/hisabpro/"
           className="active"
         >
           <HomeIcon />
           <span>Home</span>
-        </Link>
+        </a>
 
-        <Link href="/hisabpro/sales/">
+
+        <a href="/hisabpro/sales/">
           <SalesIcon />
           <span>Sales</span>
-        </Link>
+        </a>
 
-        <Link href="/hisabpro/stock/">
+
+        <a href="/hisabpro/stock/">
           <StockIcon />
           <span>Stock</span>
-        </Link>
+        </a>
 
-        <Link href="/hisabpro/khata/">
+
+        <a href="/hisabpro/khata/">
           <UsersIcon />
           <span>Khata</span>
-        </Link>
+        </a>
 
-        <Link href="/hisabpro/more/">
+
+        <a href="/hisabpro/more/">
           <MoreIcon />
           <span>More</span>
-        </Link>
+        </a>
 
       </nav>
 
