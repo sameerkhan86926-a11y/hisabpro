@@ -1463,3 +1463,9 @@ button {
 .customer-actions button {
   margin-top: 0;
 }
+.customer-selected {
+  margin-top: 7px;
+  color: #1559b7;
+  font-size: 13px;
+  font-weight: 600;
+}
