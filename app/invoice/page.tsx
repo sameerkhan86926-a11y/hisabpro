@@ -2,12 +2,26 @@
 
 import { useEffect, useState } from "react";
 
-type Sale = {
-  id: number;
+type SaleItem = {
+  productId: number;
   product: string;
   price: number;
-  purchasePrice?: number;
+  purchasePrice: number;
   quantity: number;
+  amount: number;
+};
+
+type Sale = {
+  id: number;
+  items?: SaleItem[];
+
+  // Old single-product sale compatibility
+  product?: string;
+  price?: number;
+  purchasePrice?: number;
+  quantity?: number;
+
+  subtotal: number;
   discount: number;
   total: number;
   date: string;
@@ -99,16 +113,46 @@ export default function InvoicePage() {
     );
   }
 
-  const subtotal = sale.price * sale.quantity;
+  /*
+   * Convert old single-product sale
+   * into the new items format.
+   */
+  const items: SaleItem[] =
+    sale.items && sale.items.length > 0
+      ? sale.items
+      : sale.product
+        ? [
+            {
+              productId: 0,
+              product: sale.product,
+              price: sale.price || 0,
+              purchasePrice:
+                sale.purchasePrice || 0,
+              quantity: sale.quantity || 1,
+              amount:
+                (sale.price || 0) *
+                (sale.quantity || 1),
+            },
+          ]
+        : [];
+
+  const whatsappItems = items
+    .map(
+      (item) =>
+        `${item.product} × ${item.quantity} = ₹${item.amount.toLocaleString(
+          "en-IN"
+        )}`
+    )
+    .join("\n");
 
   const whatsappText = `Invoice #${sale.id}
 ${business.businessName || "HisabPro"}
 ${business.phone ? `Phone: ${business.phone}` : ""}
 ${business.address ? `Address: ${business.address}` : ""}
 
-Product: ${sale.product}
-Qty: ${sale.quantity}
-Rate: ₹${sale.price.toLocaleString("en-IN")}
+${whatsappItems}
+
+Subtotal: ₹${sale.subtotal.toLocaleString("en-IN")}
 Discount: ₹${sale.discount.toLocaleString("en-IN")}
 Total: ₹${sale.total.toLocaleString("en-IN")}
 Payment: ${
@@ -119,6 +163,8 @@ Payment: ${
 
   return (
     <main className="invoice-page">
+
+      {/* HEADER */}
 
       <header className="invoice-header">
 
@@ -140,9 +186,11 @@ Payment: ${
 
       </header>
 
+      {/* INVOICE */}
+
       <section className="invoice-card">
 
-        {/* BUSINESS DETAILS */}
+        {/* BUSINESS */}
 
         <div className="invoice-business">
 
@@ -200,7 +248,7 @@ Payment: ${
 
         </div>
 
-        {/* DATE + PAYMENT */}
+        {/* DATE / PAYMENT */}
 
         <div className="invoice-meta">
 
@@ -244,7 +292,7 @@ Payment: ${
           </div>
         )}
 
-        {/* PRODUCTS */}
+        {/* ITEMS TABLE */}
 
         <div className="invoice-table">
 
@@ -260,31 +308,36 @@ Payment: ${
 
           </div>
 
-          <div className="invoice-row">
+          {items.map((item) => (
+            <div
+              className="invoice-row"
+              key={item.productId}
+            >
 
-            <span>
-              {sale.product}
-            </span>
+              <span>
+                {item.product}
+              </span>
 
-            <span>
-              {sale.quantity}
-            </span>
+              <span>
+                {item.quantity}
+              </span>
 
-            <span>
-              ₹
-              {sale.price.toLocaleString(
-                "en-IN"
-              )}
-            </span>
+              <span>
+                ₹
+                {item.price.toLocaleString(
+                  "en-IN"
+                )}
+              </span>
 
-            <span>
-              ₹
-              {subtotal.toLocaleString(
-                "en-IN"
-              )}
-            </span>
+              <span>
+                ₹
+                {item.amount.toLocaleString(
+                  "en-IN"
+                )}
+              </span>
 
-          </div>
+            </div>
+          ))}
 
         </div>
 
@@ -298,7 +351,7 @@ Payment: ${
 
             <strong>
               ₹
-              {subtotal.toLocaleString(
+              {sale.subtotal.toLocaleString(
                 "en-IN"
               )}
             </strong>
