@@ -2178,4 +2178,7 @@ button {
   font-weight: 600;
   cursor: pointer;
   padding: 0;
+  margin: 0;
+  text-align: left;
+  white-space: nowrap;
 }
