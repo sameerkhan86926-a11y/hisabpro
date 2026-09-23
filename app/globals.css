@@ -797,3 +797,89 @@ button {
   display: block;
   margin-top: 5px;
 }
+/* Dashboard SVG Icons */
+
+.notification svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.action-link {
+  background: white;
+  padding: 20px 10px;
+  border-radius: 15px;
+  color: #1559b7;
+  font-size: 27px;
+  box-shadow: 0 4px 20px rgba(20, 40, 80, 0.05);
+  text-decoration: none;
+  text-align: center;
+}
+
+.action-link svg {
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.action-link span {
+  display: block;
+  margin-top: 8px;
+  color: #263247;
+  font-size: 13px;
+}
+
+.summary a {
+  background: white;
+  padding: 20px;
+  border-radius: 15px;
+  text-decoration: none;
+  color: #172033;
+  display: block;
+}
+
+.summary a svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: #1559b7;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.summary a p {
+  margin-top: 10px;
+  color: #687386;
+  font-size: 13px;
+}
+
+.summary a strong {
+  display: block;
+  margin-top: 5px;
+}
+
+.bottom-nav a {
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bottom-nav svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
