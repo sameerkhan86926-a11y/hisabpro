@@ -168,7 +168,12 @@ export default function ReportsPage() {
   return (
     <main className="reports-page">
       <header className="reports-header">
-        <a href="/hisabpro/">← Dashboard</a>
+        <button
+  onClick={() => window.history.back()}
+  className="back-button"
+>
+  ← Back
+</button>
         <h1>Reports</h1>
         <span></span>
       </header>
