@@ -4911,3 +4911,560 @@ button {
     min-width: 82px;
   }
 }
+/* =========================================
+   CUSTOMER PROFILE
+========================================= */
+
+.customer-photo-upload {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 22px;
+  padding: 14px;
+  background: #f8faff;
+  border: 1px solid #e5eaf2;
+  border-radius: 14px;
+}
+
+.customer-photo-preview {
+  width: 72px;
+  height: 72px;
+  min-width: 72px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #e9eef7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  color: #1559b7;
+}
+
+.customer-photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photo-upload-content {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.photo-upload-content strong {
+  font-size: 14px;
+  color: #172033;
+}
+
+.photo-upload-content small {
+  font-size: 11px;
+  color: #7b8494;
+}
+
+.photo-upload-button {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 5px;
+  padding: 8px 13px;
+  border-radius: 8px;
+  background: #1559b7;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.photo-upload-button input {
+  display: none;
+}
+
+.remove-photo-button {
+  width: fit-content;
+  background: none;
+  color: #d32f2f;
+  font-size: 11px;
+  padding: 0;
+}
+
+.customer-form textarea,
+.customer-edit-form textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid #dfe4ec;
+  border-radius: 10px;
+  padding: 12px;
+  font: inherit;
+  color: #172033;
+  outline: none;
+  margin-bottom: 15px;
+  background: white;
+}
+
+.customer-form textarea:focus,
+.customer-form input:focus,
+.customer-edit-form textarea:focus,
+.customer-edit-form input:focus {
+  border-color: #1559b7;
+}
+
+.customer-icon {
+  overflow: hidden;
+}
+
+.customer-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.customer-icon span {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1559b7;
+}
+
+
+/* =========================================
+   CUSTOMER DETAIL HEADER
+========================================= */
+
+.customer-detail-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 15px;
+}
+
+.customer-detail-header > :last-child {
+  justify-self: end;
+}
+
+.edit-customer-top {
+  background: #eef4ff;
+  color: #1559b7;
+  padding: 9px 13px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+
+/* =========================================
+   CUSTOMER LARGE PROFILE
+========================================= */
+
+.customer-avatar-large {
+  width: 82px;
+  height: 82px;
+  min-width: 82px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #e9eef7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1559b7;
+  font-size: 32px;
+  font-weight: 800;
+}
+
+.customer-avatar-large img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.customer-profile-info {
+  min-width: 0;
+}
+
+.customer-profile-info h2 {
+  font-size: 22px;
+  margin-bottom: 6px;
+}
+
+.customer-profile-info p {
+  margin-top: 4px;
+  color: #687386;
+  font-size: 13px;
+  word-break: break-word;
+}
+
+.customer-profile-info small {
+  display: block;
+  margin-top: 8px;
+  color: #8992a2;
+  font-size: 11px;
+}
+
+
+/* =========================================
+   QUICK ACTIONS
+========================================= */
+
+.customer-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  width: min(1100px, 92%);
+  margin: 18px auto 0;
+}
+
+.customer-quick-actions a,
+.customer-quick-actions button {
+  min-height: 64px;
+  border-radius: 13px;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 21px;
+  background: white;
+  box-shadow: 0 4px 20px rgba(20, 40, 80, 0.05);
+}
+
+.customer-quick-actions span {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.quick-call {
+  color: #1559b7;
+}
+
+.quick-whatsapp {
+  color: #168447;
+}
+
+.quick-edit {
+  color: #6d4bc3;
+}
+
+
+/* =========================================
+   CUSTOMER SUMMARY
+========================================= */
+
+.customer-summary {
+  width: min(1100px, 92%);
+  margin: 18px auto 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.customer-summary div {
+  background: white;
+  border-radius: 13px;
+  padding: 16px;
+  box-shadow: 0 4px 20px rgba(20, 40, 80, 0.05);
+}
+
+.customer-summary span {
+  display: block;
+  color: #687386;
+  font-size: 12px;
+}
+
+.customer-summary strong {
+  display: block;
+  margin-top: 7px;
+  color: #172033;
+  font-size: 18px;
+}
+
+
+/* =========================================
+   EDIT CUSTOMER
+========================================= */
+
+.customer-edit-form {
+  width: min(1100px, 92%);
+  margin: 22px auto 0;
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(20, 40, 80, 0.06);
+}
+
+.edit-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.edit-form-header h2 {
+  font-size: 19px;
+}
+
+.edit-form-header button {
+  background: #f1f3f7;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: #687386;
+}
+
+.edit-photo-section {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.edit-photo-preview {
+  width: 76px;
+  height: 76px;
+  min-width: 76px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #e9eef7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1559b7;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.edit-photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.customer-edit-form label {
+  display: block;
+  margin-bottom: 7px;
+  color: #4f596b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.customer-edit-form input {
+  width: 100%;
+  border: 1px solid #dfe4ec;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 15px;
+  font: inherit;
+  color: #172033;
+  outline: none;
+  background: white;
+}
+
+.edit-form-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 5px;
+}
+
+.save-customer-button {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  background: #1559b7;
+  color: white;
+  font-weight: 700;
+}
+
+.cancel-edit-button {
+  padding: 12px 18px;
+  border-radius: 10px;
+  background: #eef1f5;
+  color: #4f596b;
+  font-weight: 700;
+}
+
+
+/* =========================================
+   TRANSACTION HISTORY HEADER
+========================================= */
+
+.transaction-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.transaction-history-header span {
+  min-width: 25px;
+  height: 25px;
+  padding: 0 7px;
+  border-radius: 20px;
+  background: #eef4ff;
+  color: #1559b7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+
+/* =========================================
+   DANGER ZONE
+========================================= */
+
+.customer-danger-zone {
+  width: min(1100px, 92%);
+  margin: 25px auto 30px;
+  padding-top: 20px;
+  border-top: 1px solid #e8ebf0;
+  text-align: center;
+}
+
+.customer-danger-zone button {
+  padding: 11px 18px;
+  border-radius: 10px;
+  background: #fff1f1;
+  color: #d32f2f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+
+/* =========================================
+   CUSTOMER NOT FOUND
+========================================= */
+
+.customer-not-found {
+  width: min(600px, 92%);
+  margin: 60px auto;
+  background: white;
+  padding: 35px 20px;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(20, 40, 80, 0.05);
+}
+
+.customer-not-found h2 {
+  font-size: 20px;
+}
+
+.customer-not-found p {
+  margin-top: 8px;
+  color: #687386;
+  font-size: 13px;
+}
+
+.customer-not-found a {
+  display: inline-block;
+  margin-top: 18px;
+  padding: 10px 15px;
+  border-radius: 9px;
+  background: #1559b7;
+  color: white;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width: 600px) {
+
+  .customer-detail-header {
+    grid-template-columns: 1fr auto 1fr;
+  }
+
+  .customer-detail-header h1 {
+    font-size: 19px;
+  }
+
+  .customer-detail-header a {
+    font-size: 12px;
+  }
+
+  .edit-customer-top {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  .customer-profile {
+    align-items: flex-start;
+  }
+
+  .customer-avatar-large {
+    width: 68px;
+    height: 68px;
+    min-width: 68px;
+    font-size: 26px;
+  }
+
+  .customer-profile-info h2 {
+    font-size: 19px;
+  }
+
+  .customer-quick-actions {
+    gap: 8px;
+  }
+
+  .customer-quick-actions a,
+  .customer-quick-actions button {
+    min-height: 58px;
+    font-size: 18px;
+  }
+
+  .customer-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-photo-upload {
+    align-items: flex-start;
+  }
+
+  .customer-photo-preview {
+    width: 64px;
+    height: 64px;
+    min-width: 64px;
+  }
+
+  .customer-item {
+    align-items: flex-start;
+  }
+
+  .customer-info {
+    min-width: 0;
+  }
+
+  .customer-info strong {
+    word-break: break-word;
+  }
+
+  .customer-info span {
+    word-break: break-word;
+  }
+
+  .customer-right {
+    min-width: 85px;
+  }
+
+  .customer-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .customer-actions a,
+  .customer-actions button {
+    text-align: center;
+  }
+
+  .edit-form-buttons {
+    flex-direction: column;
+  }
+
+  .cancel-edit-button {
+    width: 100%;
+  }
+
+}
