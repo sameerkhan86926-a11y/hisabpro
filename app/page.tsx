@@ -101,21 +101,22 @@ export default function Dashboard() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [notificationCount, setNotificationCount] = useState(0);
+
   useEffect(() => {
     try {
-      const savedSales = JSON.parse(
+      const savedSales: Sale[] = JSON.parse(
         localStorage.getItem("hisabpro_sales") || "[]"
       );
 
-      const savedProducts = JSON.parse(
+      const savedProducts: Product[] = JSON.parse(
         localStorage.getItem("hisabpro_products") || "[]"
       );
 
-      const savedCustomers = JSON.parse(
+      const savedCustomers: Customer[] = JSON.parse(
         localStorage.getItem("hisabpro_customers") || "[]"
       );
 
-      const savedExpenses = JSON.parse(
+      const savedExpenses: Expense[] = JSON.parse(
         localStorage.getItem("hisabpro_expenses") || "[]"
       );
 
@@ -123,8 +124,28 @@ export default function Dashboard() {
       setProducts(Array.isArray(savedProducts) ? savedProducts : []);
       setCustomers(Array.isArray(savedCustomers) ? savedCustomers : []);
       setExpenses(Array.isArray(savedExpenses) ? savedExpenses : []);
+
+      // -----------------------------
+      // NOTIFICATION COUNT
+      // -----------------------------
+
+      const lowStockCount = savedProducts.filter(
+        (product: Product) => Number(product.stock) <= 5
+      ).length;
+
+      const dueCount = savedCustomers.filter(
+        (customer: Customer) => Number(customer.due) > 0
+      ).length;
+
+      setNotificationCount(lowStockCount + dueCount);
     } catch (error) {
       console.error("Dashboard data error:", error);
+
+      setSales([]);
+      setProducts([]);
+      setCustomers([]);
+      setExpenses([]);
+      setNotificationCount(0);
     }
   }, []);
 
@@ -154,9 +175,7 @@ export default function Dashboard() {
     const itemProfit = items.reduce(
       (itemTotal, item) => {
         const sellingPrice = Number(item.price || 0);
-        const purchasePrice = Number(
-          item.purchasePrice || 0
-        );
+        const purchasePrice = Number(item.purchasePrice || 0);
         const quantity = Number(item.quantity || 0);
 
         return (
@@ -219,19 +238,6 @@ export default function Dashboard() {
       sum + Number(customer.due || 0),
     0
   );
-  const lowStockCount = savedProducts.filter(
-  (product: Product) =>
-    Number(product.stock) <= 5
-).length;
-
-const dueCount = savedCustomers.filter(
-  (customer: Customer) =>
-    Number(customer.due) > 0
-).length;
-
-setNotificationCount(
-  lowStockCount + dueCount
-);
 
   return (
     <main className="app">
@@ -242,27 +248,27 @@ setNotificationCount(
           <h1>HisabPro</h1>
           <p>Sales • Stock • Khata • Profit</p>
         </div>
-      <a
-  href="/hisabpro/notifications/"
-  className="notification"
->
-  <svg
-    viewBox="0 0 24 24"
-    aria-hidden="true"
-  >
-    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-    <path d="M10 21h4" />
-  </svg>
 
-  {notificationCount > 0 && (
-    <span className="notification-badge">
-      {notificationCount > 99
-        ? "99+"
-        : notificationCount}
-    </span>
-  )}
-</a>
-        
+        <a
+          href="/hisabpro/notifications/"
+          className="notification"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+            <path d="M10 21h4" />
+          </svg>
+
+          {notificationCount > 0 && (
+            <span className="notification-badge">
+              {notificationCount > 99
+                ? "99+"
+                : notificationCount}
+            </span>
+          )}
+        </a>
       </header>
 
       {/* WELCOME */}
@@ -382,7 +388,10 @@ setNotificationCount(
             </svg>
 
             <p>Total Stock</p>
-            <strong>{totalStock} items</strong>
+
+            <strong>
+              {totalStock} items
+            </strong>
 
             <small>
               Value: {formatMoney(stockValue)}
@@ -396,6 +405,7 @@ setNotificationCount(
             </svg>
 
             <p>Customer Due</p>
+
             <strong>
               {formatMoney(totalCustomerDue)}
             </strong>
@@ -413,6 +423,7 @@ setNotificationCount(
             </svg>
 
             <p>Profit Report</p>
+
             <strong>
               {formatMoney(netProfit)}
             </strong>
@@ -437,6 +448,7 @@ setNotificationCount(
             <path d="M5 10v10h14V10" />
             <path d="M9 20v-6h6v6" />
           </svg>
+
           <span>Home</span>
         </a>
 
@@ -445,6 +457,7 @@ setNotificationCount(
             <path d="M4 4h16v16H4z" />
             <path d="M8 8h8M8 12h8M8 16h5" />
           </svg>
+
           <span>Sales</span>
         </a>
 
@@ -454,6 +467,7 @@ setNotificationCount(
             <path d="M3 7v10l9 4 9-4V7" />
             <path d="M12 11v10" />
           </svg>
+
           <span>Stock</span>
         </a>
 
@@ -462,6 +476,7 @@ setNotificationCount(
             <circle cx="12" cy="8" r="4" />
             <path d="M4 21c0-4 3-7 8-7s8 3 8 7" />
           </svg>
+
           <span>Khata</span>
         </a>
 
@@ -471,6 +486,7 @@ setNotificationCount(
             <circle cx="12" cy="12" r="1.5" />
             <circle cx="19" cy="12" r="1.5" />
           </svg>
+
           <span>More</span>
         </a>
 
