@@ -83,9 +83,12 @@ export default function KhataPage() {
     <main className="khata-page">
 
       <header className="khata-header">
-        <a href="/hisabpro/">
-          ← Dashboard
-        </a>
+        <button
+  onClick={() => window.history.back()}
+  className="back-button"
+>
+  ← Back
+</button>
 
         <h1>Khata</h1>
 
