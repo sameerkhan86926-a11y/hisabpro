@@ -130,6 +130,10 @@ export default function SalesPage() {
       "hisabpro_sales",
       JSON.stringify(oldSales)
     );
+    localStorage.setItem(
+  "hisabpro_last_invoice",
+  JSON.stringify(sale)
+);
 
     // Reduce stock
     const updatedProducts = products.map((product) =>
