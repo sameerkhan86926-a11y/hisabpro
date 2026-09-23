@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Product = {
   id: number;
@@ -30,6 +30,15 @@ type Transaction = {
 
 type PaymentType = "cash" | "credit";
 
+type CartItem = {
+  productId: number;
+  product: string;
+  price: number;
+  purchasePrice: number;
+  quantity: number;
+  amount: number;
+};
+
 export default function SalesPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -42,6 +51,8 @@ export default function SalesPage() {
 
   const [paymentType, setPaymentType] =
     useState<PaymentType>("cash");
+
+  const [cart, setCart] = useState<CartItem[]>([]);
 
   const [message, setMessage] = useState("");
 
@@ -66,13 +77,26 @@ export default function SalesPage() {
     (customer) => customer.id === Number(customerId)
   );
 
-  const subtotal = selectedProduct
-    ? selectedProduct.sellingPrice * quantity
-    : 0;
+  const subtotal = useMemo(() => {
+    return cart.reduce(
+      (sum, item) => sum + item.amount,
+      0
+    );
+  }, [cart]);
 
-  const total = Math.max(subtotal - discount, 0);
+  const totalQuantity = useMemo(() => {
+    return cart.reduce(
+      (sum, item) => sum + item.quantity,
+      0
+    );
+  }, [cart]);
 
-  function saveSale() {
+  const total = Math.max(
+    subtotal - discount,
+    0
+  );
+
+  function addToBill() {
     setMessage("");
 
     if (!selectedProduct) {
@@ -92,20 +116,115 @@ export default function SalesPage() {
       return;
     }
 
-    if (paymentType === "credit" && !selectedCustomer) {
-      setMessage("Please select a customer for credit sale.");
+    const existingItem = cart.find(
+      (item) =>
+        item.productId === selectedProduct.id
+    );
+
+    const existingQuantity =
+      existingItem?.quantity || 0;
+
+    if (
+      existingQuantity + quantity >
+      selectedProduct.stock
+    ) {
+      setMessage(
+        `Only ${selectedProduct.stock} items available in stock.`
+      );
       return;
+    }
+
+    if (existingItem) {
+      setCart(
+        cart.map((item) =>
+          item.productId === selectedProduct.id
+            ? {
+                ...item,
+                quantity:
+                  item.quantity + quantity,
+                amount:
+                  (item.quantity + quantity) *
+                  item.price,
+              }
+            : item
+        )
+      );
+    } else {
+      const newItem: CartItem = {
+        productId: selectedProduct.id,
+        product: selectedProduct.name,
+        price: selectedProduct.sellingPrice,
+        purchasePrice:
+          selectedProduct.purchasePrice,
+        quantity,
+        amount:
+          selectedProduct.sellingPrice *
+          quantity,
+      };
+
+      setCart([...cart, newItem]);
+    }
+
+    setProductId("");
+    setQuantity(1);
+    setMessage("");
+  }
+
+  function removeFromBill(productId: number) {
+    setCart(
+      cart.filter(
+        (item) => item.productId !== productId
+      )
+    );
+  }
+
+  function saveSale() {
+    setMessage("");
+
+    if (cart.length === 0) {
+      setMessage(
+        "Please add at least one product to the bill."
+      );
+      return;
+    }
+
+    if (
+      paymentType === "credit" &&
+      !selectedCustomer
+    ) {
+      setMessage(
+        "Please select a customer for credit sale."
+      );
+      return;
+    }
+
+    // Final stock check
+    for (const item of cart) {
+      const product = products.find(
+        (p) => p.id === item.productId
+      );
+
+      if (!product) {
+        setMessage(
+          `Product "${item.product}" not found.`
+        );
+        return;
+      }
+
+      if (item.quantity > product.stock) {
+        setMessage(
+          `Not enough stock for ${item.product}.`
+        );
+        return;
+      }
     }
 
     const saleId = Date.now();
 
     const sale = {
       id: saleId,
-      productId: selectedProduct.id,
-      product: selectedProduct.name,
-      price: selectedProduct.sellingPrice,
-      purchasePrice: selectedProduct.purchasePrice,
-      quantity,
+      items: cart,
+      subtotal,
       discount,
       total,
       paymentType,
@@ -121,7 +240,9 @@ export default function SalesPage() {
     };
 
     const oldSales = JSON.parse(
-      localStorage.getItem("hisabpro_sales") || "[]"
+      localStorage.getItem(
+        "hisabpro_sales"
+      ) || "[]"
     );
 
     oldSales.push(sale);
@@ -131,21 +252,30 @@ export default function SalesPage() {
       JSON.stringify(oldSales)
     );
 
-    // Save latest sale for invoice
+    // Save latest invoice
     localStorage.setItem(
       "hisabpro_last_invoice",
       JSON.stringify(sale)
     );
 
-    // Reduce stock
-    const updatedProducts = products.map((product) =>
-      product.id === selectedProduct.id
-        ? {
-            ...product,
-            stock: product.stock - quantity,
-          }
-        : product
-    );
+    // Reduce stock for every product
+    const updatedProducts =
+      products.map((product) => {
+        const item = cart.find(
+          (cartItem) =>
+            cartItem.productId === product.id
+        );
+
+        if (!item) {
+          return product;
+        }
+
+        return {
+          ...product,
+          stock:
+            product.stock - item.quantity,
+        };
+      });
 
     setProducts(updatedProducts);
 
@@ -154,19 +284,23 @@ export default function SalesPage() {
       JSON.stringify(updatedProducts)
     );
 
-    // Credit Sale → Add customer due
-    if (paymentType === "credit" && selectedCustomer) {
+    // Credit Sale
+    if (
+      paymentType === "credit" &&
+      selectedCustomer
+    ) {
       const updatedCustomer: Customer = {
         ...selectedCustomer,
-        due: selectedCustomer.due + total,
+        due:
+          selectedCustomer.due + total,
       };
 
-      const updatedCustomers = customers.map(
-        (customer) =>
+      const updatedCustomers =
+        customers.map((customer) =>
           customer.id === selectedCustomer.id
             ? updatedCustomer
             : customer
-      );
+        );
 
       setCustomers(updatedCustomers);
 
@@ -175,19 +309,23 @@ export default function SalesPage() {
         JSON.stringify(updatedCustomers)
       );
 
-      // Add transaction to customer history
       const transaction: Transaction = {
         id: Date.now() + 1,
         customerId: selectedCustomer.id,
         type: "credit",
         amount: total,
-        note: `Credit Sale - ${selectedProduct.name}`,
+        note: `Credit Sale - ${cart
+          .map((item) => item.product)
+          .join(", ")}`,
         date: new Date().toISOString(),
       };
 
-      const oldTransactions = JSON.parse(
-        localStorage.getItem("hisabpro_transactions") || "[]"
-      );
+      const oldTransactions =
+        JSON.parse(
+          localStorage.getItem(
+            "hisabpro_transactions"
+          ) || "[]"
+        );
 
       oldTransactions.push(transaction);
 
@@ -197,20 +335,17 @@ export default function SalesPage() {
       );
     }
 
-    setMessage(
-      paymentType === "credit"
-        ? "Credit sale saved & customer due updated successfully ✅"
-        : "Sale saved & stock updated successfully ✅"
-    );
-
+    // Reset form
     setProductId("");
     setCustomerId("");
     setQuantity(1);
     setDiscount(0);
     setPaymentType("cash");
+    setCart([]);
 
-    // Open invoice automatically
-    window.location.href = "/hisabpro/invoice/";
+    // Open invoice
+    window.location.href =
+      "/hisabpro/invoice/";
   }
 
   return (
@@ -237,6 +372,8 @@ export default function SalesPage() {
 
         <h2>Create New Sale</h2>
 
+        {/* PRODUCT */}
+
         <label>Product</label>
 
         <select
@@ -257,7 +394,9 @@ export default function SalesPage() {
               disabled={product.stock <= 0}
             >
               {product.name} — ₹
-              {product.sellingPrice.toLocaleString("en-IN")}
+              {product.sellingPrice.toLocaleString(
+                "en-IN"
+              )}
               {" | Stock: "}
               {product.stock}
             </option>
@@ -266,23 +405,101 @@ export default function SalesPage() {
 
         {selectedProduct && (
           <p className="stock-available">
-            Available Stock: {selectedProduct.stock}
+            Available Stock:{" "}
+            {selectedProduct.stock}
           </p>
         )}
+
+        {/* QUANTITY */}
 
         <label>Quantity</label>
 
         <input
           type="number"
           min="1"
-          max={selectedProduct?.stock || undefined}
+          max={
+            selectedProduct?.stock ||
+            undefined
+          }
           value={quantity}
           onChange={(e) =>
             setQuantity(
-              Math.max(1, Number(e.target.value))
+              Math.max(
+                1,
+                Number(e.target.value)
+              )
             )
           }
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              addToBill();
+            }
+          }}
         />
+
+        <button
+          className="add-to-bill"
+          onClick={addToBill}
+        >
+          + Add to Bill
+        </button>
+
+        {/* BILL ITEMS */}
+
+        {cart.length > 0 && (
+          <div className="bill-items">
+
+            <h3>Bill Items</h3>
+
+            {cart.map((item) => (
+              <div
+                className="bill-item"
+                key={item.productId}
+              >
+
+                <div className="bill-item-info">
+
+                  <strong>
+                    {item.product}
+                  </strong>
+
+                  <span>
+                    {item.quantity} × ₹
+                    {item.price.toLocaleString(
+                      "en-IN"
+                    )}
+                  </span>
+
+                </div>
+
+                <div className="bill-item-right">
+
+                  <strong>
+                    ₹
+                    {item.amount.toLocaleString(
+                      "en-IN"
+                    )}
+                  </strong>
+
+                  <button
+                    onClick={() =>
+                      removeFromBill(
+                        item.productId
+                      )
+                    }
+                  >
+                    Remove
+                  </button>
+
+                </div>
+
+              </div>
+            ))}
+
+          </div>
+        )}
+
+        {/* DISCOUNT */}
 
         <label>Discount</label>
 
@@ -292,10 +509,15 @@ export default function SalesPage() {
           value={discount}
           onChange={(e) =>
             setDiscount(
-              Math.max(0, Number(e.target.value))
+              Math.max(
+                0,
+                Number(e.target.value)
+              )
             )
           }
         />
+
+        {/* PAYMENT */}
 
         <label>Payment Type</label>
 
@@ -317,6 +539,8 @@ export default function SalesPage() {
           </option>
         </select>
 
+        {/* CUSTOMER */}
+
         {paymentType === "credit" && (
           <>
             <label>Customer</label>
@@ -324,7 +548,9 @@ export default function SalesPage() {
             <select
               value={customerId}
               onChange={(e) => {
-                setCustomerId(e.target.value);
+                setCustomerId(
+                  e.target.value
+                );
                 setMessage("");
               }}
             >
@@ -338,7 +564,9 @@ export default function SalesPage() {
                   value={customer.id}
                 >
                   {customer.name} — Due ₹
-                  {customer.due.toLocaleString("en-IN")}
+                  {customer.due.toLocaleString(
+                    "en-IN"
+                  )}
                 </option>
               ))}
             </select>
@@ -354,49 +582,50 @@ export default function SalesPage() {
           </>
         )}
 
+        {/* SUMMARY */}
+
         <div className="sale-summary">
 
           <div>
-            <span>Price</span>
+            <span>Items</span>
             <strong>
-              ₹
-              {selectedProduct
-                ? selectedProduct.sellingPrice.toLocaleString(
-                    "en-IN"
-                  )
-                : "0"}
-            </strong>
-          </div>
-
-          <div>
-            <span>Quantity</span>
-            <strong>
-              {quantity}
+              {totalQuantity}
             </strong>
           </div>
 
           <div>
             <span>Subtotal</span>
             <strong>
-              ₹{subtotal.toLocaleString("en-IN")}
+              ₹
+              {subtotal.toLocaleString(
+                "en-IN"
+              )}
             </strong>
           </div>
 
           <div>
             <span>Discount</span>
             <strong>
-              ₹{discount.toLocaleString("en-IN")}
+              ₹
+              {discount.toLocaleString(
+                "en-IN"
+              )}
             </strong>
           </div>
 
           <div className="sale-total">
             <span>Total</span>
             <strong>
-              ₹{total.toLocaleString("en-IN")}
+              ₹
+              {total.toLocaleString(
+                "en-IN"
+              )}
             </strong>
           </div>
 
         </div>
+
+        {/* SAVE */}
 
         <button
           className="save-sale"
