@@ -2,6 +2,13 @@
 
 import { useEffect, useState } from "react";
 
+type BatchDetail = {
+  batchId: number;
+  quantity: number;
+  purchasePrice: number;
+  sellingPrice: number;
+};
+
 type SaleItem = {
   productId: number;
   product: string;
@@ -9,6 +16,7 @@ type SaleItem = {
   purchasePrice: number;
   quantity: number;
   amount: number;
+  batchDetails?: BatchDetail[];
 };
 
 type Sale = {
@@ -36,6 +44,14 @@ type Business = {
   address: string;
   gstin: string;
   email: string;
+};
+
+type InvoiceLine = {
+  key: string;
+  product: string;
+  quantity: number;
+  price: number;
+  amount: number;
 };
 
 const defaultBusiness: Business = {
@@ -136,10 +152,51 @@ export default function InvoicePage() {
           ]
         : [];
 
-  const whatsappItems = items
+  /*
+   * Convert batch-aware sale items into
+   * invoice lines.
+   *
+   * If one product was sold from multiple
+   * batches at different rates, each batch
+   * will appear as a separate invoice line.
+   */
+  const invoiceLines: InvoiceLine[] = [];
+
+  items.forEach((item, itemIndex) => {
+    if (
+      item.batchDetails &&
+      item.batchDetails.length > 0
+    ) {
+      item.batchDetails.forEach(
+        (batch, batchIndex) => {
+          invoiceLines.push({
+            key: `${item.productId}-${itemIndex}-${batch.batchId}-${batchIndex}`,
+            product: item.product,
+            quantity: batch.quantity,
+            price: batch.sellingPrice,
+            amount:
+              batch.sellingPrice *
+              batch.quantity,
+          });
+        }
+      );
+    } else {
+      invoiceLines.push({
+        key: `${item.productId}-${itemIndex}`,
+        product: item.product,
+        quantity: item.quantity,
+        price: item.price,
+        amount: item.amount,
+      });
+    }
+  });
+
+  const whatsappItems = invoiceLines
     .map(
       (item) =>
-        `${item.product} × ${item.quantity} = ₹${item.amount.toLocaleString(
+        `${item.product} × ${item.quantity} @ ₹${item.price.toLocaleString(
+          "en-IN"
+        )} = ₹${item.amount.toLocaleString(
           "en-IN"
         )}`
     )
@@ -308,10 +365,10 @@ Payment: ${
 
           </div>
 
-          {items.map((item) => (
+          {invoiceLines.map((item) => (
             <div
               className="invoice-row"
-              key={item.productId}
+              key={item.key}
             >
 
               <span>
