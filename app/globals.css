@@ -3720,3 +3720,216 @@ button {
     width: 100%;
   }
 }
+.business-form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.business-form-actions .save-business {
+  flex: 1;
+  margin-top: 0;
+}
+
+.cancel-business {
+  padding: 13px 18px;
+  border-radius: 9px;
+  background: #eef1f6;
+  color: #263247;
+  font-weight: 600;
+}
+
+.business-list-section {
+  width: min(700px, 92%);
+  margin: 25px auto 100px;
+}
+
+.business-list-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.business-list-title h2 {
+  font-size: 19px;
+}
+
+.business-list-title p {
+  margin-top: 4px;
+  color: #687386;
+  font-size: 12px;
+}
+
+.business-list-title > span {
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 50px;
+  background: #eef1f6;
+  color: #1559b7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.business-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.business-profile {
+  background: white;
+  border: 1px solid #e1e6ef;
+  border-radius: 15px;
+  padding: 16px;
+  box-shadow: 0 4px 18px rgba(20, 40, 80, 0.04);
+}
+
+.business-profile.active {
+  border: 1.5px solid #1559b7;
+  background: #f8fbff;
+}
+
+.business-profile-top {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.business-profile-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: #eef4ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 21px;
+  flex-shrink: 0;
+}
+
+.business-profile-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.business-profile-info strong {
+  display: block;
+  color: #172033;
+  font-size: 15px;
+}
+
+.business-profile-info span {
+  display: block;
+  margin-top: 3px;
+  color: #687386;
+  font-size: 11px;
+}
+
+.active-business-badge {
+  padding: 5px 8px;
+  border-radius: 50px;
+  background: #e5f7ed;
+  color: #138a50;
+  font-size: 9px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.business-address,
+.business-gstin {
+  margin-top: 12px;
+  color: #687386;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.business-gstin {
+  color: #263247;
+  font-weight: 600;
+}
+
+.business-profile-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.business-profile-actions button {
+  padding: 9px 11px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.select-business {
+  flex: 1;
+  background: #1559b7;
+  color: white;
+}
+
+.edit-business {
+  background: #eef1f6;
+  color: #263247;
+}
+
+.delete-business {
+  background: #fdeaea;
+  color: #c62828;
+}
+
+.business-empty {
+  background: white;
+  border-radius: 14px;
+  padding: 35px 20px;
+  text-align: center;
+  color: #687386;
+}
+
+.business-empty div {
+  font-size: 35px;
+  margin-bottom: 8px;
+}
+
+.business-empty strong {
+  display: block;
+  color: #263247;
+  font-size: 14px;
+}
+
+.business-empty p {
+  margin-top: 5px;
+  font-size: 12px;
+}
+
+@media (max-width: 600px) {
+  .business-form-actions {
+    flex-direction: column;
+  }
+
+  .cancel-business {
+    width: 100%;
+  }
+
+  .business-profile-actions {
+    flex-wrap: wrap;
+  }
+
+  .select-business {
+    width: 100%;
+    flex: auto;
+  }
+
+  .edit-business,
+  .delete-business {
+    flex: 1;
+  }
+
+  .active-business-badge {
+    font-size: 8px;
+  }
+}
