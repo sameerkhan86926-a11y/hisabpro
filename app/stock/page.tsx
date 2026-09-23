@@ -95,7 +95,12 @@ export default function StockPage() {
     <main className="stock-page">
 
       <header className="stock-header">
-        <a href="/hisabpro/">← Dashboard</a>
+        <button
+  onClick={() => window.history.back()}
+  className="back-button"
+>
+  ← Back
+</button>
 
         <h1>Stock</h1>
 
