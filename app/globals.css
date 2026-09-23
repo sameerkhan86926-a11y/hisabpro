@@ -2704,3 +2704,47 @@ button {
     font-size: 10px;
   }
 }
+.history-products {
+  margin-top: 8px;
+  margin-bottom: 7px;
+  border: 1px solid #e8ebf0;
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.history-product-row {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr auto;
+  gap: 8px;
+  padding: 7px 9px;
+  border-bottom: 1px solid #e8ebf0;
+  font-size: 11px;
+  color: #687386;
+}
+
+.history-product-row:last-child {
+  border-bottom: none;
+}
+
+.history-product-row span:first-child {
+  color: #263247;
+  font-weight: 600;
+}
+
+.history-product-row span:nth-child(2) {
+  text-align: center;
+}
+
+.history-product-row strong {
+  color: #172033;
+  text-align: right;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .history-product-row {
+    grid-template-columns: 1.4fr 0.9fr auto;
+    font-size: 10px;
+    padding: 7px;
+  }
+}
