@@ -241,23 +241,44 @@ button {
 .sales-header {
   background: #102a56;
   color: white;
-  padding: 22px 6%;
+  padding: 18px 15px;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
+  gap: 10px;
 }
 
 .sales-header a {
   color: white;
   text-decoration: none;
   font-size: 14px;
+  white-space: nowrap;
+}
+
+.sales-header a:last-child {
+  text-align: right;
 }
 
 .sales-header h1 {
-  font-size: 24px;
+  font-size: 22px;
   text-align: center;
+  white-space: nowrap;
 }
 
+@media (max-width: 500px) {
+  .sales-header {
+    padding: 16px 12px;
+    gap: 6px;
+  }
+
+  .sales-header a {
+    font-size: 12px;
+  }
+
+  .sales-header h1 {
+    font-size: 18px;
+  }
+}
 .sale-box {
   width: min(600px, 92%);
   margin: 30px auto;
