@@ -2170,3 +2170,12 @@ button {
     margin-top: 25px;
   }
 }
+.back-button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
