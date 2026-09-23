@@ -1,17 +1,34 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
-type Sale = {
-  id: number;
+type SaleItem = {
+  productId: number;
   product: string;
   price: number;
   purchasePrice: number;
   quantity: number;
+  amount: number;
+};
+
+type Sale = {
+  id: number;
+
+  // New multi-product format
+  items?: SaleItem[];
+  subtotal?: number;
+
+  // Old single-product format
+  product?: string;
+  price?: number;
+  purchasePrice?: number;
+  quantity?: number;
+
   discount: number;
   total: number;
   date: string;
   paymentType?: "cash" | "credit";
+  customerName?: string;
 };
 
 type Expense = {
@@ -23,344 +40,756 @@ type Expense = {
   date: string;
 };
 
-type ProductReport = {
-  name: string;
-  quantity: number;
-  sales: number;
-  profit: number;
-};
-
-type Period = "today" | "week" | "month" | "all";
+type Period =
+  | "today"
+  | "week"
+  | "month"
+  | "all";
 
 export default function ReportsPage() {
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [period, setPeriod] = useState<Period>("today");
+  const [sales, setSales] =
+    useState<Sale[]>([]);
+
+  const [expenses, setExpenses] =
+    useState<Expense[]>([]);
+
+  const [period, setPeriod] =
+    useState<Period>("month");
 
   useEffect(() => {
-    const savedSales = JSON.parse(
-      localStorage.getItem("hisabpro_sales") || "[]"
-    );
+    const savedSales =
+      JSON.parse(
+        localStorage.getItem(
+          "hisabpro_sales"
+        ) || "[]"
+      );
 
-    const savedExpenses = JSON.parse(
-      localStorage.getItem("hisabpro_expenses") || "[]"
-    );
+    const savedExpenses =
+      JSON.parse(
+        localStorage.getItem(
+          "hisabpro_expenses"
+        ) || "[]"
+      );
 
     setSales(savedSales);
     setExpenses(savedExpenses);
   }, []);
 
-  function isInPeriod(dateString: string) {
-    if (period === "all") return true;
+  /*
+   * Convert old single-product sale
+   * into items format.
+   */
+  function getSaleItems(
+    sale: Sale
+  ): SaleItem[] {
+    if (
+      sale.items &&
+      sale.items.length > 0
+    ) {
+      return sale.items;
+    }
 
-    const date = new Date(dateString);
+    if (sale.product) {
+      return [
+        {
+          productId: 0,
+          product: sale.product,
+          price: sale.price || 0,
+          purchasePrice:
+            sale.purchasePrice || 0,
+          quantity: sale.quantity || 1,
+          amount:
+            (sale.price || 0) *
+            (sale.quantity || 1),
+        },
+      ];
+    }
+
+    return [];
+  }
+
+  function isInPeriod(
+    dateString: string
+  ) {
+    if (period === "all") {
+      return true;
+    }
+
+    const date = new Date(
+      dateString
+    );
+
     const now = new Date();
 
     if (period === "today") {
       return (
-        date.getDate() === now.getDate() &&
-        date.getMonth() === now.getMonth() &&
-        date.getFullYear() === now.getFullYear()
+        date.getFullYear() ===
+          now.getFullYear() &&
+        date.getMonth() ===
+          now.getMonth() &&
+        date.getDate() ===
+          now.getDate()
       );
     }
 
     if (period === "week") {
-      const start = new Date(now);
-      start.setHours(0, 0, 0, 0);
+      const startOfWeek =
+        new Date(now);
 
-      const day = start.getDay();
-      const difference = day === 0 ? 6 : day - 1;
+      const day =
+        startOfWeek.getDay();
 
-      start.setDate(start.getDate() - difference);
+      const difference =
+        day === 0 ? 6 : day - 1;
 
-      return date >= start && date <= now;
+      startOfWeek.setDate(
+        now.getDate() -
+          difference
+      );
+
+      startOfWeek.setHours(
+        0,
+        0,
+        0,
+        0
+      );
+
+      return date >= startOfWeek;
     }
 
     if (period === "month") {
       return (
-        date.getMonth() === now.getMonth() &&
-        date.getFullYear() === now.getFullYear()
+        date.getFullYear() ===
+          now.getFullYear() &&
+        date.getMonth() ===
+          now.getMonth()
       );
     }
 
     return true;
   }
 
-  const filteredSales = useMemo(
-    () => sales.filter((sale) => isInPeriod(sale.date)),
-    [sales, period]
-  );
+  const filteredSales =
+    sales.filter((sale) =>
+      isInPeriod(sale.date)
+    );
 
-  const filteredExpenses = useMemo(
-    () => expenses.filter((expense) => isInPeriod(expense.date)),
-    [expenses, period]
-  );
+  const filteredExpenses =
+    expenses.filter((expense) =>
+      isInPeriod(expense.date)
+    );
 
-  const totalSales = filteredSales.reduce(
-    (sum, sale) => sum + sale.total,
-    0
-  );
+  /*
+   * Total Sales
+   */
+  const totalSales =
+    filteredSales.reduce(
+      (sum, sale) =>
+        sum + sale.total,
+      0
+    );
 
-  const totalItems = filteredSales.reduce(
-    (sum, sale) => sum + sale.quantity,
-    0
-  );
+  /*
+   * Total Items
+   */
+  const totalItems =
+    filteredSales.reduce(
+      (sum, sale) => {
+        const items =
+          getSaleItems(sale);
 
-  const grossProfit = filteredSales.reduce(
-    (sum, sale) =>
-      sum +
-      (sale.price - sale.purchasePrice) * sale.quantity -
-      sale.discount,
-    0
-  );
+        return (
+          sum +
+          items.reduce(
+            (itemSum, item) =>
+              itemSum +
+              item.quantity,
+            0
+          )
+        );
+      },
+      0
+    );
 
-  const totalExpenses = filteredExpenses.reduce(
-    (sum, expense) => sum + expense.amount,
-    0
-  );
+  /*
+   * Gross Profit
+   *
+   * Product Profit =
+   * (Selling Price - Purchase Price)
+   * × Quantity
+   *
+   * Bill discount is deducted
+   * once from the bill.
+   */
+  const grossProfit =
+    filteredSales.reduce(
+      (sum, sale) => {
+        const items =
+          getSaleItems(sale);
 
-  const netProfit = grossProfit - totalExpenses;
+        const itemProfit =
+          items.reduce(
+            (itemSum, item) =>
+              itemSum +
+              (item.price -
+                item.purchasePrice) *
+                item.quantity,
+            0
+          );
 
-  const cashSales = filteredSales
-    .filter((sale) => sale.paymentType !== "credit")
-    .reduce((sum, sale) => sum + sale.total, 0);
+        return (
+          sum +
+          itemProfit -
+          (sale.discount || 0)
+        );
+      },
+      0
+    );
 
-  const creditSales = filteredSales
-    .filter((sale) => sale.paymentType === "credit")
-    .reduce((sum, sale) => sum + sale.total, 0);
+  /*
+   * Total Expenses
+   */
+  const totalExpenses =
+    filteredExpenses.reduce(
+      (sum, expense) =>
+        sum + expense.amount,
+      0
+    );
 
-  const topProducts = useMemo(() => {
-    const map: Record<string, ProductReport> = {};
+  /*
+   * Net Profit
+   */
+  const netProfit =
+    grossProfit -
+    totalExpenses;
 
-    filteredSales.forEach((sale) => {
-      if (!map[sale.product]) {
-        map[sale.product] = {
-          name: sale.product,
-          quantity: 0,
-          sales: 0,
-          profit: 0,
-        };
+  /*
+   * Cash Sales
+   */
+  const cashSales =
+    filteredSales
+      .filter(
+        (sale) =>
+          sale.paymentType !==
+          "credit"
+      )
+      .reduce(
+        (sum, sale) =>
+          sum + sale.total,
+        0
+      );
+
+  /*
+   * Credit Sales
+   */
+  const creditSales =
+    filteredSales
+      .filter(
+        (sale) =>
+          sale.paymentType ===
+          "credit"
+      )
+      .reduce(
+        (sum, sale) =>
+          sum + sale.total,
+        0
+      );
+
+  /*
+   * Top Products
+   */
+  const productMap =
+    new Map<
+      string,
+      {
+        quantity: number;
+        sales: number;
+        profit: number;
       }
+    >();
 
-      map[sale.product].quantity += sale.quantity;
-      map[sale.product].sales += sale.total;
+  filteredSales.forEach(
+    (sale) => {
+      const items =
+        getSaleItems(sale);
 
-      map[sale.product].profit +=
-        (sale.price - sale.purchasePrice) *
-          sale.quantity -
-        sale.discount;
-    });
+      items.forEach((item) => {
+        const existing =
+          productMap.get(
+            item.product
+          );
 
-    return Object.values(map)
-      .sort((a, b) => b.sales - a.sales)
+        const itemSales =
+          item.amount;
+
+        const itemProfit =
+          (item.price -
+            item.purchasePrice) *
+          item.quantity;
+
+        if (existing) {
+          productMap.set(
+            item.product,
+            {
+              quantity:
+                existing.quantity +
+                item.quantity,
+
+              sales:
+                existing.sales +
+                itemSales,
+
+              profit:
+                existing.profit +
+                itemProfit,
+            }
+          );
+        } else {
+          productMap.set(
+            item.product,
+            {
+              quantity:
+                item.quantity,
+
+              sales:
+                itemSales,
+
+              profit:
+                itemProfit,
+            }
+          );
+        }
+      });
+    }
+  );
+
+  const topProducts =
+    Array.from(
+      productMap.entries()
+    )
+      .map(
+        ([
+          product,
+          data,
+        ]) => ({
+          product,
+          ...data,
+        })
+      )
+      .sort(
+        (a, b) =>
+          b.sales - a.sales
+      )
       .slice(0, 10);
-  }, [filteredSales]);
-
-  const periodTitle =
-    period === "today"
-      ? "Today's Report"
-      : period === "week"
-      ? "This Week's Report"
-      : period === "month"
-      ? "This Month's Report"
-      : "All Time Report";
 
   return (
     <main className="reports-page">
+
+      {/* HEADER */}
+
       <header className="reports-header">
+
         <button
-  onClick={() => window.history.back()}
-  className="back-button"
->
-  ← Back
-</button>
-        <h1>Reports</h1>
+          onClick={() =>
+            window.history.back()
+          }
+          className="back-button"
+        >
+          ← Back
+        </button>
+
+        <h1>
+          Reports
+        </h1>
+
         <span></span>
+
       </header>
 
-      <section className="report-period">
+      {/* PERIOD FILTER */}
+
+      <section className="report-filter">
+
         <button
-          className={period === "today" ? "active" : ""}
-          onClick={() => setPeriod("today")}
+          className={
+            period === "today"
+              ? "active"
+              : ""
+          }
+          onClick={() =>
+            setPeriod("today")
+          }
         >
           Today
         </button>
 
         <button
-          className={period === "week" ? "active" : ""}
-          onClick={() => setPeriod("week")}
+          className={
+            period === "week"
+              ? "active"
+              : ""
+          }
+          onClick={() =>
+            setPeriod("week")
+          }
         >
           This Week
         </button>
 
         <button
-          className={period === "month" ? "active" : ""}
-          onClick={() => setPeriod("month")}
+          className={
+            period === "month"
+              ? "active"
+              : ""
+          }
+          onClick={() =>
+            setPeriod("month")
+          }
         >
           This Month
         </button>
 
         <button
-          className={period === "all" ? "active" : ""}
-          onClick={() => setPeriod("all")}
+          className={
+            period === "all"
+              ? "active"
+              : ""
+          }
+          onClick={() =>
+            setPeriod("all")
+          }
         >
           All Time
         </button>
+
       </section>
 
-      <section className="report-title">
-        <h2>{periodTitle}</h2>
-        <p>
-          {filteredSales.length} bills • {totalItems} items sold
-        </p>
-      </section>
+      {/* MAIN STATS */}
 
       <section className="report-stats">
-        <div className="report-card">
-          <span>Total Sales</span>
-          <strong>
-            ₹{totalSales.toLocaleString("en-IN")}
-          </strong>
-        </div>
 
         <div className="report-card">
-          <span>Gross Profit</span>
+
+          <span>
+            Total Sales
+          </span>
+
           <strong>
-            ₹{grossProfit.toLocaleString("en-IN")}
+            ₹
+            {totalSales.toLocaleString(
+              "en-IN"
+            )}
           </strong>
+
+          <small>
+            {filteredSales.length} bills
+          </small>
+
         </div>
 
-        <div className="report-card expense">
-          <span>Expenses</span>
+        <div className="report-card">
+
+          <span>
+            Gross Profit
+          </span>
+
           <strong>
-            ₹{totalExpenses.toLocaleString("en-IN")}
+            ₹
+            {grossProfit.toLocaleString(
+              "en-IN"
+            )}
           </strong>
+
+          <small>
+            Before expenses
+          </small>
+
         </div>
 
-        <div className="report-card profit">
-          <span>Net Profit</span>
+        <div className="report-card">
+
+          <span>
+            Expenses
+          </span>
+
           <strong>
-            ₹{netProfit.toLocaleString("en-IN")}
+            ₹
+            {totalExpenses.toLocaleString(
+              "en-IN"
+            )}
           </strong>
+
+          <small>
+            Business expenses
+          </small>
+
         </div>
+
+        <div className="report-card profit-card">
+
+          <span>
+            Net Profit
+          </span>
+
+          <strong>
+            ₹
+            {netProfit.toLocaleString(
+              "en-IN"
+            )}
+          </strong>
+
+          <small>
+            Profit after expenses
+          </small>
+
+        </div>
+
       </section>
 
-      <section className="report-section">
-        <h2>Payment Summary</h2>
-
-        <div className="payment-summary">
-          <div>
-            <span>💵 Cash Sales</span>
-            <strong>
-              ₹{cashSales.toLocaleString("en-IN")}
-            </strong>
-          </div>
-
-          <div>
-            <span>📒 Credit Sales</span>
-            <strong>
-              ₹{creditSales.toLocaleString("en-IN")}
-            </strong>
-          </div>
-        </div>
-      </section>
+      {/* SALES BREAKDOWN */}
 
       <section className="report-section">
-        <h2>Top Products</h2>
 
-        {topProducts.length === 0 ? (
-          <div className="report-empty">
-            <div>📊</div>
-            <h3>No Sales Data</h3>
+        <h2>
+          Sales Breakdown
+        </h2>
+
+        <div className="report-breakdown">
+
+          <div>
+
+            <span>
+              🧾
+            </span>
+
             <p>
-              Selected period me abhi koi sale nahi hai.
+              Total Bills
             </p>
+
+            <strong>
+              {filteredSales.length}
+            </strong>
+
+          </div>
+
+          <div>
+
+            <span>
+              📦
+            </span>
+
+            <p>
+              Items Sold
+            </p>
+
+            <strong>
+              {totalItems}
+            </strong>
+
+          </div>
+
+          <div>
+
+            <span>
+              💵
+            </span>
+
+            <p>
+              Cash Sales
+            </p>
+
+            <strong>
+              ₹
+              {cashSales.toLocaleString(
+                "en-IN"
+              )}
+            </strong>
+
+          </div>
+
+          <div>
+
+            <span>
+              📒
+            </span>
+
+            <p>
+              Credit Sales
+            </p>
+
+            <strong>
+              ₹
+              {creditSales.toLocaleString(
+                "en-IN"
+              )}
+            </strong>
+
+          </div>
+
+        </div>
+
+      </section>
+
+      {/* TOP PRODUCTS */}
+
+      <section className="report-section">
+
+        <div className="report-section-title">
+
+          <h2>
+            Top Products
+          </h2>
+
+          <span>
+            By sales
+          </span>
+
+        </div>
+
+        {topProducts.length ===
+        0 ? (
+          <div className="report-empty">
+            No product sales in
+            this period.
           </div>
         ) : (
           <div className="top-products">
-            {topProducts.map((product, index) => (
-              <div
-                className="top-product"
-                key={product.name}
-              >
-                <div className="rank">
-                  #{index + 1}
+
+            {topProducts.map(
+              (
+                item,
+                index
+              ) => (
+                <div
+                  className="top-product"
+                  key={
+                    item.product
+                  }
+                >
+
+                  <div className="product-rank">
+                    {index + 1}
+                  </div>
+
+                  <div className="top-product-info">
+
+                    <strong>
+                      {item.product}
+                    </strong>
+
+                    <span>
+                      {item.quantity}{" "}
+                      units sold
+                    </span>
+
+                  </div>
+
+                  <div className="top-product-right">
+
+                    <strong>
+                      ₹
+                      {item.sales.toLocaleString(
+                        "en-IN"
+                      )}
+                    </strong>
+
+                    <span>
+                      Profit ₹
+                      {item.profit.toLocaleString(
+                        "en-IN"
+                      )}
+                    </span>
+
+                  </div>
+
                 </div>
+              )
+            )}
 
-                <div className="top-product-info">
-                  <strong>{product.name}</strong>
-
-                  <span>
-                    {product.quantity} items sold
-                  </span>
-                </div>
-
-                <div className="top-product-right">
-                  <strong>
-                    ₹{product.sales.toLocaleString("en-IN")}
-                  </strong>
-
-                  <small>
-                    Profit ₹
-                    {product.profit.toLocaleString("en-IN")}
-                  </small>
-                </div>
-              </div>
-            ))}
           </div>
         )}
+
       </section>
 
-      <section className="report-section">
-        <h2>Recent Report Sales</h2>
+      {/* RECENT SALES */}
 
-        {filteredSales.length === 0 ? (
+      <section className="report-section">
+
+        <div className="report-section-title">
+
+          <h2>
+            Recent Sales
+          </h2>
+
+          <a href="/hisabpro/sales/history/">
+            View All
+          </a>
+
+        </div>
+
+        {filteredSales.length ===
+        0 ? (
           <div className="report-empty">
-            <div>🧾</div>
-            <h3>No Sales</h3>
-            <p>Selected period me sales nahi hain.</p>
+            No sales in this
+            period.
           </div>
         ) : (
-          <div className="report-sales">
+          <div className="recent-reports">
+
             {[...filteredSales]
               .reverse()
               .slice(0, 10)
-              .map((sale) => (
-                <div
-                  className="report-sale"
-                  key={sale.id}
-                >
-                  <div>
-                    <strong>{sale.product}</strong>
+              .map((sale) => {
 
-                    <span>
-                      {sale.quantity} × ₹
-                      {sale.price.toLocaleString("en-IN")}
-                    </span>
+                const items =
+                  getSaleItems(
+                    sale
+                  );
 
-                    <small>
-                      {new Date(
-                        sale.date
-                      ).toLocaleString("en-IN")}
-                    </small>
-                  </div>
+                return (
+                  <div
+                    className="recent-report-item"
+                    key={
+                      sale.id
+                    }
+                  >
 
-                  <div>
+                    <div>
+
+                      <strong>
+                        {items.length ===
+                        1
+                          ? items[0]
+                              .product
+                          : `${items.length} Items`}
+                      </strong>
+
+                      <span>
+                        {new Date(
+                          sale.date
+                        ).toLocaleString(
+                          "en-IN"
+                        )}
+                      </span>
+
+                    </div>
+
                     <strong>
-                      ₹{sale.total.toLocaleString("en-IN")}
+                      ₹
+                      {sale.total.toLocaleString(
+                        "en-IN"
+                      )}
                     </strong>
 
-                    <small>
-                      {sale.paymentType === "credit"
-                        ? "Credit"
-                        : "Cash"}
-                    </small>
                   </div>
-                </div>
-              ))}
+                );
+              })}
+
           </div>
         )}
+
       </section>
+
     </main>
   );
 }
