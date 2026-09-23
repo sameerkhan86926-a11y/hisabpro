@@ -2684,3 +2684,23 @@ button {
     padding: 12px;
   }
 }
+.invoice-table-head span {
+  white-space: nowrap;
+}
+
+.invoice-row span {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+  .invoice-row {
+    grid-template-columns: 1.6fr 0.6fr 1fr 1fr;
+    font-size: 11px;
+    padding: 10px 6px;
+    gap: 5px;
+  }
+
+  .invoice-table-head {
+    font-size: 10px;
+  }
+}
