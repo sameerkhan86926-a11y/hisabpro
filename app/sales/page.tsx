@@ -90,9 +90,7 @@ export default function SalesPage() {
     }
   }
 
-  function getProductBatches(
-    product: Product
-  ): StockBatch[] {
+  function getProductBatches(product: Product): StockBatch[] {
     if (
       product.batches &&
       product.batches.length > 0
@@ -128,9 +126,7 @@ export default function SalesPage() {
     return [];
   }
 
-  function getAvailableQuantity(
-    product: Product
-  ) {
+  function getAvailableQuantity(product: Product) {
     const alreadyInCart = cart
       .filter(
         (item) =>
@@ -142,16 +138,11 @@ export default function SalesPage() {
         0
       );
 
-    return Math.max(
-      0,
+    return (
       Number(product.stock || 0) -
-        alreadyInCart
+      alreadyInCart
     );
   }
-
-  // =================================
-  // ADD PRODUCT TO BILL
-  // =================================
 
   function addToBill() {
     setMessage("");
@@ -240,10 +231,14 @@ export default function SalesPage() {
       );
 
     const averageSellingPrice =
-      totalAmount / quantity;
+      quantity > 0
+        ? totalAmount / quantity
+        : 0;
 
     const averagePurchasePrice =
-      totalPurchaseCost / quantity;
+      quantity > 0
+        ? totalPurchaseCost / quantity
+        : 0;
 
     const existingIndex =
       cart.findIndex(
@@ -260,19 +255,15 @@ export default function SalesPage() {
 
       updatedCart[existingIndex] = {
         ...existing,
-
         quantity:
           existing.quantity + quantity,
-
         amount:
           existing.amount + totalAmount,
-
         price:
           (existing.amount +
             totalAmount) /
           (existing.quantity +
             quantity),
-
         purchasePrice:
           (existing.purchasePrice *
             existing.quantity +
@@ -280,7 +271,6 @@ export default function SalesPage() {
               quantity) /
           (existing.quantity +
             quantity),
-
         batchDetails: [
           ...existing.batchDetails,
           ...batchDetails,
@@ -308,13 +298,7 @@ export default function SalesPage() {
     setQuantity(1);
   }
 
-  // =================================
-  // REMOVE
-  // =================================
-
-  function removeFromBill(
-    productId: number
-  ) {
+  function removeFromBill(productId: number) {
     setCart(
       cart.filter(
         (item) =>
@@ -322,10 +306,6 @@ export default function SalesPage() {
       )
     );
   }
-
-  // =================================
-  // CALCULATIONS
-  // =================================
 
   const subtotal = cart.reduce(
     (sum, item) =>
@@ -347,10 +327,6 @@ export default function SalesPage() {
         customer.id ===
         Number(customerId)
     );
-
-  // =================================
-  // SAVE SALE
-  // =================================
 
   function saveSale() {
     setMessage("");
@@ -376,32 +352,22 @@ export default function SalesPage() {
 
     const sale = {
       id: saleId,
-
       items: cart,
-
       subtotal,
       discount: safeDiscount,
       total,
-
       paymentType,
-
       customerId:
         paymentType === "credit"
           ? selectedCustomer?.id
           : null,
-
       customerName:
         paymentType === "credit"
           ? selectedCustomer?.name
           : "",
-
       date:
         new Date().toISOString(),
     };
-
-    // =================================
-    // SALES HISTORY
-    // =================================
 
     const oldSales = JSON.parse(
       localStorage.getItem(
@@ -416,10 +382,6 @@ export default function SalesPage() {
         sale,
       ])
     );
-
-    // =================================
-    // UPDATE STOCK
-    // =================================
 
     const updatedProducts =
       products.map((product) => {
@@ -495,19 +457,15 @@ export default function SalesPage() {
 
         return {
           ...product,
-
           stock: newStock,
-
           purchasePrice:
             latestBatch
               ? latestBatch.purchasePrice
               : product.purchasePrice,
-
           sellingPrice:
             latestBatch
               ? latestBatch.sellingPrice
               : product.sellingPrice,
-
           batches,
         };
       });
@@ -520,10 +478,6 @@ export default function SalesPage() {
         updatedProducts
       )
     );
-
-    // =================================
-    // CREDIT CUSTOMER
-    // =================================
 
     if (
       paymentType === "credit" &&
@@ -590,10 +544,6 @@ export default function SalesPage() {
       );
     }
 
-    // =================================
-    // LAST INVOICE
-    // =================================
-
     localStorage.setItem(
       "hisabpro_last_invoice",
       JSON.stringify(sale)
@@ -608,10 +558,6 @@ export default function SalesPage() {
       "/hisabpro/invoice/";
   }
 
-  // =================================
-  // UI
-  // =================================
-
   return (
     <main className="sales-page">
 
@@ -625,17 +571,12 @@ export default function SalesPage() {
           }
           className="back-button"
         >
-          <svg viewBox="0 0 24 24">
-            <path d="M19 12H5" />
-            <path d="M12 19l-7-7 7-7" />
-          </svg>
-
-          <span>Back</span>
+          ← Back
         </button>
 
         <h1>New Sale</h1>
 
-        <div className="sales-header-space"></div>
+        <span></span>
 
       </header>
 
@@ -644,59 +585,81 @@ export default function SalesPage() {
       <section className="sale-form">
 
         <div className="sale-section-heading">
-
           <div className="sale-heading-icon">
             <svg viewBox="0 0 24 24">
-              <path d="M4 7h16v13H4z" />
-              <path d="M8 7V5h8v2" />
-              <path d="M8 11h8M8 15h5" />
+              <path d="M4 7h16" />
+              <path d="M6 7V5h12v2" />
+              <path d="M5 7l1 13h12l1-13" />
+              <path d="M9 11v5" />
+              <path d="M15 11v5" />
             </svg>
           </div>
 
           <div>
             <h2>Add Product</h2>
-            <p>
-              Select product and quantity
-            </p>
+            <p>Select product and quantity</p>
+          </div>
+        </div>
+
+        <div className="product-input-row">
+
+          <div className="sale-field">
+            <label>Product</label>
+
+            <select
+              value={productId}
+              onChange={(e) =>
+                setProductId(
+                  e.target.value
+                )
+              }
+            >
+              <option value="">
+                Select Product
+              </option>
+
+              {products.map(
+                (product) => (
+                  <option
+                    key={product.id}
+                    value={product.id}
+                    disabled={
+                      getAvailableQuantity(
+                        product
+                      ) <= 0
+                    }
+                  >
+                    {product.name} — Stock:{" "}
+                    {getAvailableQuantity(
+                      product
+                    )}
+                  </option>
+                )
+              )}
+            </select>
+          </div>
+
+          <div className="sale-field quantity-field">
+            <label>Quantity</label>
+
+            <input
+              type="number"
+              min="1"
+              value={quantity}
+              onChange={(e) =>
+                setQuantity(
+                  Math.max(
+                    1,
+                    Number(
+                      e.target.value
+                    )
+                  )
+                )
+              }
+            />
           </div>
 
         </div>
-
-        <label>
-          Product
-        </label>
-
-        <select
-          value={productId}
-          onChange={(e) =>
-            setProductId(
-              e.target.value
-            )
-          }
-        >
-          <option value="">
-            Select Product
-          </option>
-
-          {products.map(
-            (product) => (
-              <option
-                key={product.id}
-                value={product.id}
-                disabled={
-                  getAvailableQuantity(
-                    product
-                  ) <= 0
-                }
-              >
-                {product.name} — Stock:{" "}
-                {getAvailableQuantity(
-                  product
-                )}
-              </option>
-            )
-          )}
-        </select>
 
         {productId && (
           <div className="selected-product-info">
@@ -706,13 +669,10 @@ export default function SalesPage() {
                 products.find(
                   (item) =>
                     item.id ===
-                    Number(
-                      productId
-                    )
+                    Number(productId)
                 );
 
-              if (!product)
-                return null;
+              if (!product) return null;
 
               const batches =
                 getProductBatches(
@@ -721,7 +681,7 @@ export default function SalesPage() {
 
               return (
                 <>
-                  <div className="selected-product-title">
+                  <div className="selected-product-header">
 
                     <strong>
                       {product.name}
@@ -741,10 +701,8 @@ export default function SalesPage() {
                     {batches.map(
                       (batch) => (
                         <div
-                          className="batch-rate"
-                          key={
-                            batch.id
-                          }
+                          className="batch-price-row"
+                          key={batch.id}
                         >
                           <span>
                             {batch.quantity} pcs
@@ -757,7 +715,7 @@ export default function SalesPage() {
                             )}
                           </span>
 
-                          <span className="sell-rate">
+                          <span>
                             Sell ₹
                             {batch.sellingPrice.toLocaleString(
                               "en-IN"
@@ -775,27 +733,6 @@ export default function SalesPage() {
           </div>
         )}
 
-        <label>
-          Quantity
-        </label>
-
-        <input
-          className="quantity-input"
-          type="number"
-          min="1"
-          value={quantity}
-          onChange={(e) =>
-            setQuantity(
-              Math.max(
-                1,
-                Number(
-                  e.target.value
-                )
-              )
-            )
-          }
-        />
-
         <button
           className="add-to-bill"
           onClick={addToBill}
@@ -804,7 +741,6 @@ export default function SalesPage() {
             <path d="M12 5v14" />
             <path d="M5 12h14" />
           </svg>
-
           Add to Bill
         </button>
 
@@ -814,48 +750,42 @@ export default function SalesPage() {
 
       <section className="bill-section">
 
-        <div className="section-title">
-
+        <div className="bill-section-header">
           <div>
             <h2>Bill</h2>
             <p>
-              Products added to this sale
+              {cart.length} item
+              {cart.length !== 1
+                ? "s"
+                : ""} added
             </p>
           </div>
 
-          <span className="bill-count">
-            {cart.length}{" "}
-            {cart.length === 1
-              ? "Item"
-              : "Items"}
-          </span>
-
+          <div className="bill-count">
+            {cart.length}
+          </div>
         </div>
 
         {cart.length === 0 ? (
-
           <div className="empty-bill">
 
-            <div className="empty-bill-icon">
-              <svg viewBox="0 0 24 24">
-                <path d="M6 3h12v18H6z" />
-                <path d="M9 7h6M9 11h6M9 15h4" />
-              </svg>
-            </div>
+            <svg viewBox="0 0 24 24">
+              <path d="M6 3h12v18l-2-1-2 1-2-1-2 1-2-1-2 1V3z" />
+              <path d="M9 7h6" />
+              <path d="M9 11h6" />
+              <path d="M9 15h4" />
+            </svg>
 
             <strong>
               No products added yet
             </strong>
 
             <p>
-              Select a product above to
-              create your bill.
+              Add products above to create the bill.
             </p>
 
           </div>
-
         ) : (
-
           <div className="bill-items">
 
             {cart.map(
@@ -867,32 +797,23 @@ export default function SalesPage() {
                   }
                 >
 
-                  <div className="bill-item-main">
+                  <div className="bill-item-info">
 
-                    <div className="bill-product-icon">
-                      <svg viewBox="0 0 24 24">
-                        <path d="M4 7h16v13H4z" />
-                        <path d="M8 7V5h8v2" />
-                      </svg>
-                    </div>
+                    <strong>
+                      {item.product}
+                    </strong>
 
-                    <div>
-                      <strong>
-                        {item.product}
-                      </strong>
-
-                      <small>
-                        Qty {item.quantity}
-                        {" • "}
-                        Avg. ₹
-                        {item.price.toLocaleString(
-                          "en-IN",
-                          {
-                            maximumFractionDigits: 2,
-                          }
-                        )}
-                      </small>
-                    </div>
+                    <span>
+                      Qty {item.quantity}
+                      {" × "}
+                      ₹
+                      {item.price.toLocaleString(
+                        "en-IN",
+                        {
+                          maximumFractionDigits: 2,
+                        }
+                      )}
+                    </span>
 
                   </div>
 
@@ -909,14 +830,20 @@ export default function SalesPage() {
                     </strong>
 
                     <button
-                      className="remove-item"
                       onClick={() =>
                         removeFromBill(
                           item.productId
                         )
                       }
+                      aria-label="Remove"
                     >
-                      Remove
+                      <svg viewBox="0 0 24 24">
+                        <path d="M3 6h18" />
+                        <path d="M8 6V4h8v2" />
+                        <path d="M19 6l-1 15H6L5 6" />
+                        <path d="M10 11v6" />
+                        <path d="M14 11v6" />
+                      </svg>
                     </button>
 
                   </div>
@@ -930,26 +857,12 @@ export default function SalesPage() {
 
       </section>
 
-      {/* PAYMENT + SUMMARY */}
+      {/* PAYMENT / SUMMARY */}
 
       <section className="sale-summary">
 
-        <div className="sale-section-heading">
-
-          <div className="sale-heading-icon">
-            <svg viewBox="0 0 24 24">
-              <path d="M3 6h18v12H3z" />
-              <path d="M7 10h10M7 14h6" />
-            </svg>
-          </div>
-
-          <div>
-            <h2>Payment</h2>
-            <p>
-              Choose payment method
-            </p>
-          </div>
-
+        <div className="summary-heading">
+          <h2>Payment & Summary</h2>
         </div>
 
         <label>
@@ -961,66 +874,55 @@ export default function SalesPage() {
           <button
             className={
               paymentType === "cash"
-                ? "payment-option active"
-                : "payment-option"
+                ? "active"
+                : ""
             }
             onClick={() =>
-              setPaymentType(
-                "cash"
-              )
+              setPaymentType("cash")
             }
           >
-            <span className="payment-icon">
-              <svg viewBox="0 0 24 24">
-                <rect
-                  x="3"
-                  y="6"
-                  width="18"
-                  height="12"
-                  rx="2"
-                />
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="3"
-                />
-                <path d="M3 9h3M18 9h3M3 15h3M18 15h3" />
-              </svg>
-            </span>
+            <svg viewBox="0 0 24 24">
+              <rect
+                x="3"
+                y="6"
+                width="18"
+                height="12"
+                rx="2"
+              />
+              <circle
+                cx="12"
+                cy="12"
+                r="3"
+              />
+            </svg>
 
-            <span>Cash</span>
+            Cash
           </button>
 
           <button
             className={
               paymentType === "credit"
-                ? "payment-option active"
-                : "payment-option"
+                ? "active"
+                : ""
             }
             onClick={() =>
-              setPaymentType(
-                "credit"
-              )
+              setPaymentType("credit")
             }
           >
-            <span className="payment-icon">
-              <svg viewBox="0 0 24 24">
-                <path d="M4 5h16v14H4z" />
-                <path d="M7 9h10M7 13h5M7 16h3" />
-              </svg>
-            </span>
+            <svg viewBox="0 0 24 24">
+              <path d="M4 5h16v14H4z" />
+              <path d="M8 9h8" />
+              <path d="M8 13h5" />
+              <path d="M8 17h3" />
+            </svg>
 
-            <span>
-              Credit / Udhaar
-            </span>
+            Credit
           </button>
 
         </div>
 
-        {paymentType ===
-          "credit" && (
-
-          <div className="customer-box">
+        {paymentType === "credit" && (
+          <div className="customer-field">
 
             <label>
               Customer
@@ -1056,39 +958,49 @@ export default function SalesPage() {
                   </option>
                 )
               )}
+
             </select>
 
           </div>
         )}
 
-        <label>
-          Discount
-        </label>
+        <div className="discount-field">
 
-        <input
-          className="discount-input"
-          type="number"
-          min="0"
-          value={discount}
-          onChange={(e) =>
-            setDiscount(
-              Math.max(
-                0,
-                Number(
-                  e.target.value
+          <label>
+            Discount
+          </label>
+
+          <div className="discount-input">
+
+            <span>₹</span>
+
+            <input
+              type="number"
+              min="0"
+              value={discount}
+              onChange={(e) =>
+                setDiscount(
+                  Math.max(
+                    0,
+                    Number(
+                      e.target.value
+                    )
+                  )
                 )
-              )
-            )
-          }
-        />
+              }
+            />
+
+          </div>
+
+        </div>
 
         {/* TOTALS */}
 
         <div className="sale-totals">
 
-          <div>
+          <div className="total-row">
             <span>
-              Subtotal
+              Subtotal:
             </span>
 
             <strong>
@@ -1102,9 +1014,9 @@ export default function SalesPage() {
             </strong>
           </div>
 
-          <div>
+          <div className="total-row">
             <span>
-              Discount
+              Discount:
             </span>
 
             <strong>
@@ -1118,10 +1030,9 @@ export default function SalesPage() {
             </strong>
           </div>
 
-          <div className="grand-total">
-
+          <div className="total-row grand-total">
             <span>
-              Total
+              Total:
             </span>
 
             <strong>
@@ -1133,7 +1044,6 @@ export default function SalesPage() {
                 }
               )}
             </strong>
-
           </div>
 
         </div>
@@ -1144,25 +1054,17 @@ export default function SalesPage() {
         >
           <svg viewBox="0 0 24 24">
             <path d="M5 3h11l3 3v15H5z" />
-            <path d="M8 3v6h8V3M8 21v-7h8v7" />
+            <path d="M8 3v6h8V3" />
+            <path d="M8 15h8v6H8z" />
           </svg>
 
           Save Sale & Generate Invoice
         </button>
 
         {message && (
-          <div className="sale-message">
-            <svg viewBox="0 0 24 24">
-              <circle
-                cx="12"
-                cy="12"
-                r="9"
-              />
-              <path d="M12 8v4M12 16h.01" />
-            </svg>
-
+          <p className="sale-message">
             {message}
-          </div>
+          </p>
         )}
 
       </section>
