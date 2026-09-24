@@ -40,13 +40,23 @@ type PurchaseItem = {
   amount: number;
 };
 
+type PaymentType = "cash" | "credit";
+
+type PaymentMode =
+  | "cash"
+  | "upi"
+  | "card"
+  | "bank"
+  | "online";
+
 type Purchase = {
   id: number;
   supplierId: number;
   supplierName: string;
   items: PurchaseItem[];
   total: number;
-  paymentType: "cash" | "credit";
+  paymentType: PaymentType;
+  paymentMode?: PaymentMode;
   date: string;
 };
 
@@ -77,9 +87,11 @@ export default function PurchasePage() {
   const [purchasePrice, setPurchasePrice] = useState("");
   const [sellingPrice, setSellingPrice] = useState("");
 
-  const [paymentType, setPaymentType] = useState<
-    "cash" | "credit"
-  >("cash");
+  const [paymentType, setPaymentType] =
+    useState<PaymentType>("cash");
+
+  const [paymentMode, setPaymentMode] =
+    useState<PaymentMode>("cash");
 
   const [cart, setCart] = useState<PurchaseItem[]>([]);
   const [message, setMessage] = useState("");
@@ -152,6 +164,47 @@ export default function PurchasePage() {
     setSellingPrice(
       String(product.sellingPrice || "")
     );
+  }
+
+  function selectPaymentType(
+    type: PaymentType
+  ) {
+    setPaymentType(type);
+
+    if (type === "credit") {
+      setPaymentMode("cash");
+    }
+  }
+
+  function selectPaymentMode(
+    mode: PaymentMode
+  ) {
+    setPaymentType("cash");
+    setPaymentMode(mode);
+  }
+
+  function getPaymentModeLabel(
+    mode?: PaymentMode
+  ) {
+    switch (mode) {
+      case "cash":
+        return "Cash";
+
+      case "upi":
+        return "UPI";
+
+      case "card":
+        return "Card";
+
+      case "bank":
+        return "Bank Transfer";
+
+      case "online":
+        return "Online";
+
+      default:
+        return "Cash";
+    }
   }
 
   function addToPurchase() {
@@ -260,7 +313,9 @@ export default function PurchasePage() {
     }
 
     if (cartTotal <= 0) {
-      setMessage("Purchase total must be greater than ₹0.");
+      setMessage(
+        "Purchase total must be greater than ₹0."
+      );
       return;
     }
 
@@ -269,13 +324,15 @@ export default function PurchasePage() {
         localStorage.getItem(PRODUCT_KEY) || "[]"
       );
 
-      const savedSuppliers: Supplier[] = JSON.parse(
-        localStorage.getItem(SUPPLIER_KEY) || "[]"
-      );
+      const savedSuppliers: Supplier[] =
+        JSON.parse(
+          localStorage.getItem(SUPPLIER_KEY) || "[]"
+        );
 
-      const savedPurchases: Purchase[] = JSON.parse(
-        localStorage.getItem(PURCHASE_KEY) || "[]"
-      );
+      const savedPurchases: Purchase[] =
+        JSON.parse(
+          localStorage.getItem(PURCHASE_KEY) || "[]"
+        );
 
       const savedCashbook: CashTransaction[] =
         JSON.parse(
@@ -367,6 +424,11 @@ export default function PurchasePage() {
 
         paymentType,
 
+        paymentMode:
+          paymentType === "credit"
+            ? undefined
+            : paymentMode,
+
         date: purchaseDate,
       };
 
@@ -383,7 +445,8 @@ export default function PurchasePage() {
        * Only CREDIT purchase increases
        * supplier payable.
        *
-       * CASH purchase does not increase due.
+       * Cash / UPI / Card / Bank / Online
+       * do NOT increase supplier due.
        */
 
       const updatedSuppliers =
@@ -408,17 +471,23 @@ export default function PurchasePage() {
        * CASHBOOK INTEGRATION
        * --------------------------------
        *
-       * CASH PURCHASE:
-       * Cash goes OUT.
+       * ONLY ACTUAL CASH affects Cashbook.
        *
-       * CREDIT PURCHASE:
-       * No cash movement.
+       * Cash      → Cashbook Out
+       * UPI       → No Cashbook
+       * Card      → No Cashbook
+       * Bank      → No Cashbook
+       * Online    → No Cashbook
+       * Credit    → No Cashbook
        */
 
       let updatedCashbook =
         savedCashbook;
 
-      if (paymentType === "cash") {
+      if (
+        paymentType === "cash" &&
+        paymentMode === "cash"
+      ) {
         const cashTransaction: CashTransaction = {
           id: purchaseId + 1,
 
@@ -500,6 +569,8 @@ export default function PurchasePage() {
 
       setPaymentType("cash");
 
+      setPaymentMode("cash");
+
       setMessage(
         `Purchase saved successfully. Total ₹${cartTotal.toLocaleString(
           "en-IN",
@@ -528,12 +599,16 @@ export default function PurchasePage() {
     <main className="purchase-page">
 
       {/* HEADER */}
+
       <header className="purchase-header">
 
         <button
           type="button"
           className="purchase-back"
-          onClick={() => window.history.back()}
+          onClick={() =>
+            (window.location.href =
+              "/hisabpro/")
+          }
           aria-label="Back"
         >
           <svg viewBox="0 0 24 24">
@@ -550,9 +625,11 @@ export default function PurchasePage() {
       </header>
 
       {/* PURCHASE FORM */}
+
       <section className="purchase-form-card">
 
         {/* SUPPLIER */}
+
         <div className="purchase-field">
 
           <label>Supplier</label>
@@ -586,13 +663,15 @@ export default function PurchasePage() {
 
           {selectedSupplier && (
             <small className="purchase-selected-info">
-              {selectedSupplier.phone || "No mobile"}
+              {selectedSupplier.phone ||
+                "No mobile"}
             </small>
           )}
 
         </div>
 
         {/* PRODUCT */}
+
         <div className="purchase-field">
 
           <label>Product</label>
@@ -600,7 +679,9 @@ export default function PurchasePage() {
           <select
             value={productId}
             onChange={(e) =>
-              handleProductChange(e.target.value)
+              handleProductChange(
+                e.target.value
+              )
             }
           >
             <option value="">
@@ -619,21 +700,24 @@ export default function PurchasePage() {
 
           {products.length === 0 && (
             <small className="purchase-help">
-              No products found. Add a product in
-              Stock first.
+              No products found. Add a product
+              in Stock first.
             </small>
           )}
 
           {selectedProduct && (
             <small className="purchase-selected-info">
               Current stock:{" "}
-              {Number(selectedProduct.stock || 0)}
+              {Number(
+                selectedProduct.stock || 0
+              )}
             </small>
           )}
 
         </div>
 
         {/* QUANTITY */}
+
         <div className="purchase-field">
 
           <label>Quantity</label>
@@ -651,6 +735,7 @@ export default function PurchasePage() {
         </div>
 
         {/* PURCHASE PRICE */}
+
         <div className="purchase-field">
 
           <label>Purchase Price</label>
@@ -664,7 +749,9 @@ export default function PurchasePage() {
               min="0"
               value={purchasePrice}
               onChange={(e) =>
-                setPurchasePrice(e.target.value)
+                setPurchasePrice(
+                  e.target.value
+                )
               }
               placeholder="0"
             />
@@ -674,6 +761,7 @@ export default function PurchasePage() {
         </div>
 
         {/* SELLING PRICE */}
+
         <div className="purchase-field">
 
           <label>Selling Price</label>
@@ -687,7 +775,9 @@ export default function PurchasePage() {
               min="0"
               value={sellingPrice}
               onChange={(e) =>
-                setSellingPrice(e.target.value)
+                setSellingPrice(
+                  e.target.value
+                )
               }
               placeholder="0"
             />
@@ -707,12 +797,18 @@ export default function PurchasePage() {
       </section>
 
       {/* CART */}
+
       {cart.length > 0 && (
         <section className="purchase-cart">
 
           <div className="purchase-section-title">
+
             <h2>Purchase Items</h2>
-            <span>{cart.length}</span>
+
+            <span>
+              {cart.length}
+            </span>
+
           </div>
 
           <div className="purchase-items">
@@ -781,9 +877,12 @@ export default function PurchasePage() {
           </div>
 
           {/* TOTAL */}
+
           <div className="purchase-total">
 
-            <span>Total Purchase</span>
+            <span>
+              Total Purchase
+            </span>
 
             <strong>
               ₹
@@ -798,25 +897,108 @@ export default function PurchasePage() {
           </div>
 
           {/* PAYMENT */}
+
           <div className="purchase-payment">
 
-            <label>Payment Type</label>
+            <label>
+              Payment
+            </label>
+
+            {/* PAYMENT MODES */}
 
             <div className="purchase-payment-options">
+
+              {/* CASH */}
 
               <button
                 type="button"
                 className={
-                  paymentType === "cash"
+                  paymentType === "cash" &&
+                  paymentMode === "cash"
                     ? "active"
                     : ""
                 }
                 onClick={() =>
-                  setPaymentType("cash")
+                  selectPaymentMode("cash")
                 }
               >
-                Cash
+                <span>💵</span>
+                <strong>Cash</strong>
               </button>
+
+              {/* UPI */}
+
+              <button
+                type="button"
+                className={
+                  paymentType === "cash" &&
+                  paymentMode === "upi"
+                    ? "active"
+                    : ""
+                }
+                onClick={() =>
+                  selectPaymentMode("upi")
+                }
+              >
+                <span>📱</span>
+                <strong>UPI</strong>
+              </button>
+
+              {/* CARD */}
+
+              <button
+                type="button"
+                className={
+                  paymentType === "cash" &&
+                  paymentMode === "card"
+                    ? "active"
+                    : ""
+                }
+                onClick={() =>
+                  selectPaymentMode("card")
+                }
+              >
+                <span>💳</span>
+                <strong>Card</strong>
+              </button>
+
+              {/* BANK */}
+
+              <button
+                type="button"
+                className={
+                  paymentType === "cash" &&
+                  paymentMode === "bank"
+                    ? "active"
+                    : ""
+                }
+                onClick={() =>
+                  selectPaymentMode("bank")
+                }
+              >
+                <span>🏦</span>
+                <strong>Bank</strong>
+              </button>
+
+              {/* ONLINE */}
+
+              <button
+                type="button"
+                className={
+                  paymentType === "cash" &&
+                  paymentMode === "online"
+                    ? "active"
+                    : ""
+                }
+                onClick={() =>
+                  selectPaymentMode("online")
+                }
+              >
+                <span>🌐</span>
+                <strong>Online</strong>
+              </button>
+
+              {/* CREDIT */}
 
               <button
                 type="button"
@@ -826,26 +1008,48 @@ export default function PurchasePage() {
                     : ""
                 }
                 onClick={() =>
-                  setPaymentType("credit")
+                  selectPaymentType("credit")
                 }
               >
-                Credit
+                <span>📝</span>
+                <strong>Credit</strong>
               </button>
 
             </div>
 
-            {paymentType === "cash" && (
-              <small>
-                ₹
-                {cartTotal.toLocaleString(
-                  "en-IN",
-                  {
-                    maximumFractionDigits: 2,
-                  }
-                )}{" "}
-                will be recorded as Cash Out.
-              </small>
-            )}
+            {/* PAYMENT MESSAGE */}
+
+            {paymentType === "cash" &&
+              paymentMode === "cash" && (
+                <small>
+                  ₹
+                  {cartTotal.toLocaleString(
+                    "en-IN",
+                    {
+                      maximumFractionDigits: 2,
+                    }
+                  )}{" "}
+                  will be recorded as Cash Out.
+                </small>
+              )}
+
+            {paymentType === "cash" &&
+              paymentMode !== "cash" && (
+                <small>
+                  ₹
+                  {cartTotal.toLocaleString(
+                    "en-IN",
+                    {
+                      maximumFractionDigits: 2,
+                    }
+                  )}{" "}
+                  paid via{" "}
+                  {getPaymentModeLabel(
+                    paymentMode
+                  )}
+                  . Cashbook will not be affected.
+                </small>
+              )}
 
             {paymentType === "credit" &&
               selectedSupplier && (
@@ -875,6 +1079,7 @@ export default function PurchasePage() {
       )}
 
       {/* MESSAGE */}
+
       {message && (
         <div className="purchase-message">
           {message}
