@@ -50,7 +50,9 @@ export default function CashOutPage() {
       <header className="cashbook-header">
         <button
           className="cashbook-back"
-          onClick={() => window.history.back()}
+          onClick={() => {
+            window.location.href = "/hisabpro/cashbook/";
+          }}
         >
           ←
         </button>
@@ -81,14 +83,18 @@ export default function CashOutPage() {
             min="0"
             placeholder="₹ 0.00"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={(e) =>
+              setAmount(e.target.value)
+            }
           />
 
           <label>Category</label>
 
           <select
             value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            onChange={(e) =>
+              setCategory(e.target.value)
+            }
           >
             <option>Expense</option>
             <option>Purchase</option>
@@ -104,7 +110,9 @@ export default function CashOutPage() {
           <textarea
             placeholder="Optional note"
             value={note}
-            onChange={(e) => setNote(e.target.value)}
+            onChange={(e) =>
+              setNote(e.target.value)
+            }
           />
 
           {message && (
