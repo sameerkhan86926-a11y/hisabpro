@@ -126,6 +126,11 @@ export default function CustomerPage() {
     );
   }
 
+  function goToKhata() {
+    window.location.href =
+      "/hisabpro/khata/";
+  }
+
   function startEdit() {
     if (!customer) return;
 
@@ -276,8 +281,7 @@ export default function CustomerPage() {
       )
     );
 
-    window.location.href =
-      "/hisabpro/khata/";
+    goToKhata();
   }
 
   function saveData(
@@ -456,14 +460,6 @@ export default function CustomerPage() {
           amount,
       };
 
-    /*
-     * ONLY CASH PAYMENT → CASHBOOK
-     *
-     * UPI / CARD / BANK / ONLINE
-     * customer transaction me save honge,
-     * lekin Cash Balance me add nahi honge.
-     */
-
     const cashTransaction:
       CashTransaction | undefined =
       paymentMode === "cash"
@@ -585,14 +581,6 @@ export default function CustomerPage() {
       )
     );
 
-    /*
-     * Linked Cashbook entry remove.
-     *
-     * Old UPI/Card/Bank/Online payments
-     * me cashbook entry nahi hogi,
-     * isliye unke liye kuch remove nahi hoga.
-     */
-
     const savedCashTransactions:
       CashTransaction[] = JSON.parse(
         localStorage.getItem(
@@ -693,9 +681,8 @@ export default function CustomerPage() {
         <header className="customer-detail-header">
 
           <button
-            onClick={() =>
-              window.history.back()
-            }
+            type="button"
+            onClick={goToKhata}
             className="back-button"
           >
             ← Back
@@ -720,11 +707,13 @@ export default function CustomerPage() {
           </p>
 
           <button
-          onClick={() => window.history.back()}
-          className="back-button"
-        >
-          ← Back
-        </button>
+            type="button"
+            onClick={goToKhata}
+            className="back-button"
+          >
+            ← Back to Khata
+          </button>
+
         </div>
 
       </main>
@@ -738,11 +727,13 @@ export default function CustomerPage() {
 
       <header className="customer-detail-header">
 
-        <a
-          href="/hisabpro/khata/"
+        <button
+          type="button"
+          onClick={goToKhata}
+          className="back-button"
         >
           ← Khata
-        </a>
+        </button>
 
         <h1>
           Customer
