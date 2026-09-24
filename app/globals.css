@@ -8907,3 +8907,22 @@ button {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+.upi-badge {
+  background: #eef5ff;
+  color: #1559b7;
+}
+
+.card-badge {
+  background: #f3efff;
+  color: #6842c2;
+}
+
+.bank-badge {
+  background: #fff6e8;
+  color: #b86b00;
+}
+
+.online-badge {
+  background: #edf8ff;
+  color: #087ca7;
+}
