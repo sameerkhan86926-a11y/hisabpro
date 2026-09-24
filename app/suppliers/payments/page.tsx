@@ -12,6 +12,13 @@ type Supplier = {
   createdAt: string;
 };
 
+type PaymentMode =
+  | "cash"
+  | "upi"
+  | "card"
+  | "bank"
+  | "online";
+
 type SupplierPayment = {
   id: number;
   supplierId: number;
@@ -19,6 +26,7 @@ type SupplierPayment = {
   amount: number;
   note: string;
   date: string;
+  paymentMode?: PaymentMode;
 };
 
 type CashTransaction = {
@@ -38,11 +46,16 @@ const CASHBOOK_KEY = "hisabpro_cashbook";
 
 export default function SupplierPaymentsPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [payments, setPayments] = useState<SupplierPayment[]>([]);
+  const [payments, setPayments] = useState<
+    SupplierPayment[]
+  >([]);
 
   const [supplierId, setSupplierId] = useState("");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
+
+  const [paymentMode, setPaymentMode] =
+    useState<PaymentMode>("cash");
 
   const [message, setMessage] = useState("");
 
@@ -110,6 +123,30 @@ export default function SupplierPaymentsPage() {
     }
   }
 
+  function getPaymentModeLabel(
+    mode?: PaymentMode
+  ) {
+    switch (mode) {
+      case "cash":
+        return "Cash";
+
+      case "upi":
+        return "UPI";
+
+      case "card":
+        return "Card";
+
+      case "bank":
+        return "Bank Transfer";
+
+      case "online":
+        return "Online";
+
+      default:
+        return "Cash";
+    }
+  }
+
   function savePayment() {
     if (!supplierId) {
       setMessage("Please select a supplier.");
@@ -122,7 +159,9 @@ export default function SupplierPaymentsPage() {
       !Number.isFinite(paymentAmount) ||
       paymentAmount <= 0
     ) {
-      setMessage("Enter a valid payment amount.");
+      setMessage(
+        "Enter a valid payment amount."
+      );
       return;
     }
 
@@ -135,7 +174,10 @@ export default function SupplierPaymentsPage() {
       return;
     }
 
-    if (paymentAmount > Number(supplier.due || 0)) {
+    if (
+      paymentAmount >
+      Number(supplier.due || 0)
+    ) {
       setMessage(
         `Payment cannot be greater than supplier payable of ₹${formatMoney(
           supplier.due
@@ -167,17 +209,40 @@ export default function SupplierPaymentsPage() {
         );
 
       const paymentId = Date.now();
+
       const paymentDate =
         new Date().toISOString();
 
+      /*
+       * --------------------------------
+       * CREATE SUPPLIER PAYMENT
+       * --------------------------------
+       */
+
       const payment: SupplierPayment = {
         id: paymentId,
+
         supplierId: supplier.id,
+
         supplierName: supplier.name,
+
         amount: paymentAmount,
+
         note: note.trim(),
+
         date: paymentDate,
+
+        paymentMode,
       };
+
+      /*
+       * --------------------------------
+       * UPDATE SUPPLIER PAYABLE
+       * --------------------------------
+       *
+       * Payment mode does not matter here.
+       * Every payment reduces supplier due.
+       */
 
       const updatedSuppliers =
         savedSuppliers.map((item) => {
@@ -187,6 +252,7 @@ export default function SupplierPaymentsPage() {
 
           return {
             ...item,
+
             due: Math.max(
               0,
               Number(item.due || 0) -
@@ -200,26 +266,58 @@ export default function SupplierPaymentsPage() {
         ...savedPayments,
       ];
 
-      // Supplier payment = Cash Out
-      const cashTransaction: CashTransaction = {
-        id: paymentId + 1,
-        type: "out",
-        amount: paymentAmount,
-        category: "Supplier Payment",
-        note:
-          `Payment to Supplier - ${supplier.name}` +
-          (note.trim()
-            ? ` - ${note.trim()}`
-            : ""),
-        date: paymentDate,
-        referenceType: "supplier_payment",
-        referenceId: paymentId,
-      };
+      /*
+       * --------------------------------
+       * CASHBOOK
+       * --------------------------------
+       *
+       * ONLY CASH affects Cashbook.
+       *
+       * Cash        → Cash Out
+       * UPI         → No Cashbook
+       * Card        → No Cashbook
+       * Bank        → No Cashbook
+       * Online      → No Cashbook
+       */
 
-      const updatedCashbook = [
-        cashTransaction,
-        ...savedCashbook,
-      ];
+      let updatedCashbook =
+        savedCashbook;
+
+      if (paymentMode === "cash") {
+        const cashTransaction: CashTransaction = {
+          id: paymentId + 1,
+
+          type: "out",
+
+          amount: paymentAmount,
+
+          category: "Supplier Payment",
+
+          note:
+            `Payment to Supplier - ${supplier.name}` +
+            (note.trim()
+              ? ` - ${note.trim()}`
+              : ""),
+
+          date: paymentDate,
+
+          referenceType:
+            "supplier_payment",
+
+          referenceId: paymentId,
+        };
+
+        updatedCashbook = [
+          cashTransaction,
+          ...savedCashbook,
+        ];
+      }
+
+      /*
+       * --------------------------------
+       * SAVE
+       * --------------------------------
+       */
 
       localStorage.setItem(
         SUPPLIER_KEY,
@@ -236,6 +334,12 @@ export default function SupplierPaymentsPage() {
         JSON.stringify(updatedCashbook)
       );
 
+      /*
+       * --------------------------------
+       * UPDATE UI
+       * --------------------------------
+       */
+
       setSuppliers(updatedSuppliers);
 
       setPayments(
@@ -248,11 +352,18 @@ export default function SupplierPaymentsPage() {
 
       setAmount("");
       setNote("");
+      setPaymentMode("cash");
 
       setMessage(
-        `₹${formatMoney(
-          paymentAmount
-        )} payment recorded successfully and added to Cashbook as Cash Out.`
+        paymentMode === "cash"
+          ? `₹${formatMoney(
+              paymentAmount
+            )} Cash payment recorded and added to Cashbook.`
+          : `₹${formatMoney(
+              paymentAmount
+            )} ${getPaymentModeLabel(
+              paymentMode
+            )} payment recorded successfully. Cashbook not affected.`
       );
 
       setTimeout(() => {
@@ -270,12 +381,15 @@ export default function SupplierPaymentsPage() {
     }
   }
 
-  function deletePayment(payment: SupplierPayment) {
-    const confirmDelete = window.confirm(
-      `Delete ₹${formatMoney(
-        payment.amount
-      )} payment to ${payment.supplierName}?`
-    );
+  function deletePayment(
+    payment: SupplierPayment
+  ) {
+    const confirmDelete =
+      window.confirm(
+        `Delete ₹${formatMoney(
+          payment.amount
+        )} payment to ${payment.supplierName}?`
+      );
 
     if (!confirmDelete) {
       return;
@@ -303,7 +417,12 @@ export default function SupplierPaymentsPage() {
           ) || "[]"
         );
 
-      // Reverse supplier payable
+      /*
+       * --------------------------------
+       * RESTORE SUPPLIER PAYABLE
+       * --------------------------------
+       */
+
       const updatedSuppliers =
         savedSuppliers.map((supplier) => {
           if (
@@ -315,13 +434,19 @@ export default function SupplierPaymentsPage() {
 
           return {
             ...supplier,
+
             due:
               Number(supplier.due || 0) +
               Number(payment.amount || 0),
           };
         });
 
-      // Remove exact supplier payment
+      /*
+       * --------------------------------
+       * REMOVE PAYMENT
+       * --------------------------------
+       */
+
       const updatedPayments =
         savedPayments.filter(
           (item) =>
@@ -329,19 +454,40 @@ export default function SupplierPaymentsPage() {
             Number(payment.id)
         );
 
-      // Remove only linked automatic Cashbook entry
-      // Manual Cashbook entries remain untouched.
-      const updatedCashbook =
-        savedCashbook.filter(
-          (transaction) =>
-            !(
-              transaction.referenceType ===
-                "supplier_payment" &&
-              Number(
-                transaction.referenceId
-              ) === Number(payment.id)
-            )
-        );
+      /*
+       * --------------------------------
+       * REMOVE CASHBOOK ONLY FOR CASH
+       * --------------------------------
+       *
+       * Old payment records without
+       * paymentMode are treated as Cash.
+       */
+
+      const paymentMode =
+        payment.paymentMode || "cash";
+
+      let updatedCashbook =
+        savedCashbook;
+
+      if (paymentMode === "cash") {
+        updatedCashbook =
+          savedCashbook.filter(
+            (transaction) =>
+              !(
+                transaction.referenceType ===
+                  "supplier_payment" &&
+                Number(
+                  transaction.referenceId
+                ) === Number(payment.id)
+              )
+          );
+      }
+
+      /*
+       * --------------------------------
+       * SAVE
+       * --------------------------------
+       */
 
       localStorage.setItem(
         SUPPLIER_KEY,
@@ -369,9 +515,15 @@ export default function SupplierPaymentsPage() {
       );
 
       setMessage(
-        `₹${formatMoney(
-          payment.amount
-        )} payment deleted, supplier payable restored and Cashbook updated.`
+        paymentMode === "cash"
+          ? `₹${formatMoney(
+              payment.amount
+            )} Cash payment deleted, supplier payable restored and Cashbook updated.`
+          : `₹${formatMoney(
+              payment.amount
+            )} ${getPaymentModeLabel(
+              paymentMode
+            )} payment deleted and supplier payable restored.`
       );
 
       setTimeout(() => {
@@ -392,12 +544,17 @@ export default function SupplierPaymentsPage() {
   return (
     <main className="supplier-payment-page">
 
+      {/* HEADER */}
+
       <header className="supplier-payment-header">
 
         <button
           type="button"
           className="supplier-payment-back"
-          onClick={() => window.history.back()}
+          onClick={() =>
+            (window.location.href =
+              "/hisabpro/more/")
+          }
           aria-label="Back"
         >
           <svg viewBox="0 0 24 24">
@@ -408,12 +565,18 @@ export default function SupplierPaymentsPage() {
 
         <div>
           <h1>Supplier Payment</h1>
-          <p>Settle supplier payable</p>
+          <p>
+            Settle supplier payable
+          </p>
         </div>
 
       </header>
 
+      {/* FORM */}
+
       <section className="supplier-payment-form-card">
+
+        {/* SUPPLIER */}
 
         <div className="supplier-payment-field">
 
@@ -422,7 +585,9 @@ export default function SupplierPaymentsPage() {
           <select
             value={supplierId}
             onChange={(e) =>
-              setSupplierId(e.target.value)
+              setSupplierId(
+                e.target.value
+              )
             }
           >
             <option value="">
@@ -441,21 +606,32 @@ export default function SupplierPaymentsPage() {
 
         </div>
 
+        {/* CURRENT PAYABLE */}
+
         {selectedSupplier && (
           <div className="supplier-payment-due-card">
 
-            <span>Current Payable</span>
+            <span>
+              Current Payable
+            </span>
 
             <strong>
-              ₹{formatMoney(selectedSupplier.due)}
+              ₹
+              {formatMoney(
+                selectedSupplier.due
+              )}
             </strong>
 
           </div>
         )}
 
+        {/* PAYMENT AMOUNT */}
+
         <div className="supplier-payment-field">
 
-          <label>Payment Amount</label>
+          <label>
+            Payment Amount
+          </label>
 
           <div className="supplier-payment-money">
 
@@ -466,7 +642,9 @@ export default function SupplierPaymentsPage() {
               min="0"
               value={amount}
               onChange={(e) =>
-                setAmount(e.target.value)
+                setAmount(
+                  e.target.value
+                )
               }
               placeholder="Enter amount"
             />
@@ -474,6 +652,123 @@ export default function SupplierPaymentsPage() {
           </div>
 
         </div>
+
+        {/* PAYMENT MODE */}
+
+        <div className="supplier-payment-mode-section">
+
+          <label>
+            Payment Mode
+          </label>
+
+          <div className="supplier-payment-modes">
+
+            {/* CASH */}
+
+            <button
+              type="button"
+              className={
+                paymentMode === "cash"
+                  ? "active"
+                  : ""
+              }
+              onClick={() =>
+                setPaymentMode("cash")
+              }
+            >
+              <span>💵</span>
+              <strong>Cash</strong>
+            </button>
+
+            {/* UPI */}
+
+            <button
+              type="button"
+              className={
+                paymentMode === "upi"
+                  ? "active"
+                  : ""
+              }
+              onClick={() =>
+                setPaymentMode("upi")
+              }
+            >
+              <span>📱</span>
+              <strong>UPI</strong>
+            </button>
+
+            {/* CARD */}
+
+            <button
+              type="button"
+              className={
+                paymentMode === "card"
+                  ? "active"
+                  : ""
+              }
+              onClick={() =>
+                setPaymentMode("card")
+              }
+            >
+              <span>💳</span>
+              <strong>Card</strong>
+            </button>
+
+            {/* BANK */}
+
+            <button
+              type="button"
+              className={
+                paymentMode === "bank"
+                  ? "active"
+                  : ""
+              }
+              onClick={() =>
+                setPaymentMode("bank")
+              }
+            >
+              <span>🏦</span>
+              <strong>Bank</strong>
+            </button>
+
+            {/* ONLINE */}
+
+            <button
+              type="button"
+              className={
+                paymentMode === "online"
+                  ? "active"
+                  : ""
+              }
+              onClick={() =>
+                setPaymentMode("online")
+              }
+            >
+              <span>🌐</span>
+              <strong>Online</strong>
+            </button>
+
+          </div>
+
+          {paymentMode === "cash" ? (
+            <small>
+              Cash payment will be recorded
+              as Cash Out.
+            </small>
+          ) : (
+            <small>
+              {getPaymentModeLabel(
+                paymentMode
+              )}{" "}
+              payment will reduce supplier
+              payable but will not affect
+              Cashbook.
+            </small>
+          )}
+
+        </div>
+
+        {/* NOTE */}
 
         <div className="supplier-payment-field">
 
@@ -490,6 +785,8 @@ export default function SupplierPaymentsPage() {
 
         </div>
 
+        {/* SAVE */}
+
         <button
           type="button"
           className="supplier-payment-save"
@@ -500,31 +797,53 @@ export default function SupplierPaymentsPage() {
 
       </section>
 
+      {/* MESSAGE */}
+
       {message && (
         <div className="supplier-payment-message">
           {message}
         </div>
       )}
 
+      {/* HISTORY */}
+
       <section className="supplier-payment-history">
 
         <div className="supplier-payment-title">
-          <h2>Payment History</h2>
-          <span>{payments.length}</span>
+
+          <h2>
+            Payment History
+          </h2>
+
+          <span>
+            {payments.length}
+          </span>
+
         </div>
 
         {payments.length === 0 ? (
+
           <div className="supplier-payment-empty">
+
             <div>💳</div>
-            <h3>No payments yet</h3>
+
+            <h3>
+              No payments yet
+            </h3>
+
             <p>
-              Supplier payments will appear here.
+              Supplier payments will
+              appear here.
             </p>
+
           </div>
+
         ) : (
+
           <div className="supplier-payment-list">
 
             {payments.map((payment) => (
+
               <div
                 key={payment.id}
                 className="supplier-payment-card"
@@ -541,8 +860,17 @@ export default function SupplierPaymentsPage() {
                   </strong>
 
                   <span>
-                    {formatDate(payment.date)}
+                    {formatDate(
+                      payment.date
+                    )}
                   </span>
+
+                  <small>
+                    Payment:{" "}
+                    {getPaymentModeLabel(
+                      payment.paymentMode
+                    )}
+                  </small>
 
                   {payment.note && (
                     <small>
@@ -553,14 +881,19 @@ export default function SupplierPaymentsPage() {
                 </div>
 
                 <strong className="supplier-payment-amount">
-                  ₹{formatMoney(payment.amount)}
+                  ₹
+                  {formatMoney(
+                    payment.amount
+                  )}
                 </strong>
 
                 <button
                   type="button"
                   className="supplier-payment-delete"
                   onClick={() =>
-                    deletePayment(payment)
+                    deletePayment(
+                      payment
+                    )
                   }
                   aria-label="Delete payment"
                   title="Delete payment"
@@ -569,9 +902,11 @@ export default function SupplierPaymentsPage() {
                 </button>
 
               </div>
+
             ))}
 
           </div>
+
         )}
 
       </section>
