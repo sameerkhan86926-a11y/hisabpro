@@ -50,9 +50,21 @@ type Purchase = {
   date: string;
 };
 
+type CashTransaction = {
+  id: number;
+  type: "in" | "out";
+  amount: number;
+  category: string;
+  note: string;
+  date: string;
+  referenceType?: string;
+  referenceId?: number;
+};
+
 const PRODUCT_KEY = "hisabpro_products";
 const SUPPLIER_KEY = "hisabpro_suppliers";
 const PURCHASE_KEY = "hisabpro_purchases";
+const CASHBOOK_KEY = "hisabpro_cashbook";
 
 export default function PurchasePage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -247,6 +259,11 @@ export default function PurchasePage() {
       return;
     }
 
+    if (cartTotal <= 0) {
+      setMessage("Purchase total must be greater than ₹0.");
+      return;
+    }
+
     try {
       const savedProducts: Product[] = JSON.parse(
         localStorage.getItem(PRODUCT_KEY) || "[]"
@@ -260,7 +277,13 @@ export default function PurchasePage() {
         localStorage.getItem(PURCHASE_KEY) || "[]"
       );
 
+      const savedCashbook: CashTransaction[] =
+        JSON.parse(
+          localStorage.getItem(CASHBOOK_KEY) || "[]"
+        );
+
       const purchaseId = Date.now();
+
       const purchaseDate =
         new Date().toISOString();
 
@@ -284,12 +307,19 @@ export default function PurchasePage() {
           const item = purchaseItems[0];
 
           const newBatch: StockBatch = {
-            id: Date.now() + product.id,
+            id:
+              purchaseId +
+              product.id +
+              Math.floor(Math.random() * 1000),
+
             quantity: item.quantity,
+
             purchasePrice:
               item.purchasePrice,
+
             sellingPrice:
               item.sellingPrice,
+
             date: purchaseDate,
           };
 
@@ -326,11 +356,17 @@ export default function PurchasePage() {
 
       const purchase: Purchase = {
         id: purchaseId,
+
         supplierId: supplier.id,
+
         supplierName: supplier.name,
+
         items: cart,
+
         total: cartTotal,
+
         paymentType,
+
         date: purchaseDate,
       };
 
@@ -343,6 +379,11 @@ export default function PurchasePage() {
        * --------------------------------
        * UPDATE SUPPLIER PAYABLE
        * --------------------------------
+       *
+       * Only CREDIT purchase increases
+       * supplier payable.
+       *
+       * CASH purchase does not increase due.
        */
 
       const updatedSuppliers =
@@ -353,6 +394,7 @@ export default function PurchasePage() {
 
           return {
             ...item,
+
             due:
               Number(item.due || 0) +
               (paymentType === "credit"
@@ -360,6 +402,53 @@ export default function PurchasePage() {
                 : 0),
           };
         });
+
+      /*
+       * --------------------------------
+       * CASHBOOK INTEGRATION
+       * --------------------------------
+       *
+       * CASH PURCHASE:
+       * Cash goes OUT.
+       *
+       * CREDIT PURCHASE:
+       * No cash movement.
+       */
+
+      let updatedCashbook =
+        savedCashbook;
+
+      if (paymentType === "cash") {
+        const cashTransaction: CashTransaction = {
+          id: purchaseId + 1,
+
+          type: "out",
+
+          amount: cartTotal,
+
+          category: "Purchase",
+
+          note:
+            `Cash Purchase - ${supplier.name} - ` +
+            cart
+              .map(
+                (item) =>
+                  `${item.productName} x${item.quantity}`
+              )
+              .join(", "),
+
+          date: purchaseDate,
+
+          referenceType: "purchase",
+
+          referenceId: purchaseId,
+        };
+
+        updatedCashbook = [
+          ...savedCashbook,
+          cashTransaction,
+        ];
+      }
 
       /*
        * --------------------------------
@@ -382,15 +471,33 @@ export default function PurchasePage() {
         JSON.stringify(updatedPurchases)
       );
 
+      localStorage.setItem(
+        CASHBOOK_KEY,
+        JSON.stringify(updatedCashbook)
+      );
+
+      /*
+       * --------------------------------
+       * UPDATE UI
+       * --------------------------------
+       */
+
       setProducts(updatedProducts);
+
       setSuppliers(updatedSuppliers);
 
       setCart([]);
+
       setSupplierId("");
+
       setProductId("");
+
       setQuantity("");
+
       setPurchasePrice("");
+
       setSellingPrice("");
+
       setPaymentType("cash");
 
       setMessage(
@@ -726,6 +833,19 @@ export default function PurchasePage() {
               </button>
 
             </div>
+
+            {paymentType === "cash" && (
+              <small>
+                ₹
+                {cartTotal.toLocaleString(
+                  "en-IN",
+                  {
+                    maximumFractionDigits: 2,
+                  }
+                )}{" "}
+                will be recorded as Cash Out.
+              </small>
+            )}
 
             {paymentType === "credit" &&
               selectedSupplier && (
