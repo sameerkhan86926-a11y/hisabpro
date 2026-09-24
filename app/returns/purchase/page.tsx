@@ -2,6 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+type PaymentType = "cash" | "credit";
+
+type PaymentMode =
+  | "cash"
+  | "upi"
+  | "card"
+  | "bank"
+  | "online";
+
 type PurchaseItem = {
   id: number;
   productId: number;
@@ -18,7 +27,8 @@ type Purchase = {
   supplierName: string;
   items: PurchaseItem[];
   total: number;
-  paymentType: "cash" | "credit";
+  paymentType: PaymentType;
+  paymentMode?: PaymentMode;
   date: string;
 };
 
@@ -61,16 +71,46 @@ type CashTransaction = {
   referenceId?: number;
 };
 
-const PURCHASE_KEY = "hisabpro_purchases";
-const PRODUCT_KEY = "hisabpro_products";
-const SUPPLIER_KEY = "hisabpro_suppliers";
-const RETURNS_KEY = "hisabpro_returns";
-const CASHBOOK_KEY = "hisabpro_cashbook";
+type PurchaseReturn = {
+  id: number;
+  type: "purchase";
+  purchaseId: number;
+  supplierId: number;
+  supplierName: string;
+  productId: number;
+  productName: string;
+  quantity: number;
+  amount: number;
+  paymentType: PaymentType;
+  paymentMode?: PaymentMode;
+  reason: string;
+  date: string;
+};
+
+const PURCHASE_KEY =
+  "hisabpro_purchases";
+
+const PRODUCT_KEY =
+  "hisabpro_products";
+
+const SUPPLIER_KEY =
+  "hisabpro_suppliers";
+
+const RETURNS_KEY =
+  "hisabpro_returns";
+
+const CASHBOOK_KEY =
+  "hisabpro_cashbook";
 
 export default function PurchaseReturnPage() {
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [purchases, setPurchases] =
+    useState<Purchase[]>([]);
+
+  const [products, setProducts] =
+    useState<Product[]>([]);
+
+  const [suppliers, setSuppliers] =
+    useState<Supplier[]>([]);
 
   const [selectedPurchaseId, setSelectedPurchaseId] =
     useState("");
@@ -78,9 +118,14 @@ export default function PurchaseReturnPage() {
   const [selectedItemIndex, setSelectedItemIndex] =
     useState("");
 
-  const [quantity, setQuantity] = useState("1");
-  const [reason, setReason] = useState("");
-  const [message, setMessage] = useState("");
+  const [quantity, setQuantity] =
+    useState("1");
+
+  const [reason, setReason] =
+    useState("");
+
+  const [message, setMessage] =
+    useState("");
 
   useEffect(() => {
     loadData();
@@ -90,19 +135,25 @@ export default function PurchaseReturnPage() {
     try {
       setPurchases(
         JSON.parse(
-          localStorage.getItem(PURCHASE_KEY) || "[]"
+          localStorage.getItem(
+            PURCHASE_KEY
+          ) || "[]"
         )
       );
 
       setProducts(
         JSON.parse(
-          localStorage.getItem(PRODUCT_KEY) || "[]"
+          localStorage.getItem(
+            PRODUCT_KEY
+          ) || "[]"
         )
       );
 
       setSuppliers(
         JSON.parse(
-          localStorage.getItem(SUPPLIER_KEY) || "[]"
+          localStorage.getItem(
+            SUPPLIER_KEY
+          ) || "[]"
         )
       );
     } catch {
@@ -112,37 +163,43 @@ export default function PurchaseReturnPage() {
     }
   }
 
-  const selectedPurchase = useMemo(() => {
-    return purchases.find(
-      (purchase) =>
-        String(purchase.id) ===
-        selectedPurchaseId
-    );
-  }, [purchases, selectedPurchaseId]);
+  const selectedPurchase =
+    useMemo(() => {
+      return purchases.find(
+        (purchase) =>
+          String(purchase.id) ===
+          selectedPurchaseId
+      );
+    }, [
+      purchases,
+      selectedPurchaseId,
+    ]);
 
-  const selectedItem = useMemo(() => {
-    if (
-      !selectedPurchase ||
-      selectedItemIndex === ""
-    ) {
-      return null;
-    }
+  const selectedItem =
+    useMemo(() => {
+      if (
+        !selectedPurchase ||
+        selectedItemIndex === ""
+      ) {
+        return null;
+      }
 
-    return (
-      selectedPurchase.items[
-        Number(selectedItemIndex)
-      ] || null
-    );
-  }, [
-    selectedPurchase,
-    selectedItemIndex,
-  ]);
+      return (
+        selectedPurchase.items[
+          Number(selectedItemIndex)
+        ] || null
+      );
+    }, [
+      selectedPurchase,
+      selectedItemIndex,
+    ]);
 
-  const purchasePrice = selectedItem
-    ? Number(
-        selectedItem.purchasePrice
-      ) || 0
-    : 0;
+  const purchasePrice =
+    selectedItem
+      ? Number(
+          selectedItem.purchasePrice
+        ) || 0
+      : 0;
 
   const returnAmount =
     purchasePrice *
@@ -150,6 +207,39 @@ export default function PurchaseReturnPage() {
       0,
       Number(quantity) || 0
     );
+
+  function getPaymentModeLabel(
+    paymentType: PaymentType,
+    paymentMode?: PaymentMode
+  ) {
+    if (
+      paymentType === "credit"
+    ) {
+      return "Credit";
+    }
+
+    switch (
+      paymentMode || "cash"
+    ) {
+      case "cash":
+        return "Cash";
+
+      case "upi":
+        return "UPI";
+
+      case "card":
+        return "Card";
+
+      case "bank":
+        return "Bank Transfer";
+
+      case "online":
+        return "Online";
+
+      default:
+        return "Cash";
+    }
+  }
 
   const saveReturn = () => {
     setMessage("");
@@ -168,10 +258,13 @@ export default function PurchaseReturnPage() {
       return;
     }
 
-    const returnQty = Number(quantity);
+    const returnQty =
+      Number(quantity);
 
     if (
-      !Number.isFinite(returnQty) ||
+      !Number.isFinite(
+        returnQty
+      ) ||
       returnQty <= 0
     ) {
       setMessage(
@@ -182,7 +275,9 @@ export default function PurchaseReturnPage() {
 
     if (
       returnQty >
-      Number(selectedItem.quantity)
+      Number(
+        selectedItem.quantity
+      )
     ) {
       setMessage(
         "Return quantity cannot exceed purchased quantity."
@@ -191,7 +286,9 @@ export default function PurchaseReturnPage() {
     }
 
     if (
-      !Number.isFinite(returnAmount) ||
+      !Number.isFinite(
+        returnAmount
+      ) ||
       returnAmount <= 0
     ) {
       setMessage(
@@ -222,6 +319,14 @@ export default function PurchaseReturnPage() {
           ) || "[]"
         );
 
+      const existingReturns:
+        PurchaseReturn[] =
+        JSON.parse(
+          localStorage.getItem(
+            RETURNS_KEY
+          ) || "[]"
+        );
+
       const productIndex =
         savedProducts.findIndex(
           (product) =>
@@ -239,11 +344,14 @@ export default function PurchaseReturnPage() {
       }
 
       const product =
-        savedProducts[productIndex];
+        savedProducts[
+          productIndex
+        ];
 
       if (
-        Number(product.stock || 0) <
-        returnQty
+        Number(
+          product.stock || 0
+        ) < returnQty
       ) {
         setMessage(
           "Return quantity is greater than current stock."
@@ -251,27 +359,41 @@ export default function PurchaseReturnPage() {
         return;
       }
 
-      let remaining = returnQty;
+      let remaining =
+        returnQty;
 
-      let batches = Array.isArray(
-        product.batches
-      )
-        ? [...product.batches]
-        : [];
+      let batches =
+        Array.isArray(
+          product.batches
+        )
+          ? [
+              ...product.batches,
+            ]
+          : [];
 
       /*
-       * First reduce batches matching the
-       * original purchase price + selling price.
-       * Newest matching batches are reduced first.
+       * First reduce batches matching
+       * the original purchase price
+       * and selling price.
+       *
+       * Newest matching batches
+       * are reduced first.
        */
       const matchingIndexes =
         batches
-          .map((batch, index) => ({
-            batch,
-            index,
-          }))
+          .map(
+            (
+              batch,
+              index
+            ) => ({
+              batch,
+              index,
+            })
+          )
           .filter(
-            ({ batch }) =>
+            ({
+              batch,
+            }) =>
               Number(
                 batch.purchasePrice
               ) ===
@@ -298,96 +420,152 @@ export default function PurchaseReturnPage() {
               ).getTime()
           );
 
-      for (const match of matchingIndexes) {
-        if (remaining <= 0) {
+      for (
+        const match of
+          matchingIndexes
+      ) {
+        if (
+          remaining <= 0
+        ) {
           break;
         }
 
-        const available = Number(
-          batches[match.index]
-            .quantity || 0
-        );
-
-        const remove = Math.min(
-          available,
-          remaining
-        );
-
-        batches[match.index] = {
-          ...batches[match.index],
-          quantity:
-            available - remove,
-        };
-
-        remaining -= remove;
-      }
-
-      /*
-       * Fallback: if matching batches were
-       * insufficient, reduce other available
-       * batches from newest to oldest.
-       */
-      if (remaining > 0) {
-        for (
-          let i = batches.length - 1;
-          i >= 0;
-          i--
-        ) {
-          if (remaining <= 0) {
-            break;
-          }
-
-          const available = Number(
-            batches[i].quantity || 0
+        const available =
+          Number(
+            batches[
+              match.index
+            ].quantity || 0
           );
 
-          if (available <= 0) {
-            continue;
-          }
-
-          const remove = Math.min(
+        const remove =
+          Math.min(
             available,
             remaining
           );
 
+        batches[
+          match.index
+        ] = {
+          ...batches[
+            match.index
+          ],
+
+          quantity:
+            available -
+            remove,
+        };
+
+        remaining -=
+          remove;
+      }
+
+      /*
+       * Fallback:
+       * If matching batches are
+       * insufficient, reduce other
+       * available batches from
+       * newest to oldest.
+       */
+      if (
+        remaining > 0
+      ) {
+        for (
+          let i =
+            batches.length -
+            1;
+          i >= 0;
+          i--
+        ) {
+          if (
+            remaining <= 0
+          ) {
+            break;
+          }
+
+          const available =
+            Number(
+              batches[i]
+                .quantity ||
+                0
+            );
+
+          if (
+            available <= 0
+          ) {
+            continue;
+          }
+
+          const remove =
+            Math.min(
+              available,
+              remaining
+            );
+
           batches[i] = {
             ...batches[i],
+
             quantity:
-              available - remove,
+              available -
+              remove,
           };
 
-          remaining -= remove;
+          remaining -=
+            remove;
         }
       }
 
-      if (remaining > 0) {
+      if (
+        remaining > 0
+      ) {
         setMessage(
           "Unable to adjust stock batches."
         );
         return;
       }
 
-      batches = batches.filter(
-        (batch) =>
-          Number(batch.quantity) > 0
-      );
+      batches =
+        batches.filter(
+          (batch) =>
+            Number(
+              batch.quantity
+            ) > 0
+        );
 
-      savedProducts[productIndex] = {
+      savedProducts[
+        productIndex
+      ] = {
         ...product,
+
         stock: Math.max(
           0,
-          Number(product.stock || 0) -
-            returnQty
+          Number(
+            product.stock || 0
+          ) - returnQty
         ),
+
         batches,
       };
 
       /*
-       * Credit purchase:
-       * Reduce supplier payable.
+       * Original payment mode.
        *
-       * No Cashbook entry because
-       * this is a payable adjustment.
+       * Old purchase records without
+       * paymentMode are treated as Cash.
+       */
+      const originalPaymentMode:
+        PaymentMode =
+        selectedPurchase.paymentType ===
+        "credit"
+          ? "cash"
+          : selectedPurchase.paymentMode ||
+            "cash";
+
+      /*
+       * CREDIT PURCHASE
+       *
+       * Supplier payable is reduced.
+       *
+       * No Cashbook entry.
        */
       if (
         selectedPurchase.paymentType ===
@@ -396,21 +574,28 @@ export default function PurchaseReturnPage() {
         const supplierIndex =
           savedSuppliers.findIndex(
             (supplier) =>
-              Number(supplier.id) ===
+              Number(
+                supplier.id
+              ) ===
               Number(
                 selectedPurchase.supplierId
               )
           );
 
-        if (supplierIndex !== -1) {
+        if (
+          supplierIndex !==
+          -1
+        ) {
           savedSuppliers[
             supplierIndex
           ] = {
             ...savedSuppliers[
               supplierIndex
             ],
+
             due: Math.max(
               0,
+
               Number(
                 savedSuppliers[
                   supplierIndex
@@ -421,70 +606,109 @@ export default function PurchaseReturnPage() {
         }
       }
 
-      const existingReturns =
-        JSON.parse(
-          localStorage.getItem(
-            RETURNS_KEY
-          ) || "[]"
-        );
+      const returnId =
+        Date.now();
 
-      const returnId = Date.now();
       const returnDate =
         new Date().toISOString();
 
-      existingReturns.push({
+      /*
+       * Save purchase return
+       * with paymentMode.
+       */
+      const returnRecord:
+        PurchaseReturn = {
         id: returnId,
+
         type: "purchase",
+
         purchaseId:
           selectedPurchase.id,
+
         supplierId:
           selectedPurchase.supplierId,
+
         supplierName:
           selectedPurchase.supplierName,
+
         productId:
           selectedItem.productId,
+
         productName:
           selectedItem.productName,
-        quantity: returnQty,
-        amount: returnAmount,
+
+        quantity:
+          returnQty,
+
+        amount:
+          returnAmount,
+
         paymentType:
           selectedPurchase.paymentType,
+
+        paymentMode:
+          selectedPurchase.paymentType ===
+          "credit"
+            ? undefined
+            : originalPaymentMode,
+
         reason:
           reason.trim(),
-        date: returnDate,
-      });
+
+        date:
+          returnDate,
+      };
+
+      existingReturns.push(
+        returnRecord
+      );
 
       /*
-       * Cash purchase:
-       * Supplier refunds money,
-       * therefore Cash In.
+       * CASH PURCHASE RETURN
+       *
+       * Supplier gives actual
+       * cash refund.
+       *
+       * Cashbook = Cash In.
        */
       let updatedCashbook =
         savedCashbook;
 
       if (
         selectedPurchase.paymentType ===
-        "cash"
+          "cash" &&
+        originalPaymentMode ===
+          "cash"
       ) {
         const cashTransaction:
           CashTransaction = {
-            id: returnId + 1,
-            type: "in",
-            amount: returnAmount,
-            category:
-              "Purchase Return",
-            note:
-              `Cash Refund from Supplier - ${selectedPurchase.supplierName}` +
-              ` - ${selectedItem.productName}` +
-              (reason.trim()
-                ? ` - ${reason.trim()}`
-                : ""),
-            date: returnDate,
-            referenceType:
-              "purchase_return",
-            referenceId:
-              returnId,
-          };
+          id:
+            returnId + 1,
+
+          type: "in",
+
+          amount:
+            returnAmount,
+
+          category:
+            "Purchase Return",
+
+          note:
+            `Cash Refund from Supplier - ${selectedPurchase.supplierName}` +
+            ` - ${selectedItem.productName}` +
+            (reason.trim()
+              ? ` - ${reason.trim()}`
+              : ""),
+
+          date:
+            returnDate,
+
+          referenceType:
+            "purchase_return",
+
+          referenceId:
+            returnId,
+        };
 
         updatedCashbook = [
           cashTransaction,
@@ -503,7 +727,8 @@ export default function PurchaseReturnPage() {
       );
 
       /*
-       * Save suppliers.
+       * Save supplier payable
+       * for credit purchases.
        */
       if (
         selectedPurchase.paymentType ===
@@ -528,12 +753,14 @@ export default function PurchaseReturnPage() {
       );
 
       /*
-       * Cash purchase return creates
-       * Cashbook Cash In.
+       * Cashbook changes ONLY
+       * for actual Cash refund.
        */
       if (
         selectedPurchase.paymentType ===
-        "cash"
+          "cash" &&
+        originalPaymentMode ===
+          "cash"
       ) {
         localStorage.setItem(
           CASHBOOK_KEY,
@@ -555,20 +782,35 @@ export default function PurchaseReturnPage() {
       setReason("");
       setSelectedItemIndex("");
 
+      /*
+       * Success messages.
+       */
       if (
         selectedPurchase.paymentType ===
+        "credit"
+      ) {
+        setMessage(
+          `${formatMoney(
+            returnAmount
+          )} purchase return saved and supplier payable adjusted successfully ✅`
+        );
+      } else if (
+        originalPaymentMode ===
         "cash"
       ) {
         setMessage(
           `${formatMoney(
             returnAmount
-          )} supplier refund recorded and Cashbook updated as Cash In ✅`
+          )} cash refund from supplier recorded and Cashbook updated as Cash In ✅`
         );
       } else {
         setMessage(
           `${formatMoney(
             returnAmount
-          )} purchase return saved and supplier payable adjusted successfully ✅`
+          )} ${getPaymentModeLabel(
+            "cash",
+            originalPaymentMode
+          )} supplier refund recorded. Cashbook was not changed ✅`
         );
       }
     } catch (error) {
@@ -588,9 +830,12 @@ export default function PurchaseReturnPage() {
   ) =>
     `₹${Number(
       amount || 0
-    ).toLocaleString("en-IN", {
-      maximumFractionDigits: 2,
-    })}`;
+    ).toLocaleString(
+      "en-IN",
+      {
+        maximumFractionDigits: 2,
+      }
+    )}`;
 
   return (
     <main className="purchase-return-page">
@@ -599,15 +844,19 @@ export default function PurchaseReturnPage() {
 
         <button
           className="purchase-return-back"
-          onClick={() =>
-            window.history.back()
-          }
+          onClick={() => {
+            window.location.href =
+              "/hisabpro/returns/";
+          }}
         >
           ←
         </button>
 
         <div>
-          <h1>Purchase Return</h1>
+          <h1>
+            Purchase Return
+          </h1>
+
           <p>
             Return product to supplier
           </p>
@@ -624,12 +873,17 @@ export default function PurchaseReturnPage() {
           </label>
 
           <select
-            value={selectedPurchaseId}
+            value={
+              selectedPurchaseId
+            }
             onChange={(e) => {
               setSelectedPurchaseId(
                 e.target.value
               );
-              setSelectedItemIndex("");
+
+              setSelectedItemIndex(
+                ""
+              );
             }}
           >
             <option value="">
@@ -637,10 +891,16 @@ export default function PurchaseReturnPage() {
             </option>
 
             {purchases.map(
-              (purchase) => (
+              (
+                purchase
+              ) => (
                 <option
-                  key={purchase.id}
-                  value={purchase.id}
+                  key={
+                    purchase.id
+                  }
+                  value={
+                    purchase.id
+                  }
                 >
                   #{purchase.id} •{" "}
                   {
@@ -685,12 +945,10 @@ export default function PurchaseReturnPage() {
 
                 <span>
                   Payment:{" "}
-                  {
-                    selectedPurchase.paymentType ===
-                    "cash"
-                      ? "Cash"
-                      : "Credit"
-                  }
+                  {getPaymentModeLabel(
+                    selectedPurchase.paymentType,
+                    selectedPurchase.paymentMode
+                  )}
                 </span>
 
               </div>
@@ -714,10 +972,17 @@ export default function PurchaseReturnPage() {
                 </option>
 
                 {selectedPurchase.items.map(
-                  (item, index) => (
+                  (
+                    item,
+                    index
+                  ) => (
                     <option
-                      key={index}
-                      value={index}
+                      key={
+                        index
+                      }
+                      value={
+                        index
+                      }
                     >
                       {
                         item.productName
@@ -772,7 +1037,9 @@ export default function PurchaseReturnPage() {
                     max={
                       selectedItem.quantity
                     }
-                    value={quantity}
+                    value={
+                      quantity
+                    }
                     onChange={(e) =>
                       setQuantity(
                         e.target.value
@@ -787,7 +1054,9 @@ export default function PurchaseReturnPage() {
                   <input
                     type="text"
                     placeholder="Damaged, wrong product, quality issue..."
-                    value={reason}
+                    value={
+                      reason
+                    }
                     onChange={(e) =>
                       setReason(
                         e.target.value
