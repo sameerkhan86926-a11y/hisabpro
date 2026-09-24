@@ -8926,3 +8926,42 @@ button {
   background: #edf8ff;
   color: #087ca7;
 }
+.purchase-history-right .upi {
+  background: #eef5ff;
+  color: #1559b7;
+}
+
+.purchase-history-right .card {
+  background: #f3efff;
+  color: #6842c2;
+}
+
+.purchase-history-right .bank {
+  background: #fff6e8;
+  color: #b86b00;
+}
+
+.purchase-history-right .online {
+  background: #edf8ff;
+  color: #087ca7;
+}
+
+.purchase-history-detail-payment strong.upi {
+  background: #eef5ff;
+  color: #1559b7;
+}
+
+.purchase-history-detail-payment strong.card {
+  background: #f3efff;
+  color: #6842c2;
+}
+
+.purchase-history-detail-payment strong.bank {
+  background: #fff6e8;
+  color: #b86b00;
+}
+
+.purchase-history-detail-payment strong.online {
+  background: #edf8ff;
+  color: #087ca7;
+}
