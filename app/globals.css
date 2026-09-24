@@ -6543,25 +6543,51 @@ button {
 }
 
 .purchase-payment-options {
-  margin-top: 9px;
+  margin-top: 10px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
 }
 
 .purchase-payment-options button {
-  min-height: 45px;
+  min-height: 68px;
+  padding: 10px 6px;
   border: 1px solid #dfe4ec;
-  border-radius: 11px;
+  border-radius: 14px;
   background: white;
   color: #687386;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   font-weight: 700;
+  transition: 0.15s ease;
+}
+
+.purchase-payment-options button span {
+  font-size: 21px;
+  line-height: 1;
+}
+
+.purchase-payment-options button strong {
+  font-size: 12px;
 }
 
 .purchase-payment-options button.active {
   border-color: #1559b7;
   background: #edf3ff;
   color: #1559b7;
+}
+
+.purchase-payment-options button:active {
+  transform: scale(0.96);
+}
+
+@media (max-width: 380px) {
+  .purchase-payment-options {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .purchase-payment > small {
