@@ -8843,3 +8843,67 @@ button {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+.supplier-payment-mode-section {
+  margin-top: 18px;
+}
+
+.supplier-payment-mode-section > label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #263247;
+}
+
+.supplier-payment-modes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.supplier-payment-modes button {
+  min-height: 68px;
+  padding: 10px 6px;
+  border: 1px solid #e2e7ef;
+  border-radius: 14px;
+  background: #fff;
+  color: #667085;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: 0.15s ease;
+}
+
+.supplier-payment-modes button span {
+  font-size: 21px;
+  line-height: 1;
+}
+
+.supplier-payment-modes button strong {
+  font-size: 12px;
+}
+
+.supplier-payment-modes button.active {
+  border-color: #1559b7;
+  background: #eef5ff;
+  color: #1559b7;
+}
+
+.supplier-payment-modes button:active {
+  transform: scale(0.96);
+}
+
+.supplier-payment-mode-section > small {
+  display: block;
+  margin-top: 8px;
+  color: #d17a00;
+  font-size: 12px;
+}
+
+@media (max-width: 380px) {
+  .supplier-payment-modes {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
