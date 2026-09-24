@@ -68,18 +68,26 @@ export default function CashbookHistoryPage() {
 
   const totalIn = transactions
     .filter((item) => item.type === "in")
-    .reduce((sum, item) => sum + Number(item.amount), 0);
+    .reduce(
+      (sum, item) => sum + Number(item.amount),
+      0
+    );
 
   const totalOut = transactions
     .filter((item) => item.type === "out")
-    .reduce((sum, item) => sum + Number(item.amount), 0);
+    .reduce(
+      (sum, item) => sum + Number(item.amount),
+      0
+    );
 
   return (
     <main className="cashbook-page">
       <header className="cashbook-header">
         <button
           className="cashbook-back"
-          onClick={() => window.history.back()}
+          onClick={() => {
+            window.location.href = "/hisabpro/cashbook/";
+          }}
         >
           ←
         </button>
