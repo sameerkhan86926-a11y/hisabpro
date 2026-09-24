@@ -8753,3 +8753,67 @@ button {
     grid-template-columns: 1fr;
   }
 }
+.payment-mode-section {
+  margin-top: 18px;
+}
+
+.payment-mode-section > label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #263247;
+}
+
+.customer-payment-modes {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+
+.customer-payment-modes button {
+  min-height: 78px;
+  padding: 10px 6px;
+  border: 1px solid #e2e7ef;
+  border-radius: 14px;
+  background: #fff;
+  color: #667085;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: 0.15s ease;
+}
+
+.customer-payment-modes button svg {
+  width: 25px;
+  height: 25px;
+}
+
+.customer-payment-modes button span {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.customer-payment-modes button.active {
+  border-color: #1559b7;
+  background: #eef5ff;
+  color: #1559b7;
+}
+
+.customer-payment-modes button:active {
+  transform: scale(0.96);
+}
+
+@media (max-width: 600px) {
+  .customer-payment-modes {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 380px) {
+  .customer-payment-modes {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
