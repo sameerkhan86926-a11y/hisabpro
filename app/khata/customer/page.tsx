@@ -23,6 +23,17 @@ type Transaction = {
   saleId?: number;
 };
 
+type CashTransaction = {
+  id: number;
+  type: "in" | "out";
+  amount: number;
+  category: string;
+  note: string;
+  date: string;
+  referenceType?: string;
+  referenceId?: number;
+};
+
 export default function CustomerPage() {
   const [customer, setCustomer] =
     useState<Customer | null>(null);
@@ -265,7 +276,8 @@ export default function CustomerPage() {
 
   function saveData(
     updatedCustomer: Customer,
-    newTransaction: Transaction
+    newTransaction: Transaction,
+    cashTransaction?: CashTransaction
   ) {
     const savedCustomers:
       Customer[] = JSON.parse(
@@ -308,6 +320,26 @@ export default function CustomerPage() {
       )
     );
 
+    if (cashTransaction) {
+      const oldCashTransactions:
+        CashTransaction[] = JSON.parse(
+          localStorage.getItem(
+            "hisabpro_cashbook"
+          ) || "[]"
+        );
+
+      oldCashTransactions.push(
+        cashTransaction
+      );
+
+      localStorage.setItem(
+        "hisabpro_cashbook",
+        JSON.stringify(
+          oldCashTransactions
+        )
+      );
+    }
+
     setCustomer(
       updatedCustomer
     );
@@ -330,9 +362,12 @@ export default function CustomerPage() {
       return;
     }
 
+    const transactionId =
+      Date.now();
+
     const transaction:
       Transaction = {
-        id: Date.now(),
+        id: transactionId,
         customerId:
           customer.id,
         type: "credit",
@@ -348,7 +383,7 @@ export default function CustomerPage() {
       Customer = {
         ...customer,
         due:
-          customer.due +
+          Number(customer.due || 0) +
           amount,
       };
 
@@ -375,45 +410,190 @@ export default function CustomerPage() {
       return;
     }
 
-    if (amount > customer.due) {
+    if (
+      amount >
+      Number(customer.due || 0)
+    ) {
       setMessage(
         "Payment due se zyada nahi ho sakti."
       );
       return;
     }
 
+    const paymentId =
+      Date.now();
+
+    const paymentDate =
+      new Date().toISOString();
+
+    const paymentNote =
+      note.trim() ||
+      "Payment Received";
+
     const transaction:
       Transaction = {
-        id: Date.now(),
+        id: paymentId,
         customerId:
           customer.id,
         type: "payment",
         amount,
-        note:
-          note.trim() ||
-          "Payment Received",
-        date:
-          new Date().toISOString(),
+        note: paymentNote,
+        date: paymentDate,
       };
 
     const updatedCustomer:
       Customer = {
         ...customer,
         due:
-          customer.due -
+          Number(customer.due || 0) -
           amount,
+      };
+
+    const cashTransaction:
+      CashTransaction = {
+        id: paymentId + 1,
+        type: "in",
+        amount,
+        category:
+          "Customer Payment",
+        note:
+          `Payment Received - ${customer.name}${paymentNote ? ` - ${paymentNote}` : ""}`,
+        date: paymentDate,
+        referenceType:
+          "customer_payment",
+        referenceId:
+          paymentId,
       };
 
     saveData(
       updatedCustomer,
-      transaction
+      transaction,
+      cashTransaction
     );
 
     setAmount(0);
     setNote("");
 
     setMessage(
-      "Payment received successfully ✅"
+      "Payment received successfully and Cashbook updated ✅"
+    );
+  }
+
+  function deletePayment(
+    transaction: Transaction
+  ) {
+    if (!customer) return;
+
+    if (
+      transaction.type !==
+      "payment"
+    ) {
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        `Delete payment of ₹${Number(
+          transaction.amount
+        ).toLocaleString("en-IN")}? Customer due and Cashbook will be updated.`
+      );
+
+    if (!confirmed) return;
+
+    const savedTransactions:
+      Transaction[] = JSON.parse(
+        localStorage.getItem(
+          "hisabpro_transactions"
+        ) || "[]"
+      );
+
+    const updatedTransactions =
+      savedTransactions.filter(
+        (item) =>
+          item.id !==
+          transaction.id
+      );
+
+    localStorage.setItem(
+      "hisabpro_transactions",
+      JSON.stringify(
+        updatedTransactions
+      )
+    );
+
+    const savedCustomers:
+      Customer[] = JSON.parse(
+        localStorage.getItem(
+          "hisabpro_customers"
+        ) || "[]"
+      );
+
+    const updatedCustomer:
+      Customer = {
+        ...customer,
+        due:
+          Number(customer.due || 0) +
+          Number(transaction.amount || 0),
+      };
+
+    const updatedCustomers =
+      savedCustomers.map(
+        (item) =>
+          item.id ===
+          customer.id
+            ? updatedCustomer
+            : item
+      );
+
+    localStorage.setItem(
+      "hisabpro_customers",
+      JSON.stringify(
+        updatedCustomers
+      )
+    );
+
+    const savedCashTransactions:
+      CashTransaction[] = JSON.parse(
+        localStorage.getItem(
+          "hisabpro_cashbook"
+        ) || "[]"
+      );
+
+    const updatedCashTransactions =
+      savedCashTransactions.filter(
+        (cashTransaction) =>
+          !(
+            cashTransaction.referenceType ===
+              "customer_payment" &&
+            Number(
+              cashTransaction.referenceId
+            ) ===
+              Number(transaction.id)
+          )
+      );
+
+    localStorage.setItem(
+      "hisabpro_cashbook",
+      JSON.stringify(
+        updatedCashTransactions
+      )
+    );
+
+    setCustomer(
+      updatedCustomer
+    );
+
+    setTransactions(
+      (old) =>
+        old.filter(
+          (item) =>
+            item.id !==
+            transaction.id
+        )
+    );
+
+    setMessage(
+      "Payment deleted, customer due and Cashbook updated successfully ✅"
     );
   }
 
@@ -631,7 +811,7 @@ export default function CustomerPage() {
         </strong>
 
         <small>
-          {customer.due > 0
+          {Number(customer.due || 0) > 0
             ? "Amount customer se lena hai"
             : "No pending payment"}
         </small>
@@ -1023,6 +1203,22 @@ export default function CustomerPage() {
                   )}
 
                 </div>
+
+                {transaction.type ===
+                  "payment" && (
+                  <button
+                    type="button"
+                    className="transaction-delete-button"
+                    onClick={() =>
+                      deletePayment(
+                        transaction
+                      )
+                    }
+                    title="Delete payment"
+                  >
+                    🗑️
+                  </button>
+                )}
 
               </div>
 
