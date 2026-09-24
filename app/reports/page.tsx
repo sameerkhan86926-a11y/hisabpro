@@ -2,6 +2,15 @@
 
 import { useEffect, useState } from "react";
 
+type PaymentType = "cash" | "credit";
+
+type PaymentMode =
+  | "cash"
+  | "upi"
+  | "card"
+  | "bank"
+  | "online";
+
 type BatchDetail = {
   batchId: number;
   quantity: number;
@@ -24,7 +33,6 @@ type Sale = {
   items?: SaleItem[];
   subtotal?: number;
 
-  // Old single-product format
   product?: string;
   price?: number;
   purchasePrice?: number;
@@ -33,7 +41,10 @@ type Sale = {
   discount: number;
   total: number;
   date: string;
-  paymentType?: "cash" | "credit";
+
+  paymentType?: PaymentType;
+  paymentMode?: PaymentMode;
+
   customerName?: string;
 };
 
@@ -43,6 +54,32 @@ type Expense = {
   category: string;
   amount: number;
   note: string;
+  date: string;
+};
+
+type ReturnRecord = {
+  id: number;
+  type: "sales" | "purchase";
+
+  saleId?: number;
+  purchaseId?: number;
+
+  customerId?: number | null;
+  customerName?: string;
+
+  supplierId?: number;
+  supplierName?: string;
+
+  productId: number;
+  productName: string;
+
+  quantity: number;
+  amount: number;
+
+  paymentType: PaymentType;
+  paymentMode?: PaymentMode;
+
+  reason: string;
   date: string;
 };
 
@@ -65,6 +102,9 @@ export default function ReportsPage() {
 
   const [expenses, setExpenses] =
     useState<Expense[]>([]);
+
+  const [returns, setReturns] =
+    useState<ReturnRecord[]>([]);
 
   const [period, setPeriod] =
     useState<Period>("month");
@@ -90,9 +130,52 @@ export default function ReportsPage() {
         ) || "[]"
       );
 
+    const savedReturns =
+      JSON.parse(
+        localStorage.getItem(
+          "hisabpro_returns"
+        ) || "[]"
+      );
+
     setSales(savedSales);
     setExpenses(savedExpenses);
+    setReturns(savedReturns);
   }, []);
+
+  /*
+   * =====================================
+   * PAYMENT MODE
+   * =====================================
+   */
+
+  function getPaymentModeLabel(
+    paymentType?: PaymentType,
+    paymentMode?: PaymentMode
+  ) {
+    if (paymentType === "credit") {
+      return "Credit";
+    }
+
+    switch (paymentMode || "cash") {
+      case "cash":
+        return "Cash";
+
+      case "upi":
+        return "UPI";
+
+      case "card":
+        return "Card";
+
+      case "bank":
+        return "Bank";
+
+      case "online":
+        return "Online";
+
+      default:
+        return "Cash";
+    }
+  }
 
   /*
    * =====================================
@@ -150,9 +233,7 @@ export default function ReportsPage() {
       item.batchDetails.forEach(
         (batch) => {
           const qty =
-            Number(
-              batch.quantity
-            );
+            Number(batch.quantity);
 
           const sellingPrice =
             Number(
@@ -184,12 +265,20 @@ export default function ReportsPage() {
     }
 
     return {
-      quantity: item.quantity,
-      sales: item.amount,
+      quantity: Number(
+        item.quantity || 0
+      ),
+
+      sales: Number(
+        item.amount || 0
+      ),
+
       profit:
-        (item.price -
-          item.purchasePrice) *
-        item.quantity,
+        (Number(item.price || 0) -
+          Number(
+            item.purchasePrice || 0
+          )) *
+        Number(item.quantity || 0),
     };
   }
 
@@ -225,6 +314,7 @@ export default function ReportsPage() {
     /*
      * TODAY
      */
+
     if (period === "today") {
       return (
         date.getTime() ===
@@ -235,6 +325,7 @@ export default function ReportsPage() {
     /*
      * WEEK
      */
+
     if (period === "week") {
       const startOfWeek =
         new Date(now);
@@ -263,6 +354,7 @@ export default function ReportsPage() {
     /*
      * MONTH
      */
+
     if (period === "month") {
       return (
         date.getFullYear() ===
@@ -273,8 +365,9 @@ export default function ReportsPage() {
     }
 
     /*
-     * CUSTOM DATE RANGE
+     * CUSTOM
      */
+
     if (period === "custom") {
       if (
         !fromDate &&
@@ -322,6 +415,7 @@ export default function ReportsPage() {
     /*
      * ALL TIME
      */
+
     if (period === "all") {
       return true;
     }
@@ -345,6 +439,43 @@ export default function ReportsPage() {
       isInPeriod(expense.date)
     );
 
+  const filteredReturns =
+    returns.filter((item) =>
+      isInPeriod(item.date)
+    );
+
+  /*
+   * =====================================
+   * RETURN TOTALS
+   * =====================================
+   */
+
+  const salesReturns =
+    filteredReturns
+      .filter(
+        (item) =>
+          item.type === "sales"
+      )
+      .reduce(
+        (sum, item) =>
+          sum +
+          Number(item.amount || 0),
+        0
+      );
+
+  const purchaseReturns =
+    filteredReturns
+      .filter(
+        (item) =>
+          item.type === "purchase"
+      )
+      .reduce(
+        (sum, item) =>
+          sum +
+          Number(item.amount || 0),
+        0
+      );
+
   /*
    * =====================================
    * TOTAL SALES
@@ -354,9 +485,21 @@ export default function ReportsPage() {
   const totalSales =
     filteredSales.reduce(
       (sum, sale) =>
-        sum + sale.total,
+        sum +
+        Number(sale.total || 0),
       0
     );
+
+  /*
+   * NET SALES
+   *
+   * Sales - Sales Returns
+   * =====================================
+   */
+
+  const netSales =
+    totalSales -
+    salesReturns;
 
   /*
    * =====================================
@@ -378,7 +521,9 @@ export default function ReportsPage() {
               item
             ) =>
               itemSum +
-              item.quantity,
+              Number(
+                item.quantity || 0
+              ),
             0
           )
         );
@@ -395,7 +540,6 @@ export default function ReportsPage() {
   const grossProfit =
     filteredSales.reduce(
       (sum, sale) => {
-
         const items =
           getSaleItems(sale);
 
@@ -421,11 +565,24 @@ export default function ReportsPage() {
         return (
           sum +
           itemProfit -
-          (sale.discount || 0)
+          Number(
+            sale.discount || 0
+          )
         );
       },
       0
     );
+
+  /*
+   * =====================================
+   * NET GROSS PROFIT AFTER RETURNS
+   * =====================================
+   */
+
+  const grossProfitAfterReturns =
+    grossProfit -
+    salesReturns +
+    purchaseReturns;
 
   /*
    * =====================================
@@ -436,7 +593,10 @@ export default function ReportsPage() {
   const totalExpenses =
     filteredExpenses.reduce(
       (sum, expense) =>
-        sum + expense.amount,
+        sum +
+        Number(
+          expense.amount || 0
+        ),
       0
     );
 
@@ -447,12 +607,12 @@ export default function ReportsPage() {
    */
 
   const netProfit =
-    grossProfit -
+    grossProfitAfterReturns -
     totalExpenses;
 
   /*
    * =====================================
-   * CASH SALES
+   * PAYMENT MODE SALES
    * =====================================
    */
 
@@ -461,19 +621,91 @@ export default function ReportsPage() {
       .filter(
         (sale) =>
           sale.paymentType !==
-          "credit"
+            "credit" &&
+          (sale.paymentMode ||
+            "cash") ===
+            "cash"
       )
       .reduce(
         (sum, sale) =>
-          sum + sale.total,
+          sum +
+          Number(
+            sale.total || 0
+          ),
         0
       );
 
-  /*
-   * =====================================
-   * CREDIT SALES
-   * =====================================
-   */
+  const upiSales =
+    filteredSales
+      .filter(
+        (sale) =>
+          sale.paymentType !==
+            "credit" &&
+          sale.paymentMode ===
+            "upi"
+      )
+      .reduce(
+        (sum, sale) =>
+          sum +
+          Number(
+            sale.total || 0
+          ),
+        0
+      );
+
+  const cardSales =
+    filteredSales
+      .filter(
+        (sale) =>
+          sale.paymentType !==
+            "credit" &&
+          sale.paymentMode ===
+            "card"
+      )
+      .reduce(
+        (sum, sale) =>
+          sum +
+          Number(
+            sale.total || 0
+          ),
+        0
+      );
+
+  const bankSales =
+    filteredSales
+      .filter(
+        (sale) =>
+          sale.paymentType !==
+            "credit" &&
+          sale.paymentMode ===
+            "bank"
+      )
+      .reduce(
+        (sum, sale) =>
+          sum +
+          Number(
+            sale.total || 0
+          ),
+        0
+      );
+
+  const onlineSales =
+    filteredSales
+      .filter(
+        (sale) =>
+          sale.paymentType !==
+            "credit" &&
+          sale.paymentMode ===
+            "online"
+      )
+      .reduce(
+        (sum, sale) =>
+          sum +
+          Number(
+            sale.total || 0
+          ),
+        0
+      );
 
   const creditSales =
     filteredSales
@@ -484,9 +716,26 @@ export default function ReportsPage() {
       )
       .reduce(
         (sum, sale) =>
-          sum + sale.total,
+          sum +
+          Number(
+            sale.total || 0
+          ),
         0
       );
+
+  /*
+   * =====================================
+   * PAYMENT TOTAL
+   * =====================================
+   */
+
+  const paymentModeTotal =
+    cashSales +
+    upiSales +
+    cardSales +
+    bankSales +
+    onlineSales +
+    creditSales;
 
   /*
    * =====================================
@@ -502,13 +751,11 @@ export default function ReportsPage() {
 
   filteredSales.forEach(
     (sale) => {
-
       const items =
         getSaleItems(sale);
 
       items.forEach(
         (item) => {
-
           const report =
             getItemReport(
               item
@@ -520,7 +767,6 @@ export default function ReportsPage() {
             );
 
           if (existing) {
-
             productMap.set(
               item.product,
               {
@@ -537,9 +783,7 @@ export default function ReportsPage() {
                   report.profit,
               }
             );
-
           } else {
-
             productMap.set(
               item.product,
               {
@@ -553,7 +797,6 @@ export default function ReportsPage() {
                   report.profit,
               }
             );
-
           }
         }
       );
@@ -579,6 +822,12 @@ export default function ReportsPage() {
       )
       .slice(0, 10);
 
+  /*
+   * =====================================
+   * RENDER
+   * =====================================
+   */
+
   return (
     <main className="reports-page">
 
@@ -587,8 +836,10 @@ export default function ReportsPage() {
       <header className="reports-header">
 
         <button
+          type="button"
           onClick={() =>
-            window.history.back()
+            window.location.href =
+              "/hisabpro/"
           }
           className="back-button"
         >
@@ -703,7 +954,10 @@ export default function ReportsPage() {
             <input
               type="date"
               value={toDate}
-              min={fromDate || undefined}
+              min={
+                fromDate ||
+                undefined
+              }
               onChange={(e) =>
                 setToDate(
                   e.target.value
@@ -754,18 +1008,37 @@ export default function ReportsPage() {
         <div className="report-card">
 
           <span>
-            Gross Profit
+            Net Sales
           </span>
 
           <strong>
             ₹
-            {grossProfit.toLocaleString(
+            {netSales.toLocaleString(
               "en-IN"
             )}
           </strong>
 
           <small>
-            Before expenses
+            After sales returns
+          </small>
+
+        </div>
+
+        <div className="report-card">
+
+          <span>
+            Gross Profit
+          </span>
+
+          <strong>
+            ₹
+            {grossProfitAfterReturns.toLocaleString(
+              "en-IN"
+            )}
+          </strong>
+
+          <small>
+            After returns
           </small>
 
         </div>
@@ -805,6 +1078,121 @@ export default function ReportsPage() {
           <small>
             Profit after expenses
           </small>
+
+        </div>
+
+      </section>
+
+      {/* PAYMENT BREAKDOWN */}
+
+      <section className="report-section">
+
+        <div className="report-section-title">
+
+          <h2>
+            Payment Breakdown
+          </h2>
+
+          <span>
+            ₹
+            {paymentModeTotal.toLocaleString(
+              "en-IN"
+            )}
+          </span>
+
+        </div>
+
+        <div className="report-breakdown">
+
+          <div>
+            <span>💵</span>
+
+            <p>
+              Cash
+            </p>
+
+            <strong>
+              ₹
+              {cashSales.toLocaleString(
+                "en-IN"
+              )}
+            </strong>
+          </div>
+
+          <div>
+            <span>📱</span>
+
+            <p>
+              UPI
+            </p>
+
+            <strong>
+              ₹
+              {upiSales.toLocaleString(
+                "en-IN"
+              )}
+            </strong>
+          </div>
+
+          <div>
+            <span>💳</span>
+
+            <p>
+              Card
+            </p>
+
+            <strong>
+              ₹
+              {cardSales.toLocaleString(
+                "en-IN"
+              )}
+            </strong>
+          </div>
+
+          <div>
+            <span>🏦</span>
+
+            <p>
+              Bank
+            </p>
+
+            <strong>
+              ₹
+              {bankSales.toLocaleString(
+                "en-IN"
+              )}
+            </strong>
+          </div>
+
+          <div>
+            <span>🌐</span>
+
+            <p>
+              Online
+            </p>
+
+            <strong>
+              ₹
+              {onlineSales.toLocaleString(
+                "en-IN"
+              )}
+            </strong>
+          </div>
+
+          <div>
+            <span>📒</span>
+
+            <p>
+              Credit
+            </p>
+
+            <strong>
+              ₹
+              {creditSales.toLocaleString(
+                "en-IN"
+              )}
+            </strong>
+          </div>
 
         </div>
 
@@ -850,15 +1238,15 @@ export default function ReportsPage() {
 
           <div>
 
-            <span>💵</span>
+            <span>↩️</span>
 
             <p>
-              Cash Sales
+              Sales Returns
             </p>
 
             <strong>
               ₹
-              {cashSales.toLocaleString(
+              {salesReturns.toLocaleString(
                 "en-IN"
               )}
             </strong>
@@ -867,15 +1255,15 @@ export default function ReportsPage() {
 
           <div>
 
-            <span>📒</span>
+            <span>↩️</span>
 
             <p>
-              Credit Sales
+              Purchase Returns
             </p>
 
             <strong>
               ₹
-              {creditSales.toLocaleString(
+              {purchaseReturns.toLocaleString(
                 "en-IN"
               )}
             </strong>
@@ -1028,11 +1416,33 @@ export default function ReportsPage() {
                         )}
                       </span>
 
+                      <small
+                        style={{
+                          display:
+                            "block",
+                          marginTop:
+                            "4px",
+                          color:
+                            "#1559b7",
+                          fontSize:
+                            "12px",
+                          fontWeight:
+                            700,
+                        }}
+                      >
+                        {getPaymentModeLabel(
+                          sale.paymentType,
+                          sale.paymentMode
+                        )}
+                      </small>
+
                     </div>
 
                     <strong>
                       ₹
-                      {sale.total.toLocaleString(
+                      {Number(
+                        sale.total || 0
+                      ).toLocaleString(
                         "en-IN"
                       )}
                     </strong>
