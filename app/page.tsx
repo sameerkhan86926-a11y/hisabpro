@@ -269,6 +269,13 @@ export default function Dashboard() {
             </span>
           )}
         </a>
+        <a
+  href="/hisabpro/search/"
+  className="search-header-button"
+  aria-label="Search"
+>
+  🔎
+</a>
       </header>
 
       {/* WELCOME */}
