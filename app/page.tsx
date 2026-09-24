@@ -906,149 +906,185 @@ export default function Dashboard() {
 
       {/* QUICK ACTIONS */}
 
-      <section className="section">
+      <div className="actions">
 
-        <div className="section-title">
-          <h3>
-            Quick Actions
-          </h3>
-        </div>
+  <a
+    href="/hisabpro/sales/"
+    className="action-link"
+  >
+    <svg viewBox="0 0 24 24">
+      <path d="M4 4h16v16H4z" />
+      <path d="M8 8h8M8 12h8M8 16h5" />
+    </svg>
+    <span>New Sale</span>
+  </a>
 
-        <div className="actions">
+  <a
+    href="/hisabpro/purchase/"
+    className="action-link"
+  >
+    <svg viewBox="0 0 24 24">
+      <path d="M4 5h16v14H4z" />
+      <path d="M8 9h8M8 13h5" />
+      <path d="M12 16v4" />
+    </svg>
+    <span>New Purchase</span>
+  </a>
 
-          <a
-            href="/hisabpro/sales/"
-            className="action-link"
-          >
-            <svg viewBox="0 0 24 24">
-              <path d="M4 4h16v16H4z" />
-              <path d="M8 8h8M8 12h8M8 16h5" />
-            </svg>
+  <a
+    href="/hisabpro/stock/"
+    className="action-link"
+  >
+    <svg viewBox="0 0 24 24">
+      <path d="M3 7l9-4 9 4-9 4-9-4z" />
+      <path d="M3 7v10l9 4 9-4V7" />
+      <path d="M12 11v10" />
+    </svg>
+    <span>Stock</span>
+  </a>
 
-            <span>
-              New Sale
-            </span>
-          </a>
+  <a
+    href="/hisabpro/khata/"
+    className="action-link"
+  >
+    <svg viewBox="0 0 24 24">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4 3-7 8-7s8 3 8 7" />
+    </svg>
+    <span>Khata</span>
+  </a>
 
-          <a
-            href="/hisabpro/purchase/"
-            className="action-link"
-          >
-            <svg viewBox="0 0 24 24">
-              <path d="M4 5h16v14H4z" />
-              <path d="M8 9h8M8 13h5" />
-              <path d="M12 16v4" />
-            </svg>
+  <a
+    href="/hisabpro/expenses/"
+    className="action-link"
+  >
+    <svg viewBox="0 0 24 24">
+      <path d="M4 5h16v14H4z" />
+      <path d="M8 9h8M8 13h5" />
+    </svg>
+    <span>Expenses</span>
+  </a>
 
-            <span>
-              New Purchase
-            </span>
-          </a>
+  <a
+    href="/hisabpro/cashbook/"
+    className="action-link"
+  >
+    <svg viewBox="0 0 24 24">
+      <rect
+        x="3"
+        y="6"
+        width="18"
+        height="13"
+        rx="2"
+      />
+      <path d="M7 10h10M12 14h.01" />
+    </svg>
+    <span>Cashbook</span>
+  </a>
 
-          <a
-            href="/hisabpro/stock/"
-            className="action-link"
-          >
-            <svg viewBox="0 0 24 24">
-              <path d="M3 7l9-4 9 4-9 4-9-4z" />
-              <path d="M3 7v10l9 4 9-4V7" />
-              <path d="M12 11v10" />
-            </svg>
+  <a
+    href="/hisabpro/suppliers/"
+    className="action-link"
+  >
+    <svg viewBox="0 0 24 24">
+      <path d="M4 6h16v13H4z" />
+      <path d="M8 6V4h8v2" />
+      <path d="M8 11h8M8 15h5" />
+    </svg>
+    <span>Suppliers</span>
+  </a>
 
-            <span>
-              Add Product
-            </span>
-          </a>
+  <a
+    href="/hisabpro/suppliers/payments/"
+    className="action-link"
+  >
+    <svg viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v10M9 10h5a2 2 0 0 1 0 4H9" />
+    </svg>
+    <span>Supplier Payment</span>
+  </a>
 
-          <a
-            href="/hisabpro/khata/"
-            className="action-link"
-          >
-            <svg viewBox="0 0 24 24">
-              <circle
-                cx="12"
-                cy="8"
-                r="4"
-              />
+  <a
+    href="/hisabpro/returns/"
+    className="action-link"
+  >
+    <svg viewBox="0 0 24 24">
+      <path d="M9 7H4l4-4" />
+      <path d="M4 7a8 8 0 1 1 2 8" />
+    </svg>
+    <span>Returns</span>
+  </a>
 
-              <path d="M4 21c0-4 3-7 8-7s8 3 8 7" />
-            </svg>
+  <a
+    href="/hisabpro/invoice/"
+    className="action-link"
+  >
+    <svg viewBox="0 0 24 24">
+      <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3z" />
+      <path d="M9 8h6M9 12h6M9 16h4" />
+    </svg>
+    <span>Invoice</span>
+  </a>
 
-            <span>
-              Add Customer
-            </span>
-          </a>
+  <a
+    href="/hisabpro/reports/"
+    className="action-link"
+  >
+    <svg viewBox="0 0 24 24">
+      <path d="M4 19V5" />
+      <path d="M4 19h16" />
+      <path d="M7 15l3-4 3 2 5-6" />
+    </svg>
+    <span>Reports</span>
+  </a>
 
-          <a
-            href="/hisabpro/expenses/"
-            className="action-link"
-          >
-            <svg viewBox="0 0 24 24">
-              <path d="M4 5h16v14H4z" />
-              <path d="M8 9h8M8 13h5" />
-            </svg>
+  <a
+    href="/hisabpro/search/"
+    className="action-link"
+  >
+    <svg viewBox="0 0 24 24">
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="M16 16l5 5" />
+    </svg>
+    <span>Search</span>
+  </a>
 
-            <span>
-              Add Expense
-            </span>
-          </a>
+  <a
+    href="/hisabpro/notifications/"
+    className="action-link"
+  >
+    <svg viewBox="0 0 24 24">
+      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+      <path d="M10 21h4" />
+    </svg>
+    <span>Notifications</span>
+  </a>
 
-          <a
-            href="/hisabpro/cashbook/in/"
-            className="action-link"
-          >
-            <svg viewBox="0 0 24 24">
-              <circle
-                cx="12"
-                cy="12"
-                r="9"
-              />
+  <a
+    href="/hisabpro/settings/"
+    className="action-link"
+  >
+    <svg viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a8 8 0 0 0-1.7-1L14.5 3h-5l-.3 2.9a8 8 0 0 0-1.7 1l-2.4-1-2 3.5L5 11a7 7 0 0 0 0 2l-1.9 1.5 2 3.5 2.4-1a8 8 0 0 0 1.7 1l.3 3h5l.3-3a8 8 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5a7 7 0 0 0 .1-1z" />
+    </svg>
+    <span>Settings</span>
+  </a>
 
-              <path d="M12 16V8M9 11l3-3 3 3" />
-            </svg>
+  <a
+    href="/hisabpro/more/"
+    className="action-link"
+  >
+    <svg viewBox="0 0 24 24">
+      <circle cx="5" cy="12" r="1.5" />
+      <circle cx="12" cy="12" r="1.5" />
+      <circle cx="19" cy="12" r="1.5" />
+    </svg>
+    <span>More</span>
+  </a>
 
-            <span>
-              Cash In
-            </span>
-          </a>
-
-          <a
-            href="/hisabpro/cashbook/out/"
-            className="action-link"
-          >
-            <svg viewBox="0 0 24 24">
-              <circle
-                cx="12"
-                cy="12"
-                r="9"
-              />
-
-              <path d="M12 8v8M9 13l3 3 3-3" />
-            </svg>
-
-            <span>
-              Cash Out
-            </span>
-          </a>
-
-          <a
-            href="/hisabpro/reports/"
-            className="action-link"
-          >
-            <svg viewBox="0 0 24 24">
-              <path d="M4 19V5" />
-              <path d="M4 19h16" />
-              <path d="M7 15l3-4 3 2 5-6" />
-            </svg>
-
-            <span>
-              Reports
-            </span>
-          </a>
-
-        </div>
-
-      </section>
+</div>
 
       {/* BUSINESS SUMMARY */}
 
