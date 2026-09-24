@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import BackupRestore from "@/components/BackupRestore"; // Agar components root me hai
+import BackupRestore from "../../components/BackupRestore";
 
 export default function BackupPage() {
   return (
