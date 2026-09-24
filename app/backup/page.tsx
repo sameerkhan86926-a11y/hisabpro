@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import BackupRestore from "../../components/BackupRestore";
 
 export default function BackupPage() {
@@ -12,9 +11,9 @@ export default function BackupPage() {
           <p>Protect your HisabPro business data</p>
         </div>
 
-        <Link href="/hisabpro/more/" className="header-back-button">
+        <a href="/hisabpro/more/" className="header-back-button">
           Back
-        </Link>
+        </a>
       </header>
 
       <section className="backup-page-section">
