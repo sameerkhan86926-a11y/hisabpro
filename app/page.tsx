@@ -1,6 +1,9 @@
+"use client";
+
 import { useEffect, useState } from "react";
 
 type PaymentType = "cash" | "credit";
+
 
 type PaymentMode =
   | "cash"
