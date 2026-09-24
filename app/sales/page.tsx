@@ -44,6 +44,27 @@ type CartItem = {
   }[];
 };
 
+type CashTransaction = {
+  id: number;
+  type: "in" | "out";
+  amount: number;
+  category: string;
+  note: string;
+  date: string;
+  referenceType?: string;
+  referenceId?: number;
+};
+
+type CustomerTransaction = {
+  id: number;
+  customerId: number;
+  type: "credit" | "payment";
+  amount: number;
+  note: string;
+  date: string;
+  saleId?: number;
+};
+
 export default function SalesPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -364,7 +385,16 @@ export default function SalesPage() {
       return;
     }
 
+    if (total <= 0) {
+      setMessage(
+        "Sale total ₹0 se greater hona chahiye."
+      );
+      return;
+    }
+
     const saleId = Date.now();
+    const saleDate =
+      new Date().toISOString();
 
     const sale = {
       id: saleId,
@@ -384,9 +414,14 @@ export default function SalesPage() {
           ? selectedCustomer?.name
           : "",
 
-      date:
-        new Date().toISOString(),
+      date: saleDate,
     };
+
+    /*
+     * =====================================
+     * 1. SAVE SALE
+     * =====================================
+     */
 
     const oldSales = JSON.parse(
       localStorage.getItem(
@@ -401,6 +436,12 @@ export default function SalesPage() {
         sale,
       ])
     );
+
+    /*
+     * =====================================
+     * 2. REDUCE STOCK FIFO BATCH-WISE
+     * =====================================
+     */
 
     const updatedProducts =
       products.map((product) => {
@@ -502,6 +543,12 @@ export default function SalesPage() {
       )
     );
 
+    /*
+     * =====================================
+     * 3. CREDIT SALE → KHATA
+     * =====================================
+     */
+
     if (
       paymentType === "credit" &&
       selectedCustomer
@@ -536,7 +583,8 @@ export default function SalesPage() {
         )
       );
 
-      const oldTransactions =
+      const oldTransactions:
+        CustomerTransaction[] =
         JSON.parse(
           localStorage.getItem(
             "hisabpro_transactions"
@@ -548,7 +596,7 @@ export default function SalesPage() {
         JSON.stringify([
           ...oldTransactions,
           {
-            id: Date.now(),
+            id: Date.now() + 1,
 
             customerId:
               selectedCustomer.id,
@@ -565,17 +613,76 @@ export default function SalesPage() {
                 )
                 .join(", ")}`,
 
-            date:
-              new Date().toISOString(),
+            date: saleDate,
+
+            saleId: saleId,
           },
         ])
       );
     }
 
+    /*
+     * =====================================
+     * 4. CASH SALE → CASHBOOK
+     * =====================================
+     */
+
+    if (paymentType === "cash") {
+      const oldCashbook:
+        CashTransaction[] =
+        JSON.parse(
+          localStorage.getItem(
+            "hisabpro_cashbook"
+          ) || "[]"
+        );
+
+      localStorage.setItem(
+        "hisabpro_cashbook",
+        JSON.stringify([
+          ...oldCashbook,
+          {
+            id: Date.now() + 2,
+
+            type: "in",
+
+            amount: total,
+
+            category: "Sale",
+
+            note:
+              `Cash Sale - ${cart
+                .map(
+                  (item) =>
+                    `${item.product} (${item.quantity})`
+                )
+                .join(", ")}`,
+
+            date: saleDate,
+
+            referenceType: "sale",
+
+            referenceId: saleId,
+          },
+        ])
+      );
+    }
+
+    /*
+     * =====================================
+     * 5. SAVE LAST INVOICE
+     * =====================================
+     */
+
     localStorage.setItem(
       "hisabpro_last_invoice",
       JSON.stringify(sale)
     );
+
+    /*
+     * =====================================
+     * 6. RESET
+     * =====================================
+     */
 
     setCart([]);
     setCustomerId("");
@@ -588,10 +695,6 @@ export default function SalesPage() {
 
   return (
     <main className="sales-page">
-
-      {/* =====================================
-          HEADER
-      ====================================== */}
 
       <header className="sales-header">
 
@@ -609,11 +712,6 @@ export default function SalesPage() {
         <span></span>
 
       </header>
-
-
-      {/* =====================================
-          ADD PRODUCT
-      ====================================== */}
 
       <section className="sale-form">
 
@@ -640,9 +738,6 @@ export default function SalesPage() {
           </div>
 
         </div>
-
-
-        {/* PRODUCT + QUANTITY */}
 
         <div className="product-input-row">
 
@@ -689,7 +784,6 @@ export default function SalesPage() {
 
           </div>
 
-
           <div className="sale-field">
 
             <label>
@@ -715,9 +809,6 @@ export default function SalesPage() {
           </div>
 
         </div>
-
-
-        {/* SELECTED PRODUCT */}
 
         {productId && (
           <div className="selected-product-info">
@@ -757,7 +848,6 @@ export default function SalesPage() {
                     </span>
 
                   </div>
-
 
                   <div className="batch-list">
 
@@ -803,9 +893,6 @@ export default function SalesPage() {
           </div>
         )}
 
-
-        {/* ADD TO BILL */}
-
         <button
           className="add-to-bill"
           onClick={addToBill}
@@ -821,11 +908,6 @@ export default function SalesPage() {
         </button>
 
       </section>
-
-
-      {/* =====================================
-          BILL
-      ====================================== */}
 
       <section className="bill-section">
 
@@ -851,7 +933,6 @@ export default function SalesPage() {
           </div>
 
         </div>
-
 
         {cart.length === 0 ? (
 
@@ -907,7 +988,6 @@ export default function SalesPage() {
 
                   </div>
 
-
                   <div className="bill-item-right">
 
                     <strong>
@@ -919,7 +999,6 @@ export default function SalesPage() {
                         }
                       )}
                     </strong>
-
 
                     <button
                       onClick={() =>
@@ -958,11 +1037,6 @@ export default function SalesPage() {
 
       </section>
 
-
-      {/* =====================================
-          PAYMENT & SUMMARY
-      ====================================== */}
-
       <section className="sale-summary">
 
         <div className="summary-heading">
@@ -972,9 +1046,6 @@ export default function SalesPage() {
           </h2>
 
         </div>
-
-
-        {/* PAYMENT TYPE */}
 
         <label>
           Payment Type
@@ -1015,7 +1086,6 @@ export default function SalesPage() {
 
           </button>
 
-
           <button
             className={
               paymentType === "credit"
@@ -1044,9 +1114,6 @@ export default function SalesPage() {
           </button>
 
         </div>
-
-
-        {/* CUSTOMER */}
 
         {paymentType === "credit" && (
           <div className="customer-field">
@@ -1092,9 +1159,6 @@ export default function SalesPage() {
           </div>
         )}
 
-
-        {/* DISCOUNT */}
-
         <div className="discount-field">
 
           <label>
@@ -1127,9 +1191,6 @@ export default function SalesPage() {
 
         </div>
 
-
-        {/* TOTALS */}
-
         <div className="sale-totals">
 
           <div className="total-row">
@@ -1150,7 +1211,6 @@ export default function SalesPage() {
 
           </div>
 
-
           <div className="total-row">
 
             <span>
@@ -1168,7 +1228,6 @@ export default function SalesPage() {
             </strong>
 
           </div>
-
 
           <div className="total-row grand-total">
 
@@ -1190,9 +1249,6 @@ export default function SalesPage() {
 
         </div>
 
-
-        {/* SAVE */}
-
         <button
           className="save-sale"
           onClick={saveSale}
@@ -1211,9 +1267,6 @@ export default function SalesPage() {
           Save Sale & Generate Invoice
 
         </button>
-
-
-        {/* MESSAGE */}
 
         {message && (
           <p className="sale-message">
