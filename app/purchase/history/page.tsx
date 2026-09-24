@@ -40,13 +40,23 @@ type PurchaseItem = {
   amount: number;
 };
 
+type PaymentType = "cash" | "credit";
+
+type PaymentMode =
+  | "cash"
+  | "upi"
+  | "card"
+  | "bank"
+  | "online";
+
 type Purchase = {
   id: number;
   supplierId: number;
   supplierName: string;
   items: PurchaseItem[];
   total: number;
-  paymentType: "cash" | "credit";
+  paymentType: PaymentType;
+  paymentMode?: PaymentMode;
   date: string;
 };
 
@@ -68,7 +78,8 @@ const CASHBOOK_KEY = "hisabpro_cashbook";
 
 export default function PurchaseHistoryPage() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] =
+    useState<number | null>(null);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -121,6 +132,70 @@ export default function PurchaseHistoryPage() {
       });
     } catch {
       return "";
+    }
+  }
+
+  function getPaymentMode(
+    purchase: Purchase
+  ): PaymentMode | undefined {
+    if (purchase.paymentType === "credit") {
+      return undefined;
+    }
+
+    return purchase.paymentMode || "cash";
+  }
+
+  function getPaymentModeLabel(
+    purchase: Purchase
+  ) {
+    if (purchase.paymentType === "credit") {
+      return "Credit";
+    }
+
+    switch (getPaymentMode(purchase)) {
+      case "cash":
+        return "Cash";
+
+      case "upi":
+        return "UPI";
+
+      case "card":
+        return "Card";
+
+      case "bank":
+        return "Bank";
+
+      case "online":
+        return "Online";
+
+      default:
+        return "Cash";
+    }
+  }
+
+  function getPaymentBadgeClass(
+    purchase: Purchase
+  ) {
+    if (purchase.paymentType === "credit") {
+      return "credit";
+    }
+
+    switch (getPaymentMode(purchase)) {
+      case "upi":
+        return "upi";
+
+      case "card":
+        return "card";
+
+      case "bank":
+        return "bank";
+
+      case "online":
+        return "online";
+
+      case "cash":
+      default:
+        return "cash";
     }
   }
 
@@ -179,15 +254,6 @@ export default function PurchaseHistoryPage() {
           let updatedStock = Number(
             product.stock || 0
           );
-
-          /*
-           * Remove purchased quantity from
-           * matching batches.
-           *
-           * New purchase creates the newest
-           * matching batch, so newest matching
-           * batches are reduced first.
-           */
 
           for (const item of items) {
             let remainingQty = Number(
@@ -258,12 +324,9 @@ export default function PurchaseHistoryPage() {
             }
 
             /*
-             * Compatibility fallback:
-             *
-             * If matching batch could not be
-             * found, reduce remaining stock
-             * without making stock negative.
+             * Compatibility fallback
              */
+
             if (remainingQty > 0) {
               const fallbackQty = Math.min(
                 remainingQty,
@@ -340,26 +403,41 @@ export default function PurchaseHistoryPage() {
        * REMOVE LINKED CASHBOOK ENTRY
        * --------------------------------
        *
-       * Only automatically-created
-       * purchase Cashbook entry is removed.
+       * Only actual CASH purchase
+       * automatically affects Cashbook.
        *
-       * Manual Cashbook entries remain safe.
+       * Credit / UPI / Card / Bank /
+       * Online purchases do not affect
+       * Cashbook.
        *
-       * Credit purchase normally has no
-       * Cashbook entry, so nothing is removed.
+       * Old purchases without paymentMode
+       * are treated as Cash.
        */
 
-      const updatedCashbook =
-        savedCashbook.filter(
-          (transaction) =>
-            !(
-              transaction.referenceType ===
-                "purchase" &&
-              Number(
-                transaction.referenceId
-              ) === Number(purchase.id)
-            )
-        );
+      const actualPaymentMode =
+        purchase.paymentType === "credit"
+          ? undefined
+          : purchase.paymentMode || "cash";
+
+      let updatedCashbook =
+        savedCashbook;
+
+      if (
+        purchase.paymentType === "cash" &&
+        actualPaymentMode === "cash"
+      ) {
+        updatedCashbook =
+          savedCashbook.filter(
+            (transaction) =>
+              !(
+                transaction.referenceType ===
+                  "purchase" &&
+                Number(
+                  transaction.referenceId
+                ) === Number(purchase.id)
+              )
+          );
+      }
 
       /*
        * --------------------------------
@@ -404,7 +482,7 @@ export default function PurchaseHistoryPage() {
       setExpandedId(null);
 
       setMessage(
-        "Purchase deleted, stock restored and linked Cashbook entry updated successfully."
+        "Purchase deleted, stock restored and linked records updated successfully."
       );
 
       setTimeout(() => {
@@ -450,7 +528,10 @@ export default function PurchaseHistoryPage() {
         <button
           type="button"
           className="purchase-history-back"
-          onClick={() => window.history.back()}
+          onClick={() => {
+            window.location.href =
+              "/hisabpro/purchase/";
+          }}
           aria-label="Back"
         >
           <svg viewBox="0 0 24 24">
@@ -542,6 +623,11 @@ export default function PurchaseHistoryPage() {
                   0
                 );
 
+              const paymentBadgeClass =
+                getPaymentBadgeClass(
+                  purchase
+                );
+
               return (
                 <div
                   key={purchase.id}
@@ -606,16 +692,12 @@ export default function PurchaseHistoryPage() {
 
                       <span
                         className={
-                          purchase.paymentType ===
-                          "credit"
-                            ? "credit"
-                            : "cash"
+                          paymentBadgeClass
                         }
                       >
-                        {purchase.paymentType ===
-                        "credit"
-                          ? "Credit"
-                          : "Cash"}
+                        {getPaymentModeLabel(
+                          purchase
+                        )}
                       </span>
 
                     </div>
@@ -693,6 +775,24 @@ export default function PurchaseHistoryPage() {
                           ₹
                           {formatMoney(
                             purchase.total
+                          )}
+                        </strong>
+
+                      </div>
+
+                      <div className="purchase-history-detail-payment">
+
+                        <span>
+                          Payment
+                        </span>
+
+                        <strong
+                          className={
+                            paymentBadgeClass
+                          }
+                        >
+                          {getPaymentModeLabel(
+                            purchase
                           )}
                         </strong>
 
