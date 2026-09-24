@@ -50,9 +50,21 @@ type Purchase = {
   date: string;
 };
 
+type CashTransaction = {
+  id: number;
+  type: "in" | "out";
+  amount: number;
+  category: string;
+  note: string;
+  date: string;
+  referenceType?: string;
+  referenceId?: number;
+};
+
 const PURCHASE_KEY = "hisabpro_purchases";
 const PRODUCT_KEY = "hisabpro_products";
 const SUPPLIER_KEY = "hisabpro_suppliers";
+const CASHBOOK_KEY = "hisabpro_cashbook";
 
 export default function PurchaseHistoryPage() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -136,9 +148,14 @@ export default function PurchaseHistoryPage() {
         localStorage.getItem(PURCHASE_KEY) || "[]"
       );
 
+      const savedCashbook: CashTransaction[] =
+        JSON.parse(
+          localStorage.getItem(CASHBOOK_KEY) || "[]"
+        );
+
       /*
        * --------------------------------
-       * RESTORE / REDUCE STOCK
+       * REDUCE STOCK
        * --------------------------------
        */
 
@@ -164,14 +181,12 @@ export default function PurchaseHistoryPage() {
           );
 
           /*
-           * Find the purchased batch.
+           * Remove purchased quantity from
+           * matching batches.
            *
-           * Purchase page creates a new batch
-           * when saving a purchase.
-           *
-           * We identify it by:
-           * quantity + purchase price +
-           * selling price + nearest matching date.
+           * New purchase creates the newest
+           * matching batch, so newest matching
+           * batches are reduced first.
            */
 
           for (const item of items) {
@@ -198,7 +213,7 @@ export default function PurchaseHistoryPage() {
                     ) ===
                       Number(
                         item.sellingPrice
-                    )
+                      )
                 )
                 .sort(
                   (a, b) =>
@@ -236,11 +251,29 @@ export default function PurchaseHistoryPage() {
 
               remainingQty -= reduceQty;
 
-              updatedStock =
-                Math.max(
-                  0,
-                  updatedStock - reduceQty
-                );
+              updatedStock = Math.max(
+                0,
+                updatedStock - reduceQty
+              );
+            }
+
+            /*
+             * Compatibility fallback:
+             *
+             * If matching batch could not be
+             * found, reduce remaining stock
+             * without making stock negative.
+             */
+            if (remainingQty > 0) {
+              const fallbackQty = Math.min(
+                remainingQty,
+                updatedStock
+              );
+
+              updatedStock = Math.max(
+                0,
+                updatedStock - fallbackQty
+              );
             }
           }
 
@@ -302,6 +335,38 @@ export default function PurchaseHistoryPage() {
             item.id !== purchase.id
         );
 
+      /*
+       * --------------------------------
+       * REMOVE LINKED CASHBOOK ENTRY
+       * --------------------------------
+       *
+       * Only automatically-created
+       * purchase Cashbook entry is removed.
+       *
+       * Manual Cashbook entries remain safe.
+       *
+       * Credit purchase normally has no
+       * Cashbook entry, so nothing is removed.
+       */
+
+      const updatedCashbook =
+        savedCashbook.filter(
+          (transaction) =>
+            !(
+              transaction.referenceType ===
+                "purchase" &&
+              Number(
+                transaction.referenceId
+              ) === Number(purchase.id)
+            )
+        );
+
+      /*
+       * --------------------------------
+       * SAVE EVERYTHING
+       * --------------------------------
+       */
+
       localStorage.setItem(
         PRODUCT_KEY,
         JSON.stringify(updatedProducts)
@@ -317,6 +382,17 @@ export default function PurchaseHistoryPage() {
         JSON.stringify(updatedPurchases)
       );
 
+      localStorage.setItem(
+        CASHBOOK_KEY,
+        JSON.stringify(updatedCashbook)
+      );
+
+      /*
+       * --------------------------------
+       * UPDATE UI
+       * --------------------------------
+       */
+
       setPurchases(
         [...updatedPurchases].sort(
           (a, b) =>
@@ -328,7 +404,7 @@ export default function PurchaseHistoryPage() {
       setExpandedId(null);
 
       setMessage(
-        "Purchase deleted and stock/payable reversed successfully."
+        "Purchase deleted, stock restored and linked Cashbook entry updated successfully."
       );
 
       setTimeout(() => {
