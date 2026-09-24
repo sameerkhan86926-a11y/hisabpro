@@ -50,7 +50,9 @@ export default function CashInPage() {
       <header className="cashbook-header">
         <button
           className="cashbook-back"
-          onClick={() => window.history.back()}
+          onClick={() => {
+            window.location.href = "/hisabpro/cashbook/";
+          }}
         >
           ←
         </button>
@@ -68,6 +70,7 @@ export default function CashInPage() {
           </div>
 
           <h2>Add Cash In</h2>
+
           <p className="cashbook-form-help">
             Business mein receive hua cash record karein.
           </p>
