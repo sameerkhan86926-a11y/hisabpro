@@ -13,6 +13,13 @@ type Customer = {
   createdAt: string;
 };
 
+type PaymentMode =
+  | "cash"
+  | "upi"
+  | "card"
+  | "bank"
+  | "online";
+
 type Transaction = {
   id: number;
   customerId: number;
@@ -21,6 +28,7 @@ type Transaction = {
   note: string;
   date: string;
   saleId?: number;
+  paymentMode?: PaymentMode;
 };
 
 type CashTransaction = {
@@ -44,6 +52,9 @@ export default function CustomerPage() {
   const [amount, setAmount] = useState(0);
   const [note, setNote] = useState("");
   const [message, setMessage] = useState("");
+
+  const [paymentMode, setPaymentMode] =
+    useState<PaymentMode>("cash");
 
   const [editing, setEditing] =
     useState(false);
@@ -193,17 +204,12 @@ export default function CustomerPage() {
     const updatedCustomer:
       Customer = {
         ...customer,
-
         name: editName.trim(),
-
         phone: editPhone.trim(),
-
         address:
           editAddress.trim(),
-
         email:
           editEmail.trim(),
-
         photo: editPhoto,
       };
 
@@ -439,6 +445,7 @@ export default function CustomerPage() {
         amount,
         note: paymentNote,
         date: paymentDate,
+        paymentMode,
       };
 
     const updatedCustomer:
@@ -449,21 +456,36 @@ export default function CustomerPage() {
           amount,
       };
 
+    /*
+     * ONLY CASH PAYMENT → CASHBOOK
+     *
+     * UPI / CARD / BANK / ONLINE
+     * customer transaction me save honge,
+     * lekin Cash Balance me add nahi honge.
+     */
+
     const cashTransaction:
-      CashTransaction = {
-        id: paymentId + 1,
-        type: "in",
-        amount,
-        category:
-          "Customer Payment",
-        note:
-          `Payment Received - ${customer.name}${paymentNote ? ` - ${paymentNote}` : ""}`,
-        date: paymentDate,
-        referenceType:
-          "customer_payment",
-        referenceId:
-          paymentId,
-      };
+      CashTransaction | undefined =
+      paymentMode === "cash"
+        ? {
+            id: paymentId + 1,
+            type: "in",
+            amount,
+            category:
+              "Customer Payment",
+            note:
+              `Cash Payment Received - ${customer.name}${
+                paymentNote
+                  ? ` - ${paymentNote}`
+                  : ""
+              }`,
+            date: paymentDate,
+            referenceType:
+              "customer_payment",
+            referenceId:
+              paymentId,
+          }
+        : undefined;
 
     saveData(
       updatedCustomer,
@@ -473,10 +495,19 @@ export default function CustomerPage() {
 
     setAmount(0);
     setNote("");
+    setPaymentMode("cash");
 
-    setMessage(
-      "Payment received successfully and Cashbook updated ✅"
-    );
+    if (paymentMode === "cash") {
+      setMessage(
+        "Cash payment received and Cashbook updated successfully ✅"
+      );
+    } else {
+      setMessage(
+        `${getPaymentModeLabel(
+          paymentMode
+        )} payment received successfully ✅`
+      );
+    }
   }
 
   function deletePayment(
@@ -495,7 +526,7 @@ export default function CustomerPage() {
       window.confirm(
         `Delete payment of ₹${Number(
           transaction.amount
-        ).toLocaleString("en-IN")}? Customer due and Cashbook will be updated.`
+        ).toLocaleString("en-IN")}? Customer due and linked Cashbook entry will be updated.`
       );
 
     if (!confirmed) return;
@@ -533,7 +564,9 @@ export default function CustomerPage() {
         ...customer,
         due:
           Number(customer.due || 0) +
-          Number(transaction.amount || 0),
+          Number(
+            transaction.amount || 0
+          ),
       };
 
     const updatedCustomers =
@@ -551,6 +584,14 @@ export default function CustomerPage() {
         updatedCustomers
       )
     );
+
+    /*
+     * Linked Cashbook entry remove.
+     *
+     * Old UPI/Card/Bank/Online payments
+     * me cashbook entry nahi hogi,
+     * isliye unke liye kuch remove nahi hoga.
+     */
 
     const savedCashTransactions:
       CashTransaction[] = JSON.parse(
@@ -593,8 +634,32 @@ export default function CustomerPage() {
     );
 
     setMessage(
-      "Payment deleted, customer due and Cashbook updated successfully ✅"
+      "Payment deleted, customer due and linked Cashbook entry updated successfully ✅"
     );
+  }
+
+  function getPaymentModeLabel(
+    mode?: PaymentMode
+  ) {
+    switch (mode) {
+      case "upi":
+        return "UPI";
+
+      case "card":
+        return "Card";
+
+      case "bank":
+        return "Bank Transfer";
+
+      case "online":
+        return "Online";
+
+      case "cash":
+        return "Cash";
+
+      default:
+        return "Cash";
+    }
   }
 
   const totalCredit =
@@ -1062,7 +1127,7 @@ export default function CustomerPage() {
 
         <input
           type="text"
-          placeholder="Example: Grocery / Cash"
+          placeholder="Example: Monthly payment"
           value={note}
           onChange={(e) =>
             setNote(
@@ -1070,6 +1135,227 @@ export default function CustomerPage() {
             )
           }
         />
+
+        {/* PAYMENT MODE */}
+
+        <div className="payment-mode-section">
+
+          <label>
+            Payment Mode
+          </label>
+
+          <div className="customer-payment-modes">
+
+            {/* CASH */}
+
+            <button
+              type="button"
+              className={
+                paymentMode === "cash"
+                  ? "active"
+                  : ""
+              }
+              onClick={() =>
+                setPaymentMode("cash")
+              }
+            >
+
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect
+                  x="3"
+                  y="6"
+                  width="18"
+                  height="12"
+                  rx="2"
+                />
+
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="3"
+                />
+
+                <path d="M3 9h2" />
+                <path d="M19 9h2" />
+                <path d="M3 15h2" />
+                <path d="M19 15h2" />
+              </svg>
+
+              <span>
+                Cash
+              </span>
+
+            </button>
+
+            {/* UPI */}
+
+            <button
+              type="button"
+              className={
+                paymentMode === "upi"
+                  ? "active"
+                  : ""
+              }
+              onClick={() =>
+                setPaymentMode("upi")
+              }
+            >
+
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect
+                  x="6"
+                  y="2"
+                  width="12"
+                  height="20"
+                  rx="2"
+                />
+
+                <path d="M9 7h6" />
+                <path d="M9 11h3" />
+                <path d="M10 18h4" />
+              </svg>
+
+              <span>
+                UPI
+              </span>
+
+            </button>
+
+            {/* CARD */}
+
+            <button
+              type="button"
+              className={
+                paymentMode === "card"
+                  ? "active"
+                  : ""
+              }
+              onClick={() =>
+                setPaymentMode("card")
+              }
+            >
+
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect
+                  x="2.5"
+                  y="5"
+                  width="19"
+                  height="14"
+                  rx="2"
+                />
+
+                <path d="M2.5 10h19" />
+                <path d="M6 15h4" />
+              </svg>
+
+              <span>
+                Card
+              </span>
+
+            </button>
+
+            {/* BANK */}
+
+            <button
+              type="button"
+              className={
+                paymentMode === "bank"
+                  ? "active"
+                  : ""
+              }
+              onClick={() =>
+                setPaymentMode("bank")
+              }
+            >
+
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 9h18" />
+                <path d="M4 9l8-5 8 5" />
+                <path d="M5 9v9" />
+                <path d="M9 9v9" />
+                <path d="M15 9v9" />
+                <path d="M19 9v9" />
+                <path d="M3 18h18" />
+                <path d="M2 21h20" />
+              </svg>
+
+              <span>
+                Bank
+              </span>
+
+            </button>
+
+            {/* ONLINE */}
+
+            <button
+              type="button"
+              className={
+                paymentMode === "online"
+                  ? "active"
+                  : ""
+              }
+              onClick={() =>
+                setPaymentMode("online")
+              }
+            >
+
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="9"
+                />
+
+                <path d="M3 12h18" />
+
+                <path d="M12 3c3 3 4 6 4 9s-1 6-4 9" />
+                <path d="M12 3c-3 3-4 6-4 9s1 6 4 9" />
+              </svg>
+
+              <span>
+                Online
+              </span>
+
+            </button>
+
+          </div>
+
+        </div>
 
         <div className="transaction-buttons">
 
@@ -1168,7 +1454,13 @@ export default function CustomerPage() {
                     {transaction.type ===
                     "credit"
                       ? "Udhaar Added"
-                      : "Payment Received"}
+                      : `Payment Received${
+                          transaction.paymentMode
+                            ? ` • ${getPaymentModeLabel(
+                                transaction.paymentMode
+                              )}`
+                            : ""
+                        }`}
                   </span>
 
                   <small>
