@@ -53,6 +53,23 @@ type Customer = {
   createdAt: string;
 };
 
+type CashTransaction = {
+  id: number;
+  type: "in" | "out";
+  amount: number;
+  category: string;
+  note: string;
+  date: string;
+  referenceType?: string;
+  referenceId?: number;
+};
+
+const SALES_KEY = "hisabpro_sales";
+const PRODUCT_KEY = "hisabpro_products";
+const CUSTOMER_KEY = "hisabpro_customers";
+const RETURNS_KEY = "hisabpro_returns";
+const CASHBOOK_KEY = "hisabpro_cashbook";
+
 export default function SalesReturnPage() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -66,36 +83,59 @@ export default function SalesReturnPage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    loadData();
+  }, []);
+
+  function loadData() {
     try {
       setSales(
-        JSON.parse(localStorage.getItem("hisabpro_sales") || "[]")
+        JSON.parse(
+          localStorage.getItem(SALES_KEY) || "[]"
+        )
       );
 
       setProducts(
-        JSON.parse(localStorage.getItem("hisabpro_products") || "[]")
+        JSON.parse(
+          localStorage.getItem(PRODUCT_KEY) || "[]"
+        )
       );
 
       setCustomers(
-        JSON.parse(localStorage.getItem("hisabpro_customers") || "[]")
+        JSON.parse(
+          localStorage.getItem(CUSTOMER_KEY) || "[]"
+        )
       );
     } catch {
       setSales([]);
       setProducts([]);
       setCustomers([]);
     }
-  }, []);
+  }
 
   const selectedSale = useMemo(() => {
     return sales.find(
-      (sale) => String(sale.id) === selectedSaleId
+      (sale) =>
+        String(sale.id) === selectedSaleId
     );
   }, [sales, selectedSaleId]);
 
   const selectedItem = useMemo(() => {
-    if (!selectedSale || selectedItemIndex === "") return null;
+    if (
+      !selectedSale ||
+      selectedItemIndex === ""
+    ) {
+      return null;
+    }
 
-    return selectedSale.items[Number(selectedItemIndex)] || null;
-  }, [selectedSale, selectedItemIndex]);
+    return (
+      selectedSale.items[
+        Number(selectedItemIndex)
+      ] || null
+    );
+  }, [
+    selectedSale,
+    selectedItemIndex,
+  ]);
 
   const itemPrice = selectedItem
     ? Number(
@@ -106,294 +146,587 @@ export default function SalesReturnPage() {
     : 0;
 
   const returnAmount =
-    itemPrice * Math.max(0, Number(quantity) || 0);
+    itemPrice *
+    Math.max(
+      0,
+      Number(quantity) || 0
+    );
 
   const saveReturn = () => {
     setMessage("");
 
     if (!selectedSale) {
-      setMessage("Please select a sale.");
+      setMessage(
+        "Please select a sale."
+      );
       return;
     }
 
     if (!selectedItem) {
-      setMessage("Please select a product.");
+      setMessage(
+        "Please select a product."
+      );
       return;
     }
 
     const returnQty = Number(quantity);
 
-    if (!Number.isFinite(returnQty) || returnQty <= 0) {
-      setMessage("Enter a valid return quantity.");
+    if (
+      !Number.isFinite(returnQty) ||
+      returnQty <= 0
+    ) {
+      setMessage(
+        "Enter a valid return quantity."
+      );
       return;
     }
 
-    if (returnQty > Number(selectedItem.quantity)) {
-      setMessage("Return quantity cannot exceed sold quantity.");
+    if (
+      returnQty >
+      Number(selectedItem.quantity)
+    ) {
+      setMessage(
+        "Return quantity cannot exceed sold quantity."
+      );
+      return;
+    }
+
+    if (
+      !Number.isFinite(returnAmount) ||
+      returnAmount <= 0
+    ) {
+      setMessage(
+        "Invalid return amount."
+      );
       return;
     }
 
     try {
-      const savedProducts: Product[] = JSON.parse(
-        localStorage.getItem("hisabpro_products") || "[]"
-      );
+      const savedProducts: Product[] =
+        JSON.parse(
+          localStorage.getItem(
+            PRODUCT_KEY
+          ) || "[]"
+        );
 
-      const savedSales: Sale[] = JSON.parse(
-        localStorage.getItem("hisabpro_sales") || "[]"
-      );
+      const savedSales: Sale[] =
+        JSON.parse(
+          localStorage.getItem(
+            SALES_KEY
+          ) || "[]"
+        );
 
-      const savedCustomers: Customer[] = JSON.parse(
-        localStorage.getItem("hisabpro_customers") || "[]"
-      );
+      const savedCustomers: Customer[] =
+        JSON.parse(
+          localStorage.getItem(
+            CUSTOMER_KEY
+          ) || "[]"
+        );
 
-      const productIndex = savedProducts.findIndex(
-        (product) =>
-          Number(product.id) === Number(selectedItem.productId)
-      );
+      const savedCashbook: CashTransaction[] =
+        JSON.parse(
+          localStorage.getItem(
+            CASHBOOK_KEY
+          ) || "[]"
+        );
+
+      const productIndex =
+        savedProducts.findIndex(
+          (product) =>
+            Number(product.id) ===
+            Number(
+              selectedItem.productId
+            )
+        );
 
       if (productIndex === -1) {
-        setMessage("Product not found in stock.");
+        setMessage(
+          "Product not found in stock."
+        );
         return;
       }
 
-      const product = savedProducts[productIndex];
+      const product =
+        savedProducts[productIndex];
 
-      const batches = Array.isArray(product.batches)
+      const batches = Array.isArray(
+        product.batches
+      )
         ? [...product.batches]
         : [];
 
+      /*
+       * Returned stock is currently added
+       * to the latest batch.
+       */
       if (batches.length > 0) {
-        const lastBatchIndex = batches.length - 1;
+        const lastBatchIndex =
+          batches.length - 1;
 
         batches[lastBatchIndex] = {
           ...batches[lastBatchIndex],
           quantity:
-            Number(batches[lastBatchIndex].quantity || 0) +
-            returnQty,
+            Number(
+              batches[lastBatchIndex]
+                .quantity || 0
+            ) + returnQty,
         };
       } else {
         batches.push({
           id: Date.now(),
           quantity: returnQty,
-          purchasePrice: Number(product.purchasePrice) || 0,
-          sellingPrice: Number(product.sellingPrice) || itemPrice,
-          date: new Date().toISOString(),
+          purchasePrice:
+            Number(
+              product.purchasePrice
+            ) || 0,
+          sellingPrice:
+            Number(
+              product.sellingPrice
+            ) || itemPrice,
+          date:
+            new Date().toISOString(),
         });
       }
 
       savedProducts[productIndex] = {
         ...product,
-        stock: Number(product.stock || 0) + returnQty,
+        stock:
+          Number(product.stock || 0) +
+          returnQty,
         batches,
       };
 
-      localStorage.setItem(
-        "hisabpro_products",
-        JSON.stringify(savedProducts)
-      );
-
+      /*
+       * Credit sale:
+       * Reduce customer payable.
+       *
+       * No Cashbook entry because
+       * this is a due adjustment.
+       */
       if (
-        selectedSale.paymentType === "credit" &&
+        selectedSale.paymentType ===
+          "credit" &&
         selectedSale.customerId
       ) {
-        const customerIndex = savedCustomers.findIndex(
-          (customer) =>
-            Number(customer.id) ===
-            Number(selectedSale.customerId)
-        );
+        const customerIndex =
+          savedCustomers.findIndex(
+            (customer) =>
+              Number(customer.id) ===
+              Number(
+                selectedSale.customerId
+              )
+          );
 
         if (customerIndex !== -1) {
-          savedCustomers[customerIndex] = {
-            ...savedCustomers[customerIndex],
+          savedCustomers[
+            customerIndex
+          ] = {
+            ...savedCustomers[
+              customerIndex
+            ],
             due: Math.max(
               0,
-              Number(savedCustomers[customerIndex].due || 0) -
-                returnAmount
+              Number(
+                savedCustomers[
+                  customerIndex
+                ].due || 0
+              ) - returnAmount
             ),
           };
-
-          localStorage.setItem(
-            "hisabpro_customers",
-            JSON.stringify(savedCustomers)
-          );
         }
       }
 
-      const existingReturns = JSON.parse(
-        localStorage.getItem("hisabpro_returns") || "[]"
-      );
+      /*
+       * Cash sale:
+       * Customer gets cash refund,
+       * therefore record Cash Out.
+       */
+      let updatedCashbook =
+        savedCashbook;
+
+      const returnId = Date.now();
+      const returnDate =
+        new Date().toISOString();
+
+      if (
+        selectedSale.paymentType ===
+        "cash"
+      ) {
+        const cashTransaction: CashTransaction =
+          {
+            id: returnId + 1,
+            type: "out",
+            amount: returnAmount,
+            category:
+              "Sales Return",
+            note:
+              `Cash Refund - ${selectedItem.productName}` +
+              ` - ${selectedSale.customerName || "Walk-in Customer"}` +
+              (reason.trim()
+                ? ` - ${reason.trim()}`
+                : ""),
+            date: returnDate,
+            referenceType:
+              "sales_return",
+            referenceId:
+              returnId,
+          };
+
+        updatedCashbook = [
+          cashTransaction,
+          ...savedCashbook,
+        ];
+      }
+
+      const existingReturns =
+        JSON.parse(
+          localStorage.getItem(
+            RETURNS_KEY
+          ) || "[]"
+        );
 
       const returnRecord = {
-        id: Date.now(),
+        id: returnId,
         type: "sales",
-        saleId: selectedSale.id,
-        customerId: selectedSale.customerId || null,
-        customerName: selectedSale.customerName || "",
-        productId: selectedItem.productId,
-        productName: selectedItem.productName,
+        saleId:
+          selectedSale.id,
+        customerId:
+          selectedSale.customerId ||
+          null,
+        customerName:
+          selectedSale.customerName ||
+          "",
+        productId:
+          selectedItem.productId,
+        productName:
+          selectedItem.productName,
         quantity: returnQty,
         amount: returnAmount,
-        paymentType: selectedSale.paymentType,
-        reason: reason.trim(),
-        date: new Date().toISOString(),
+        paymentType:
+          selectedSale.paymentType,
+        reason:
+          reason.trim(),
+        date: returnDate,
       };
 
-      existingReturns.push(returnRecord);
-
-      localStorage.setItem(
-        "hisabpro_returns",
-        JSON.stringify(existingReturns)
+      existingReturns.push(
+        returnRecord
       );
 
-      setSales([...savedSales]);
-      setProducts(savedProducts);
-      setCustomers(savedCustomers);
+      /*
+       * Save all related data.
+       */
+      localStorage.setItem(
+        PRODUCT_KEY,
+        JSON.stringify(
+          savedProducts
+        )
+      );
+
+      if (
+        selectedSale.paymentType ===
+        "credit"
+      ) {
+        localStorage.setItem(
+          CUSTOMER_KEY,
+          JSON.stringify(
+            savedCustomers
+          )
+        );
+      }
+
+      localStorage.setItem(
+        RETURNS_KEY,
+        JSON.stringify(
+          existingReturns
+        )
+      );
+
+      /*
+       * Cash sale return gets a
+       * Cashbook entry.
+       */
+      if (
+        selectedSale.paymentType ===
+        "cash"
+      ) {
+        localStorage.setItem(
+          CASHBOOK_KEY,
+          JSON.stringify(
+            updatedCashbook
+          )
+        );
+      }
+
+      setSales([
+        ...savedSales,
+      ]);
+
+      setProducts([
+        ...savedProducts,
+      ]);
+
+      setCustomers([
+        ...savedCustomers,
+      ]);
 
       setQuantity("1");
       setReason("");
       setSelectedItemIndex("");
 
-      setMessage("Sales return saved successfully.");
-    } catch {
-      setMessage("Something went wrong. Please try again.");
+      if (
+        selectedSale.paymentType ===
+        "cash"
+      ) {
+        setMessage(
+          `${formatMoney(
+            returnAmount
+          )} cash refund recorded and Cashbook updated as Cash Out ✅`
+        );
+      } else {
+        setMessage(
+          `${formatMoney(
+            returnAmount
+          )} sales return saved and customer payable adjusted successfully ✅`
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Sales return error:",
+        error
+      );
+
+      setMessage(
+        "Something went wrong. Please try again."
+      );
     }
   };
 
-  const formatMoney = (amount: number) =>
-    `₹${amount.toLocaleString("en-IN", {
+  const formatMoney = (
+    amount: number
+  ) =>
+    `₹${Number(
+      amount || 0
+    ).toLocaleString("en-IN", {
       maximumFractionDigits: 2,
     })}`;
 
   return (
     <main className="sales-return-page">
+
       <header className="sales-return-header">
+
         <button
           className="sales-return-back"
-          onClick={() => window.history.back()}
+          onClick={() =>
+            window.history.back()
+          }
         >
           ←
         </button>
 
         <div>
           <h1>Sales Return</h1>
-          <p>Customer returned product</p>
+          <p>
+            Customer returned product
+          </p>
         </div>
+
       </header>
 
       <section className="sales-return-content">
+
         <div className="return-form-card">
-          <label>Select Sale</label>
+
+          <label>
+            Select Sale
+          </label>
 
           <select
             value={selectedSaleId}
             onChange={(e) => {
-              setSelectedSaleId(e.target.value);
+              setSelectedSaleId(
+                e.target.value
+              );
               setSelectedItemIndex("");
             }}
           >
-            <option value="">Select a sale</option>
+            <option value="">
+              Select a sale
+            </option>
 
             {sales.map((sale) => (
-              <option key={sale.id} value={sale.id}>
+              <option
+                key={sale.id}
+                value={sale.id}
+              >
                 #{sale.id} •{" "}
-                {sale.customerName || "Walk-in Customer"} •{" "}
-                {formatMoney(Number(sale.total) || 0)}
+                {sale.customerName ||
+                  "Walk-in Customer"}{" "}
+                •{" "}
+                {formatMoney(
+                  Number(
+                    sale.total
+                  ) || 0
+                )}
               </option>
             ))}
+
           </select>
 
           {selectedSale && (
             <>
               <div className="return-sale-info">
+
                 <strong>
-                  Sale #{selectedSale.id}
+                  Sale #
+                  {selectedSale.id}
                 </strong>
 
                 <span>
                   {new Date(
                     selectedSale.date
-                  ).toLocaleDateString("en-IN")}
+                  ).toLocaleDateString(
+                    "en-IN"
+                  )}
                 </span>
 
                 <span>
                   {selectedSale.customerName ||
                     "Walk-in Customer"}
                 </span>
+
+                <span>
+                  Payment:{" "}
+                  {selectedSale.paymentType ===
+                  "cash"
+                    ? "Cash"
+                    : "Credit"}
+                </span>
+
               </div>
 
-              <label>Select Product</label>
+              <label>
+                Select Product
+              </label>
 
               <select
-                value={selectedItemIndex}
+                value={
+                  selectedItemIndex
+                }
                 onChange={(e) =>
-                  setSelectedItemIndex(e.target.value)
+                  setSelectedItemIndex(
+                    e.target.value
+                  )
                 }
               >
-                <option value="">Select product</option>
+                <option value="">
+                  Select product
+                </option>
 
-                {selectedSale.items.map((item, index) => (
-                  <option key={index} value={index}>
-                    {item.productName} • Qty {item.quantity}
-                  </option>
-                ))}
+                {selectedSale.items.map(
+                  (item, index) => (
+                    <option
+                      key={index}
+                      value={index}
+                    >
+                      {item.productName} • Qty{" "}
+                      {item.quantity}
+                    </option>
+                  )
+                )}
+
               </select>
 
               {selectedItem && (
                 <>
                   <div className="return-product-info">
+
                     <div>
-                      <span>Sold Quantity</span>
+                      <span>
+                        Sold Quantity
+                      </span>
+
                       <strong>
-                        {selectedItem.quantity}
+                        {
+                          selectedItem.quantity
+                        }
                       </strong>
                     </div>
 
                     <div>
-                      <span>Sale Price</span>
+                      <span>
+                        Sale Price
+                      </span>
+
                       <strong>
-                        {formatMoney(itemPrice)}
+                        {formatMoney(
+                          itemPrice
+                        )}
                       </strong>
                     </div>
+
                   </div>
 
-                  <label>Return Quantity</label>
+                  <label>
+                    Return Quantity
+                  </label>
 
                   <input
                     type="number"
                     min="1"
-                    max={selectedItem.quantity}
+                    max={
+                      selectedItem.quantity
+                    }
                     value={quantity}
                     onChange={(e) =>
-                      setQuantity(e.target.value)
+                      setQuantity(
+                        e.target.value
+                      )
                     }
                   />
 
-                  <label>Reason</label>
+                  <label>
+                    Reason
+                  </label>
 
                   <input
                     type="text"
                     placeholder="Damaged, wrong size, customer changed mind..."
                     value={reason}
                     onChange={(e) =>
-                      setReason(e.target.value)
+                      setReason(
+                        e.target.value
+                      )
                     }
                   />
 
                   <div className="return-total-box">
-                    <span>Return Amount</span>
+
+                    <span>
+                      Return Amount
+                    </span>
+
                     <strong>
-                      {formatMoney(returnAmount)}
+                      {formatMoney(
+                        returnAmount
+                      )}
                     </strong>
+
                   </div>
 
                   <button
                     className="return-save-button"
-                    onClick={saveReturn}
+                    onClick={
+                      saveReturn
+                    }
                   >
                     Save Sales Return
                   </button>
+
                 </>
               )}
+
             </>
           )}
 
@@ -402,8 +735,11 @@ export default function SalesReturnPage() {
               {message}
             </div>
           )}
+
         </div>
+
       </section>
+
     </main>
   );
 }
