@@ -43,7 +43,11 @@ export default function CashbookPage() {
       return;
     }
 
-    localStorage.setItem("hisabpro_opening_cash", String(amount));
+    localStorage.setItem(
+      "hisabpro_opening_cash",
+      String(amount)
+    );
+
     setOpeningCash(amount);
     setMessage("Opening cash saved.");
   };
@@ -51,28 +55,43 @@ export default function CashbookPage() {
   const deleteTransaction = (id: number) => {
     if (!confirm("Is transaction ko delete karna hai?")) return;
 
-    const updated = transactions.filter((item) => item.id !== id);
+    const updated = transactions.filter(
+      (item) => item.id !== id
+    );
 
     setTransactions(updated);
-    localStorage.setItem("hisabpro_cashbook", JSON.stringify(updated));
+
+    localStorage.setItem(
+      "hisabpro_cashbook",
+      JSON.stringify(updated)
+    );
   };
 
   const cashIn = transactions
     .filter((item) => item.type === "in")
-    .reduce((sum, item) => sum + Number(item.amount), 0);
+    .reduce(
+      (sum, item) => sum + Number(item.amount),
+      0
+    );
 
   const cashOut = transactions
     .filter((item) => item.type === "out")
-    .reduce((sum, item) => sum + Number(item.amount), 0);
+    .reduce(
+      (sum, item) => sum + Number(item.amount),
+      0
+    );
 
-  const balance = openingCash + cashIn - cashOut;
+  const balance =
+    openingCash + cashIn - cashOut;
 
   return (
     <main className="cashbook-page">
       <header className="cashbook-header">
         <button
           className="cashbook-back"
-          onClick={() => window.history.back()}
+          onClick={() => {
+            window.location.href = "/hisabpro/";
+          }}
         >
           ←
         </button>
@@ -87,18 +106,24 @@ export default function CashbookPage() {
 
         <div className="cashbook-balance-card">
           <span>Current Cash Balance</span>
-          <strong>₹{balance.toFixed(2)}</strong>
+          <strong>
+            ₹{balance.toFixed(2)}
+          </strong>
         </div>
 
         <div className="cashbook-summary">
           <div className="cashbook-summary-card cash-in-card">
             <span>Cash In</span>
-            <strong>₹{cashIn.toFixed(2)}</strong>
+            <strong>
+              ₹{cashIn.toFixed(2)}
+            </strong>
           </div>
 
           <div className="cashbook-summary-card cash-out-card">
             <span>Cash Out</span>
-            <strong>₹{cashOut.toFixed(2)}</strong>
+            <strong>
+              ₹{cashOut.toFixed(2)}
+            </strong>
           </div>
         </div>
 
@@ -111,7 +136,9 @@ export default function CashbookPage() {
               min="0"
               placeholder="Opening cash"
               value={openingInput}
-              onChange={(e) => setOpeningInput(e.target.value)}
+              onChange={(e) =>
+                setOpeningInput(e.target.value)
+              }
             />
 
             <button onClick={saveOpeningCash}>
@@ -154,8 +181,12 @@ export default function CashbookPage() {
           {transactions.length === 0 ? (
             <div className="cashbook-empty">
               <div>💰</div>
+
               <h3>No transactions yet</h3>
-              <p>Cash In ya Cash Out add karein.</p>
+
+              <p>
+                Cash In ya Cash Out add karein.
+              </p>
             </div>
           ) : (
             <div className="cashbook-list">
@@ -168,7 +199,10 @@ export default function CashbookPage() {
                 )
                 .slice(0, 10)
                 .map((item) => (
-                  <div className="cashbook-transaction" key={item.id}>
+                  <div
+                    className="cashbook-transaction"
+                    key={item.id}
+                  >
                     <div
                       className={
                         item.type === "in"
@@ -176,16 +210,24 @@ export default function CashbookPage() {
                           : "cashbook-icon out"
                       }
                     >
-                      {item.type === "in" ? "↓" : "↑"}
+                      {item.type === "in"
+                        ? "↓"
+                        : "↑"}
                     </div>
 
                     <div className="cashbook-transaction-info">
-                      <strong>{item.category}</strong>
+                      <strong>
+                        {item.category}
+                      </strong>
+
                       <span>
                         {item.note || "No note"}
                       </span>
+
                       <small>
-                        {new Date(item.date).toLocaleString()}
+                        {new Date(
+                          item.date
+                        ).toLocaleString()}
                       </small>
                     </div>
 
@@ -197,12 +239,21 @@ export default function CashbookPage() {
                             : "amount-out"
                         }
                       >
-                        {item.type === "in" ? "+" : "-"}₹
-                        {Number(item.amount).toFixed(2)}
+                        {item.type === "in"
+                          ? "+"
+                          : "-"}
+                        ₹
+                        {Number(
+                          item.amount
+                        ).toFixed(2)}
                       </strong>
 
                       <button
-                        onClick={() => deleteTransaction(item.id)}
+                        onClick={() =>
+                          deleteTransaction(
+                            item.id
+                          )
+                        }
                       >
                         Delete
                       </button>
