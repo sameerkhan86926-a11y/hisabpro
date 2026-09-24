@@ -1,6 +1,7 @@
 "use client";
 
-import BackupRestore from "../../components/BackupRestore";
+import Link from "next/link";
+import BackupRestore from "@/components/BackupRestore"; // Agar components root me hai
 
 export default function BackupPage() {
   return (
@@ -11,15 +12,9 @@ export default function BackupPage() {
           <p>Protect your HisabPro business data</p>
         </div>
 
-        <button
-          type="button"
-          className="header-back-button"
-          onClick={() => {
-            window.location.href = "/hisabpro/more/";
-          }}
-        >
+        <Link href="/hisabpro/more/" className="header-back-button">
           Back
-        </button>
+        </Link>
       </header>
 
       <section className="backup-page-section">
