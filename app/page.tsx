@@ -243,40 +243,58 @@ export default function Dashboard() {
     <main className="app">
 
       {/* HEADER */}
-      <header className="header">
-        <div>
-          <h1>HisabPro</h1>
-          <p>Sales • Stock • Khata • Profit</p>
-        </div>
+<header className="header">
+  <div>
+    <h1>HisabPro</h1>
+    <p>Sales • Stock • Khata • Profit</p>
+  </div>
 
-        <a
-          href="/hisabpro/notifications/"
-          className="notification"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-            <path d="M10 21h4" />
-          </svg>
+  <div className="header-actions">
 
-          {notificationCount > 0 && (
-            <span className="notification-badge">
-              {notificationCount > 99
-                ? "99+"
-                : notificationCount}
-            </span>
-          )}
-        </a>
-        <a
-  href="/hisabpro/search/"
-  className="search-header-button"
-  aria-label="Search"
->
-  🔎
-</a>
-      </header>
+    {/* SEARCH */}
+    <a
+      href="/hisabpro/search/"
+      className="search-header-button"
+      aria-label="Search"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <circle
+          cx="11"
+          cy="11"
+          r="6.5"
+        />
+        <path d="M16 16l5 5" />
+      </svg>
+    </a>
+
+    {/* NOTIFICATIONS */}
+    <a
+      href="/hisabpro/notifications/"
+      className="notification"
+      aria-label="Notifications"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+        <path d="M10 21h4" />
+      </svg>
+
+      {notificationCount > 0 && (
+        <span className="notification-badge">
+          {notificationCount > 99
+            ? "99+"
+            : notificationCount}
+        </span>
+      )}
+    </a>
+
+  </div>
+</header>
 
       {/* WELCOME */}
       <section className="welcome">
