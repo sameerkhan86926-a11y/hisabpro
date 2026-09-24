@@ -170,51 +170,65 @@ export default function AppLock({
 
     if (!enabled || !savedHash) {
       clearTimer();
+
       setLocked(false);
       setReady(true);
+
       return;
     }
 
     /*
-     * When Settings has just enabled
-     * App Lock, keep the user inside
-     * the app instead of locking
-     * them immediately.
+     * When App Lock is enabled
+     * from Settings, keep the
+     * current session unlocked.
      */
     if (keepUnlocked) {
       markUnlocked();
+
       setLocked(false);
       setReady(true);
+
       startAutoLockTimer();
+
       return;
     }
 
     /*
-     * Immediately means lock when
-     * the app/page is opened.
+     * Immediately:
+     *
+     * Do NOT lock when navigating
+     * between pages.
+     *
+     * Only lock when there is no
+     * unlocked session.
      */
-    if (autoLock === "immediately") {
-  const lastUnlocked =
-    Number(
-      sessionStorage.getItem(
-        SESSION_KEY
-      ) || "0"
-    );
+    if (
+      autoLock === "immediately"
+    ) {
+      const lastUnlocked =
+        Number(
+          sessionStorage.getItem(
+            SESSION_KEY
+          ) || "0"
+        );
 
-  if (lastUnlocked > 0) {
-    setLocked(false);
-    setReady(true);
-    return;
-  }
+      if (lastUnlocked > 0) {
+        setLocked(false);
+        setReady(true);
 
-  setLocked(true);
-  setReady(true);
-  return;
-}
+        return;
+      }
+
+      setLocked(true);
+      setReady(true);
+
+      return;
+    }
 
     /*
-     * Check whether the previous
-     * unlocked session is still valid.
+     * For 1 / 5 / 15 minute modes,
+     * check whether the unlocked
+     * session is still valid.
      */
     const lastUnlocked =
       Number(
@@ -240,6 +254,7 @@ export default function AppLock({
     if (stillValid) {
       setLocked(false);
       setReady(true);
+
       startAutoLockTimer();
     } else {
       sessionStorage.removeItem(
@@ -251,6 +266,9 @@ export default function AppLock({
     }
   }
 
+  /*
+   * Initial load + settings changes
+   */
   useEffect(() => {
     loadLockSettings();
 
@@ -273,6 +291,10 @@ export default function AppLock({
     };
   }, []);
 
+  /*
+   * Activity handling for
+   * 1 / 5 / 15 minute auto lock.
+   */
   useEffect(() => {
     if (
       !ready ||
@@ -313,6 +335,63 @@ export default function AppLock({
             handleActivity
           );
         }
+      );
+    };
+  }, [
+    ready,
+    locked,
+  ]);
+
+  /*
+   * IMPORTANT:
+   *
+   * Immediately mode locks when
+   * the app/browser goes into the
+   * background.
+   *
+   * Normal page navigation does
+   * NOT trigger this because the
+   * new page finds the session
+   * timestamp and remains unlocked.
+   */
+  useEffect(() => {
+    if (
+      !ready ||
+      locked
+    ) {
+      return;
+    }
+
+    function handleVisibility() {
+      if (
+        document.visibilityState ===
+          "hidden" &&
+        localStorage.getItem(
+          LOCK_KEY
+        ) === "true" &&
+        localStorage.getItem(
+          AUTO_LOCK_KEY
+        ) === "immediately"
+      ) {
+        sessionStorage.removeItem(
+          SESSION_KEY
+        );
+
+        setEnteredPin("");
+        setError("");
+        setLocked(true);
+      }
+    }
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibility
+    );
+
+    return () => {
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibility
       );
     };
   }, [
