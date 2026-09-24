@@ -228,6 +228,10 @@ export default function MorePage() {
               <span>View all cash transactions</span>
             </div>
           </a>
+          <a href="/hisabpro/backup/">
+  <strong>Backup & Restore</strong>
+  <span>Save and restore your business data</span>
+</a>
 
         </div>
       </section>
