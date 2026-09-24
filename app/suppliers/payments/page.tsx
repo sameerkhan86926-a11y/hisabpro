@@ -21,8 +21,20 @@ type SupplierPayment = {
   date: string;
 };
 
+type CashTransaction = {
+  id: number;
+  type: "in" | "out";
+  amount: number;
+  category: string;
+  note: string;
+  date: string;
+  referenceType?: string;
+  referenceId?: number;
+};
+
 const SUPPLIER_KEY = "hisabpro_suppliers";
 const PAYMENT_KEY = "hisabpro_supplier_payments";
+const CASHBOOK_KEY = "hisabpro_cashbook";
 
 export default function SupplierPaymentsPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -147,13 +159,24 @@ export default function SupplierPaymentsPage() {
           ) || "[]"
         );
 
+      const savedCashbook: CashTransaction[] =
+        JSON.parse(
+          localStorage.getItem(
+            CASHBOOK_KEY
+          ) || "[]"
+        );
+
+      const paymentId = Date.now();
+      const paymentDate =
+        new Date().toISOString();
+
       const payment: SupplierPayment = {
-        id: Date.now(),
+        id: paymentId,
         supplierId: supplier.id,
         supplierName: supplier.name,
         amount: paymentAmount,
         note: note.trim(),
-        date: new Date().toISOString(),
+        date: paymentDate,
       };
 
       const updatedSuppliers =
@@ -177,6 +200,27 @@ export default function SupplierPaymentsPage() {
         ...savedPayments,
       ];
 
+      // Supplier payment = Cash Out
+      const cashTransaction: CashTransaction = {
+        id: paymentId + 1,
+        type: "out",
+        amount: paymentAmount,
+        category: "Supplier Payment",
+        note:
+          `Payment to Supplier - ${supplier.name}` +
+          (note.trim()
+            ? ` - ${note.trim()}`
+            : ""),
+        date: paymentDate,
+        referenceType: "supplier_payment",
+        referenceId: paymentId,
+      };
+
+      const updatedCashbook = [
+        cashTransaction,
+        ...savedCashbook,
+      ];
+
       localStorage.setItem(
         SUPPLIER_KEY,
         JSON.stringify(updatedSuppliers)
@@ -187,8 +231,20 @@ export default function SupplierPaymentsPage() {
         JSON.stringify(updatedPayments)
       );
 
+      localStorage.setItem(
+        CASHBOOK_KEY,
+        JSON.stringify(updatedCashbook)
+      );
+
       setSuppliers(updatedSuppliers);
-      setPayments(updatedPayments);
+
+      setPayments(
+        [...updatedPayments].sort(
+          (a, b) =>
+            new Date(b.date).getTime() -
+            new Date(a.date).getTime()
+        )
+      );
 
       setAmount("");
       setNote("");
@@ -196,7 +252,7 @@ export default function SupplierPaymentsPage() {
       setMessage(
         `₹${formatMoney(
           paymentAmount
-        )} payment recorded successfully.`
+        )} payment recorded successfully and added to Cashbook as Cash Out.`
       );
 
       setTimeout(() => {
@@ -210,6 +266,125 @@ export default function SupplierPaymentsPage() {
 
       setMessage(
         "Unable to save supplier payment."
+      );
+    }
+  }
+
+  function deletePayment(payment: SupplierPayment) {
+    const confirmDelete = window.confirm(
+      `Delete ₹${formatMoney(
+        payment.amount
+      )} payment to ${payment.supplierName}?`
+    );
+
+    if (!confirmDelete) {
+      return;
+    }
+
+    try {
+      const savedSuppliers: Supplier[] =
+        JSON.parse(
+          localStorage.getItem(
+            SUPPLIER_KEY
+          ) || "[]"
+        );
+
+      const savedPayments: SupplierPayment[] =
+        JSON.parse(
+          localStorage.getItem(
+            PAYMENT_KEY
+          ) || "[]"
+        );
+
+      const savedCashbook: CashTransaction[] =
+        JSON.parse(
+          localStorage.getItem(
+            CASHBOOK_KEY
+          ) || "[]"
+        );
+
+      // Reverse supplier payable
+      const updatedSuppliers =
+        savedSuppliers.map((supplier) => {
+          if (
+            supplier.id !==
+            payment.supplierId
+          ) {
+            return supplier;
+          }
+
+          return {
+            ...supplier,
+            due:
+              Number(supplier.due || 0) +
+              Number(payment.amount || 0),
+          };
+        });
+
+      // Remove exact supplier payment
+      const updatedPayments =
+        savedPayments.filter(
+          (item) =>
+            Number(item.id) !==
+            Number(payment.id)
+        );
+
+      // Remove only linked automatic Cashbook entry
+      // Manual Cashbook entries remain untouched.
+      const updatedCashbook =
+        savedCashbook.filter(
+          (transaction) =>
+            !(
+              transaction.referenceType ===
+                "supplier_payment" &&
+              Number(
+                transaction.referenceId
+              ) === Number(payment.id)
+            )
+        );
+
+      localStorage.setItem(
+        SUPPLIER_KEY,
+        JSON.stringify(updatedSuppliers)
+      );
+
+      localStorage.setItem(
+        PAYMENT_KEY,
+        JSON.stringify(updatedPayments)
+      );
+
+      localStorage.setItem(
+        CASHBOOK_KEY,
+        JSON.stringify(updatedCashbook)
+      );
+
+      setSuppliers(updatedSuppliers);
+
+      setPayments(
+        [...updatedPayments].sort(
+          (a, b) =>
+            new Date(b.date).getTime() -
+            new Date(a.date).getTime()
+        )
+      );
+
+      setMessage(
+        `₹${formatMoney(
+          payment.amount
+        )} payment deleted, supplier payable restored and Cashbook updated.`
+      );
+
+      setTimeout(() => {
+        setMessage("");
+      }, 3000);
+    } catch (error) {
+      console.error(
+        "Delete supplier payment error:",
+        error
+      );
+
+      setMessage(
+        "Unable to delete supplier payment."
       );
     }
   }
@@ -380,6 +555,18 @@ export default function SupplierPaymentsPage() {
                 <strong className="supplier-payment-amount">
                   ₹{formatMoney(payment.amount)}
                 </strong>
+
+                <button
+                  type="button"
+                  className="supplier-payment-delete"
+                  onClick={() =>
+                    deletePayment(payment)
+                  }
+                  aria-label="Delete payment"
+                  title="Delete payment"
+                >
+                  🗑️
+                </button>
 
               </div>
             ))}
