@@ -39,8 +39,31 @@ export default function SettingsPage() {
   const [message, setMessage] =
     useState("");
 
+  /* =========================
+     SECURITY / APP LOCK
+  ========================= */
+
+  const [appLockEnabled, setAppLockEnabled] =
+    useState(false);
+
+  const [appPin, setAppPin] =
+    useState("");
+
+  const [confirmPin, setConfirmPin] =
+    useState("");
+
+  const [pinLength, setPinLength] =
+    useState("4");
+
+  const [autoLock, setAutoLock] =
+    useState("immediately");
+
+  const [securityMessage, setSecurityMessage] =
+    useState("");
+
   useEffect(() => {
     loadBusinesses();
+    loadSecuritySettings();
   }, []);
 
   function loadBusinesses() {
@@ -67,11 +90,6 @@ export default function SettingsPage() {
         );
       }
     } else if (oldSaved) {
-      /*
-       * Migrate old single business
-       * to new multiple-business system.
-       */
-
       try {
         const oldBusiness =
           JSON.parse(oldSaved);
@@ -132,6 +150,52 @@ export default function SettingsPage() {
     }
   }
 
+  function loadSecuritySettings() {
+    const savedLock =
+      localStorage.getItem(
+        "hisabpro_app_lock"
+      ) === "true";
+
+    const savedPin =
+      localStorage.getItem(
+        "hisabpro_app_lock_pin_hash"
+      );
+
+    const savedPinLength =
+      localStorage.getItem(
+        "hisabpro_app_lock_pin_length"
+      ) || "4";
+
+    const savedAutoLock =
+      localStorage.getItem(
+        "hisabpro_app_lock_auto"
+      ) || "immediately";
+
+    setAppLockEnabled(
+      savedLock
+    );
+
+    /*
+     * We don't put the actual PIN
+     * into the input field.
+     *
+     * If a PIN already exists,
+     * user enters a new PIN only
+     * when changing it.
+     */
+    setAppPin(
+      savedPin ? "******" : ""
+    );
+
+    setPinLength(
+      savedPinLength
+    );
+
+    setAutoLock(
+      savedAutoLock
+    );
+  }
+
   function handleChange(
     field: keyof Omit<Business, "id">,
     value: string
@@ -179,11 +243,6 @@ export default function SettingsPage() {
         newBusiness,
       ];
 
-      /*
-       * First business automatically
-       * becomes active.
-       */
-
       if (businesses.length === 0) {
         setActiveBusinessId(
           newBusiness.id
@@ -191,7 +250,9 @@ export default function SettingsPage() {
 
         localStorage.setItem(
           "hisabpro_active_business",
-          String(newBusiness.id)
+          String(
+            newBusiness.id
+          )
         );
       }
     }
@@ -206,11 +267,6 @@ export default function SettingsPage() {
         updatedBusinesses
       )
     );
-
-    /*
-     * Keep old key updated with
-     * active business for compatibility.
-     */
 
     const activeId =
       activeBusinessId ??
@@ -301,11 +357,6 @@ export default function SettingsPage() {
       )
     );
 
-    /*
-     * If active business was deleted,
-     * select first remaining business.
-     */
-
     if (activeBusinessId === id) {
       const nextBusiness =
         updatedBusinesses[0];
@@ -376,11 +427,6 @@ export default function SettingsPage() {
       String(id)
     );
 
-    /*
-     * Save selected business
-     * to old key too.
-     */
-
     localStorage.setItem(
       "hisabpro_business",
       JSON.stringify(
@@ -401,6 +447,187 @@ export default function SettingsPage() {
     setEditingId(null);
 
     setMessage("");
+  }
+
+  /* =========================
+     HASH PIN
+  ========================= */
+
+  async function hashPin(
+    value: string
+  ) {
+    const data =
+      new TextEncoder().encode(
+        value
+      );
+
+    const hashBuffer =
+      await crypto.subtle.digest(
+        "SHA-256",
+        data
+      );
+
+    return Array.from(
+      new Uint8Array(
+        hashBuffer
+      )
+    )
+      .map((byte) =>
+        byte
+          .toString(16)
+          .padStart(2, "0")
+      )
+      .join("");
+  }
+
+  /* =========================
+     SAVE SECURITY
+  ========================= */
+
+  async function saveSecuritySettings() {
+    setSecurityMessage("");
+
+    if (!appLockEnabled) {
+      localStorage.setItem(
+        "hisabpro_app_lock",
+        "false"
+      );
+
+      localStorage.removeItem(
+        "hisabpro_app_lock_pin_hash"
+      );
+
+      localStorage.removeItem(
+        "hisabpro_app_lock_pin_length"
+      );
+
+      localStorage.removeItem(
+        "hisabpro_app_lock_auto"
+      );
+
+      window.dispatchEvent(
+        new CustomEvent(
+          "hisabpro-app-lock-changed"
+        )
+      );
+
+      setAppPin("");
+      setConfirmPin("");
+
+      setSecurityMessage(
+        "App Lock disabled successfully."
+      );
+
+      return;
+    }
+
+    /*
+     * Existing PIN
+     *
+     * "******" means user has not
+     * entered a new PIN.
+     */
+    if (
+      appPin === "******"
+    ) {
+      localStorage.setItem(
+        "hisabpro_app_lock",
+        "true"
+      );
+
+      localStorage.setItem(
+        "hisabpro_app_lock_pin_length",
+        pinLength
+      );
+
+      localStorage.setItem(
+        "hisabpro_app_lock_auto",
+        autoLock
+      );
+
+      window.dispatchEvent(
+        new CustomEvent(
+          "hisabpro-app-lock-changed"
+        )
+      );
+
+      setSecurityMessage(
+        "Security settings updated successfully ✅"
+      );
+
+      return;
+    }
+
+    if (
+      !/^\d+$/.test(appPin)
+    ) {
+      setSecurityMessage(
+        "PIN must contain numbers only."
+      );
+
+      return;
+    }
+
+    if (
+      appPin.length !==
+      Number(pinLength)
+    ) {
+      setSecurityMessage(
+        `Please enter exactly ${pinLength} digit PIN.`
+      );
+
+      return;
+    }
+
+    if (
+      appPin !== confirmPin
+    ) {
+      setSecurityMessage(
+        "PIN and Confirm PIN do not match."
+      );
+
+      return;
+    }
+
+    const hashedPin =
+      await hashPin(appPin);
+
+    localStorage.setItem(
+      "hisabpro_app_lock_pin_hash",
+      hashedPin
+    );
+
+    localStorage.setItem(
+      "hisabpro_app_lock",
+      "true"
+    );
+
+    localStorage.setItem(
+      "hisabpro_app_lock_pin_length",
+      pinLength
+    );
+
+    localStorage.setItem(
+      "hisabpro_app_lock_auto",
+      autoLock
+    );
+
+    /*
+     * Tell AppLock component
+     * that security settings changed.
+     */
+    window.dispatchEvent(
+      new CustomEvent(
+        "hisabpro-app-lock-changed"
+      )
+    );
+
+    setAppPin("******");
+    setConfirmPin("");
+
+    setSecurityMessage(
+      "App Lock enabled successfully 🔐"
+    );
   }
 
   return (
@@ -795,6 +1022,226 @@ export default function SettingsPage() {
 
           </div>
         )}
+
+      </section>
+
+      {/* SECURITY */}
+
+      <section className="settings-box security-settings-box">
+
+        <div className="settings-title">
+
+          <div className="settings-icon">
+            🔐
+          </div>
+
+          <div>
+            <h2>
+              Security
+            </h2>
+
+            <p>
+              Protect your HisabPro
+              app with an App Lock PIN.
+            </p>
+          </div>
+
+        </div>
+
+        <div className="settings-note">
+
+          <strong>
+            App Lock
+          </strong>
+
+          <span>
+            Your PIN is stored as a
+            SHA-256 hash instead of
+            plain text.
+          </span>
+
+        </div>
+
+        <div className="security-row">
+
+          <div>
+            <strong>
+              App Lock
+            </strong>
+
+            <small>
+              Require PIN to open
+              HisabPro.
+            </small>
+          </div>
+
+          <button
+            type="button"
+            className={
+              appLockEnabled
+                ? "security-toggle active"
+                : "security-toggle"
+            }
+            onClick={() => {
+              setAppLockEnabled(
+                !appLockEnabled
+              );
+
+              setSecurityMessage("");
+            }}
+          >
+            {appLockEnabled
+              ? "ON"
+              : "OFF"}
+          </button>
+
+        </div>
+
+        {appLockEnabled && (
+          <div className="security-form">
+
+            <div className="form-group">
+
+              <label>
+                PIN Length
+              </label>
+
+              <select
+                value={pinLength}
+                onChange={(e) => {
+                  setPinLength(
+                    e.target.value
+                  );
+
+                  setAppPin("");
+                  setConfirmPin("");
+                  setSecurityMessage("");
+                }}
+              >
+                <option value="4">
+                  4 Digit PIN
+                </option>
+
+                <option value="6">
+                  6 Digit PIN
+                </option>
+              </select>
+
+            </div>
+
+            <div className="form-group">
+
+              <label>
+                {appPin === "******"
+                  ? "Change PIN"
+                  : "Create PIN"}
+              </label>
+
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={
+                  Number(pinLength)
+                }
+                value={
+                  appPin === "******"
+                    ? ""
+                    : appPin
+                }
+                onChange={(e) =>
+                  setAppPin(
+                    e.target.value.replace(
+                      /\D/g,
+                      ""
+                    )
+                  )
+                }
+                placeholder={
+                  `Enter ${pinLength} digit PIN`
+                }
+              />
+
+            </div>
+
+            <div className="form-group">
+
+              <label>
+                Confirm PIN
+              </label>
+
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={
+                  Number(pinLength)
+                }
+                value={
+                  confirmPin
+                }
+                onChange={(e) =>
+                  setConfirmPin(
+                    e.target.value.replace(
+                      /\D/g,
+                      ""
+                    )
+                  )
+                }
+                placeholder="Confirm PIN"
+              />
+
+            </div>
+
+            <div className="form-group">
+
+              <label>
+                Auto Lock
+              </label>
+
+              <select
+                value={autoLock}
+                onChange={(e) =>
+                  setAutoLock(
+                    e.target.value
+                  )
+                }
+              >
+                <option value="immediately">
+                  Immediately
+                </option>
+
+                <option value="1">
+                  After 1 minute
+                </option>
+
+                <option value="5">
+                  After 5 minutes
+                </option>
+
+                <option value="15">
+                  After 15 minutes
+                </option>
+              </select>
+
+            </div>
+
+          </div>
+        )}
+
+        {securityMessage && (
+          <p className="security-message">
+            {securityMessage}
+          </p>
+        )}
+
+        <button
+          type="button"
+          className="save-business security-save-button"
+          onClick={
+            saveSecuritySettings
+          }
+        >
+          Save Security Settings
+        </button>
 
       </section>
 
