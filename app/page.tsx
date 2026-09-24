@@ -2,6 +2,15 @@
 
 import { useEffect, useState } from "react";
 
+type PaymentType = "cash" | "credit";
+
+type PaymentMode =
+  | "cash"
+  | "upi"
+  | "card"
+  | "bank"
+  | "online";
+
 type SaleItem = {
   productId: number;
   product: string;
@@ -22,7 +31,8 @@ type Sale = {
 
   discount?: number;
   total: number;
-  paymentType?: "cash" | "credit";
+  paymentType?: PaymentType;
+  paymentMode?: PaymentMode;
   customerName?: string;
   date: string;
 };
@@ -66,7 +76,8 @@ type Purchase = {
   supplierId: number;
   supplierName: string;
   total: number;
-  paymentType: "cash" | "credit";
+  paymentType: PaymentType;
+  paymentMode?: PaymentMode;
   date: string;
 };
 
@@ -85,7 +96,7 @@ type ReturnRecord = {
   id: number;
   type: "sales" | "purchase";
   amount: number;
-  paymentType: "cash" | "credit";
+  paymentType: PaymentType;
   productName: string;
   quantity: number;
   date: string;
@@ -139,6 +150,35 @@ function formatDate(dateString: string) {
     month: "short",
     year: "numeric",
   });
+}
+
+function getPaymentModeLabel(
+  paymentType?: PaymentType,
+  paymentMode?: PaymentMode
+) {
+  if (paymentType === "credit") {
+    return "Credit";
+  }
+
+  switch (paymentMode || "cash") {
+    case "cash":
+      return "Cash";
+
+    case "upi":
+      return "UPI";
+
+    case "card":
+      return "Card";
+
+    case "bank":
+      return "Bank";
+
+    case "online":
+      return "Online";
+
+    default:
+      return "Cash";
+  }
 }
 
 export default function Dashboard() {
@@ -299,11 +339,66 @@ export default function Dashboard() {
       0
     );
 
+  // Actual CASH sales only.
+  // Old sales without paymentMode are treated as Cash.
   const todayCashSales = sales
     .filter(
       (sale) =>
         isToday(sale.date) &&
-        sale.paymentType !== "credit"
+        sale.paymentType !== "credit" &&
+        (sale.paymentMode || "cash") === "cash"
+    )
+    .reduce(
+      (sum, sale) =>
+        sum + Number(sale.total || 0),
+      0
+    );
+
+  const todayUpiSales = sales
+    .filter(
+      (sale) =>
+        isToday(sale.date) &&
+        sale.paymentType !== "credit" &&
+        sale.paymentMode === "upi"
+    )
+    .reduce(
+      (sum, sale) =>
+        sum + Number(sale.total || 0),
+      0
+    );
+
+  const todayCardSales = sales
+    .filter(
+      (sale) =>
+        isToday(sale.date) &&
+        sale.paymentType !== "credit" &&
+        sale.paymentMode === "card"
+    )
+    .reduce(
+      (sum, sale) =>
+        sum + Number(sale.total || 0),
+      0
+    );
+
+  const todayBankSales = sales
+    .filter(
+      (sale) =>
+        isToday(sale.date) &&
+        sale.paymentType !== "credit" &&
+        sale.paymentMode === "bank"
+    )
+    .reduce(
+      (sum, sale) =>
+        sum + Number(sale.total || 0),
+      0
+    );
+
+  const todayOnlineSales = sales
+    .filter(
+      (sale) =>
+        isToday(sale.date) &&
+        sale.paymentType !== "credit" &&
+        sale.paymentMode === "online"
     )
     .reduce(
       (sum, sale) =>
@@ -363,8 +458,6 @@ export default function Dashboard() {
     },
     0
   );
-
-  // Today's gross profit
 
   const todayGrossProfit = sales
     .filter((sale) =>
@@ -594,8 +687,7 @@ export default function Dashboard() {
     returns
       .filter(
         (item) =>
-          item.type ===
-            "purchase" &&
+          item.type === "purchase" &&
           isToday(item.date)
       )
       .reduce(
@@ -718,6 +810,25 @@ export default function Dashboard() {
             Cash{" "}
             {formatMoney(
               todayCashSales
+            )}{" "}
+            • UPI{" "}
+            {formatMoney(
+              todayUpiSales
+            )}{" "}
+            • Card{" "}
+            {formatMoney(
+              todayCardSales
+            )}
+          </small>
+
+          <small>
+            Bank{" "}
+            {formatMoney(
+              todayBankSales
+            )}{" "}
+            • Online{" "}
+            {formatMoney(
+              todayOnlineSales
             )}{" "}
             • Credit{" "}
             {formatMoney(
@@ -1458,10 +1569,10 @@ export default function Dashboard() {
                       </strong>
 
                       <span>
-                        {sale.paymentType ===
-                        "credit"
-                          ? "Credit"
-                          : "Cash"}
+                        {getPaymentModeLabel(
+                          sale.paymentType,
+                          sale.paymentMode
+                        )}
                       </span>
 
                     </div>
