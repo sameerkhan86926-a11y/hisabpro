@@ -11,6 +11,20 @@ type Expense = {
   date: string;
 };
 
+type CashTransaction = {
+  id: number;
+  type: "in" | "out";
+  amount: number;
+  category: string;
+  note: string;
+  date: string;
+  referenceType?: string;
+  referenceId?: number;
+};
+
+const EXPENSE_KEY = "hisabpro_expenses";
+const CASHBOOK_KEY = "hisabpro_cashbook";
+
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
 
@@ -21,12 +35,24 @@ export default function ExpensesPage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    const savedExpenses = JSON.parse(
-      localStorage.getItem("hisabpro_expenses") || "[]"
-    );
-
-    setExpenses(savedExpenses);
+    loadExpenses();
   }, []);
+
+  function loadExpenses() {
+    try {
+      const savedExpenses = JSON.parse(
+        localStorage.getItem(EXPENSE_KEY) || "[]"
+      );
+
+      setExpenses(
+        Array.isArray(savedExpenses)
+          ? savedExpenses
+          : []
+      );
+    } catch {
+      setExpenses([]);
+    }
+  }
 
   function addExpense() {
     setMessage("");
@@ -36,74 +62,221 @@ export default function ExpensesPage() {
       return;
     }
 
-    if (amount <= 0) {
+    if (
+      !Number.isFinite(amount) ||
+      amount <= 0
+    ) {
       setMessage("Valid amount enter karein.");
       return;
     }
 
-    const expense: Expense = {
-      id: Date.now(),
-      title: title.trim(),
-      category: category.trim() || "General",
-      amount,
-      note: note.trim(),
-      date: new Date().toISOString(),
-    };
+    try {
+      const savedExpenses: Expense[] =
+        JSON.parse(
+          localStorage.getItem(EXPENSE_KEY) || "[]"
+        );
 
-    const updatedExpenses = [
-      ...expenses,
-      expense,
-    ];
+      const savedCashbook: CashTransaction[] =
+        JSON.parse(
+          localStorage.getItem(CASHBOOK_KEY) || "[]"
+        );
 
-    setExpenses(updatedExpenses);
+      const expenseId = Date.now();
+      const expenseDate =
+        new Date().toISOString();
 
-    localStorage.setItem(
-      "hisabpro_expenses",
-      JSON.stringify(updatedExpenses)
-    );
+      const expense: Expense = {
+        id: expenseId,
+        title: title.trim(),
+        category:
+          category.trim() || "General",
+        amount,
+        note: note.trim(),
+        date: expenseDate,
+      };
 
-    setTitle("");
-    setCategory("");
-    setAmount(0);
-    setNote("");
+      const updatedExpenses = [
+        ...savedExpenses,
+        expense,
+      ];
 
-    setMessage("Expense added successfully ✅");
+      /*
+       * Every business expense is a Cash Out.
+       *
+       * The reference fields allow us to remove
+       * only this automatic Cashbook entry later.
+       */
+      const cashTransaction: CashTransaction = {
+        id: expenseId + 1,
+        type: "out",
+        amount,
+        category:
+          category.trim() || "General",
+        note:
+          `Expense - ${title.trim()}` +
+          (note.trim()
+            ? ` - ${note.trim()}`
+            : ""),
+        date: expenseDate,
+        referenceType: "expense",
+        referenceId: expenseId,
+      };
+
+      const updatedCashbook = [
+        cashTransaction,
+        ...savedCashbook,
+      ];
+
+      localStorage.setItem(
+        EXPENSE_KEY,
+        JSON.stringify(updatedExpenses)
+      );
+
+      localStorage.setItem(
+        CASHBOOK_KEY,
+        JSON.stringify(updatedCashbook)
+      );
+
+      setExpenses(updatedExpenses);
+
+      setTitle("");
+      setCategory("");
+      setAmount(0);
+      setNote("");
+
+      setMessage(
+        `₹${amount.toLocaleString(
+          "en-IN"
+        )} expense added and recorded in Cashbook as Cash Out ✅`
+      );
+
+      setTimeout(() => {
+        setMessage("");
+      }, 3000);
+    } catch (error) {
+      console.error(
+        "Add expense error:",
+        error
+      );
+
+      setMessage(
+        "Unable to save expense."
+      );
+    }
   }
 
-  function deleteExpense(id: number) {
-    const updatedExpenses = expenses.filter(
-      (expense) => expense.id !== id
+  function deleteExpense(expense: Expense) {
+    const confirmDelete = window.confirm(
+      `Delete ₹${expense.amount.toLocaleString(
+        "en-IN"
+      )} expense "${expense.title}"?`
     );
 
-    setExpenses(updatedExpenses);
+    if (!confirmDelete) {
+      return;
+    }
 
-    localStorage.setItem(
-      "hisabpro_expenses",
-      JSON.stringify(updatedExpenses)
-    );
+    try {
+      const savedExpenses: Expense[] =
+        JSON.parse(
+          localStorage.getItem(EXPENSE_KEY) || "[]"
+        );
+
+      const savedCashbook: CashTransaction[] =
+        JSON.parse(
+          localStorage.getItem(CASHBOOK_KEY) || "[]"
+        );
+
+      /*
+       * Remove the expense itself.
+       */
+      const updatedExpenses =
+        savedExpenses.filter(
+          (item) =>
+            Number(item.id) !==
+            Number(expense.id)
+        );
+
+      /*
+       * Remove only the automatic Cashbook
+       * transaction created for this expense.
+       *
+       * Manual Cashbook entries remain untouched.
+       */
+      const updatedCashbook =
+        savedCashbook.filter(
+          (transaction) =>
+            !(
+              transaction.referenceType ===
+                "expense" &&
+              Number(
+                transaction.referenceId
+              ) === Number(expense.id)
+            )
+        );
+
+      localStorage.setItem(
+        EXPENSE_KEY,
+        JSON.stringify(updatedExpenses)
+      );
+
+      localStorage.setItem(
+        CASHBOOK_KEY,
+        JSON.stringify(updatedCashbook)
+      );
+
+      setExpenses(updatedExpenses);
+
+      setMessage(
+        `Expense deleted and linked Cashbook entry removed successfully.`
+      );
+
+      setTimeout(() => {
+        setMessage("");
+      }, 3000);
+    } catch (error) {
+      console.error(
+        "Delete expense error:",
+        error
+      );
+
+      setMessage(
+        "Unable to delete expense."
+      );
+    }
   }
 
   const totalExpenses = expenses.reduce(
-    (sum, expense) => sum + expense.amount,
+    (sum, expense) =>
+      sum + Number(expense.amount || 0),
     0
   );
 
   const today = new Date();
 
-  const todayExpenses = expenses.filter((expense) => {
-    const expenseDate = new Date(expense.date);
+  const todayExpenses = expenses.filter(
+    (expense) => {
+      const expenseDate = new Date(
+        expense.date
+      );
 
-    return (
-      expenseDate.getDate() === today.getDate() &&
-      expenseDate.getMonth() === today.getMonth() &&
-      expenseDate.getFullYear() === today.getFullYear()
-    );
-  });
-
-  const todayExpenseAmount = todayExpenses.reduce(
-    (sum, expense) => sum + expense.amount,
-    0
+      return (
+        expenseDate.getDate() ===
+          today.getDate() &&
+        expenseDate.getMonth() ===
+          today.getMonth() &&
+        expenseDate.getFullYear() ===
+          today.getFullYear()
+      );
+    }
   );
+
+  const todayExpenseAmount =
+    todayExpenses.reduce(
+      (sum, expense) =>
+        sum + Number(expense.amount || 0),
+      0
+    );
 
   return (
     <main className="expenses-page">
@@ -111,11 +284,13 @@ export default function ExpensesPage() {
       <header className="expenses-header">
 
         <button
-  onClick={() => window.history.back()}
-  className="back-button"
->
-  ← Back
-</button>
+          onClick={() =>
+            window.history.back()
+          }
+          className="back-button"
+        >
+          ← Back
+        </button>
 
         <h1>Expenses</h1>
 
@@ -129,7 +304,10 @@ export default function ExpensesPage() {
           <span>Total Expenses</span>
 
           <strong>
-            ₹{totalExpenses.toLocaleString("en-IN")}
+            ₹
+            {totalExpenses.toLocaleString(
+              "en-IN"
+            )}
           </strong>
         </div>
 
@@ -137,7 +315,10 @@ export default function ExpensesPage() {
           <span>Today's Expenses</span>
 
           <strong>
-            ₹{todayExpenseAmount.toLocaleString("en-IN")}
+            ₹
+            {todayExpenseAmount.toLocaleString(
+              "en-IN"
+            )}
           </strong>
         </div>
 
@@ -218,7 +399,10 @@ export default function ExpensesPage() {
           value={amount}
           onChange={(e) =>
             setAmount(
-              Math.max(0, Number(e.target.value))
+              Math.max(
+                0,
+                Number(e.target.value)
+              )
             )
           }
         />
@@ -298,7 +482,9 @@ export default function ExpensesPage() {
                   <small>
                     {new Date(
                       expense.date
-                    ).toLocaleString("en-IN")}
+                    ).toLocaleString(
+                      "en-IN"
+                    )}
                   </small>
 
                 </div>
@@ -307,14 +493,18 @@ export default function ExpensesPage() {
 
                   <strong>
                     -₹
-                    {expense.amount.toLocaleString(
+                    {Number(
+                      expense.amount
+                    ).toLocaleString(
                       "en-IN"
                     )}
                   </strong>
 
                   <button
                     onClick={() =>
-                      deleteExpense(expense.id)
+                      deleteExpense(
+                        expense
+                      )
                     }
                   >
                     Delete
