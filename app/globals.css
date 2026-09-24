@@ -5418,6 +5418,7 @@ button {
   .customer-summary {
     grid-template-columns: 1fr;
   }
+  
 
   .customer-photo-upload {
     align-items: flex-start;
@@ -5921,4 +5922,370 @@ button {
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+/* =========================
+   SUPPLIERS
+========================= */
+
+.supplier-page {
+  min-height: 100vh;
+  padding-bottom: 40px;
+}
+
+.supplier-header {
+  background: #102a56;
+  color: white;
+  padding: 20px 6%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.supplier-header h1 {
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.supplier-header p {
+  margin-top: 4px;
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.supplier-back {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.supplier-back svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.supplier-summary {
+  width: min(900px, 92%);
+  margin: 24px auto 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.supplier-summary-card {
+  background: white;
+  padding: 18px;
+  border-radius: 15px;
+  box-shadow: 0 4px 18px rgba(20,40,80,0.05);
+}
+
+.supplier-summary-card span {
+  display: block;
+  color: #687386;
+  font-size: 13px;
+}
+
+.supplier-summary-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 23px;
+}
+
+.supplier-summary-card.due strong {
+  color: #d17a00;
+}
+
+.supplier-actions,
+.supplier-form-card,
+.supplier-list-section {
+  width: min(900px, 92%);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.supplier-actions {
+  margin-top: 18px;
+}
+
+.supplier-add-button {
+  width: 100%;
+  min-height: 50px;
+  border-radius: 13px;
+  background: #1559b7;
+  color: white;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.supplier-add-button span {
+  font-size: 20px;
+  margin-right: 6px;
+}
+
+.supplier-form-card {
+  margin-top: 15px;
+  background: white;
+  padding: 20px;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(20,40,80,0.06);
+}
+
+.supplier-section-title,
+.supplier-list-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.supplier-section-title h2,
+.supplier-list-title h2 {
+  font-size: 18px;
+}
+
+.supplier-section-title button {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #eef1f5;
+  color: #687386;
+  font-size: 22px;
+}
+
+.supplier-form {
+  margin-top: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.supplier-form label {
+  color: #263247;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.supplier-form input,
+.supplier-form textarea {
+  width: 100%;
+  margin-top: 7px;
+  padding: 13px 14px;
+  border: 1px solid #dfe4ec;
+  border-radius: 11px;
+  outline: none;
+  background: white;
+  color: #172033;
+  font: inherit;
+  resize: vertical;
+}
+
+.supplier-form input:focus,
+.supplier-form textarea:focus {
+  border-color: #1559b7;
+}
+
+.supplier-money-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.supplier-money-input span {
+  color: #687386;
+  font-size: 14px;
+}
+
+.supplier-money-input input {
+  flex: 1;
+}
+
+.supplier-save-button {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 4px;
+  border-radius: 12px;
+  background: #138a50;
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.supplier-message {
+  width: min(900px, 92%);
+  margin: 15px auto 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #edf8f2;
+  color: #138a50;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.supplier-list-section {
+  margin-top: 28px;
+}
+
+.supplier-list-title {
+  margin-bottom: 13px;
+}
+
+.supplier-list-title span {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 20px;
+  background: #edf3ff;
+  color: #1559b7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.supplier-list {
+  display: grid;
+  gap: 10px;
+}
+
+.supplier-card {
+  background: white;
+  padding: 15px;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  box-shadow: 0 4px 18px rgba(20,40,80,0.05);
+}
+
+.supplier-avatar {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: 50%;
+  background: #edf3ff;
+  color: #1559b7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.supplier-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.supplier-info strong {
+  display: block;
+  font-size: 15px;
+}
+
+.supplier-info small {
+  display: block;
+  margin-top: 4px;
+  color: #687386;
+  font-size: 12px;
+}
+
+.supplier-due,
+.supplier-paid {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.supplier-due {
+  color: #d17a00;
+}
+
+.supplier-paid {
+  color: #138a50;
+}
+
+.supplier-delete {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: 10px;
+  background: #fff1f1;
+  color: #d73535;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.supplier-delete svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.supplier-empty {
+  background: white;
+  border-radius: 16px;
+  padding: 45px 20px;
+  text-align: center;
+  box-shadow: 0 4px 18px rgba(20,40,80,0.05);
+}
+
+.supplier-empty-icon {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: #edf3ff;
+  color: #1559b7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.supplier-empty-icon svg {
+  width: 27px;
+  height: 27px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.supplier-empty h3 {
+  font-size: 18px;
+}
+
+.supplier-empty p {
+  margin-top: 7px;
+  color: #687386;
+  font-size: 13px;
+}
+
+@media (max-width: 700px) {
+  .supplier-header {
+    padding: 18px 20px;
+  }
+
+  .supplier-summary {
+    width: 92%;
+  }
+
+  .supplier-summary-card {
+    padding: 15px;
+  }
 }
