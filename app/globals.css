@@ -5708,10 +5708,17 @@ button {
 .search-header .back-button {
   width: 42px;
   height: 42px;
+  min-width: 42px;
+  padding: 0;
   border-radius: 50%;
   background: rgba(255,255,255,0.12);
   color: white;
   font-size: 22px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .search-box {
