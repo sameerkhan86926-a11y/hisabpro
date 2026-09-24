@@ -22,19 +22,17 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Next.js website
+        run: npm run build
+
       - name: Setup Android SDK PATH
         run: |
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "$ANDROID_HOME/cmdline-tools/16.0/bin" >> $GITHUB_PATH
           echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
-
-      - name: Check Android SDK
-        run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-          which sdkmanager
-          sdkmanager --version
-          adb version
 
       - name: Install Android platform
         run: |
@@ -45,6 +43,11 @@ jobs:
         run: |
           mkdir -p android/app/src/main/java/com/hisabpro/app
           mkdir -p android/app/src/main/res/values
+          mkdir -p android/app/src/main/assets
+
+      - name: Copy website into APK
+        run: |
+          cp -R out/. android/app/src/main/assets/
 
       - name: Create settings.gradle
         run: |
@@ -94,6 +97,21 @@ jobs:
                   targetSdk 35
                   versionCode 1
                   versionName '1.0'
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+
+              buildTypes {
+                  debug {
+                      minifyEnabled false
+                  }
+
+                  release {
+                      minifyEnabled false
+                  }
               }
           }
           EOF
@@ -179,9 +197,7 @@ jobs:
 
                   webView.setWebViewClient(new WebViewClient());
 
-                  webView.loadUrl(
-                      "https://sameerkhan86926-a11y.github.io/hisabpro/"
-                  );
+                  webView.loadUrl("file:///android_asset/index.html");
               }
 
               @Override
@@ -210,11 +226,8 @@ jobs:
           echo "===== APK FILE ====="
           ls -lh android/app/build/outputs/apk/debug/
 
-          echo "===== FILE TYPE ====="
-          file android/app/build/outputs/apk/debug/app-debug.apk
-
           echo "===== APK CONTENT ====="
-          unzip -l android/app/build/outputs/apk/debug/app-debug.apk | head -40
+          unzip -l android/app/build/outputs/apk/debug/app-debug.apk | head -50
 
           echo "===== APK SIZE ====="
           du -h android/app/build/outputs/apk/debug/app-debug.apk
