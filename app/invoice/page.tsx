@@ -2,6 +2,15 @@
 
 import { useEffect, useState } from "react";
 
+type PaymentType = "cash" | "credit";
+
+type PaymentMode =
+  | "cash"
+  | "upi"
+  | "card"
+  | "bank"
+  | "online";
+
 type BatchDetail = {
   batchId: number;
   quantity: number;
@@ -23,7 +32,6 @@ type Sale = {
   id: number;
   items?: SaleItem[];
 
-  // Old single-product sale compatibility
   product?: string;
   price?: number;
   purchasePrice?: number;
@@ -33,7 +41,10 @@ type Sale = {
   discount: number;
   total: number;
   date: string;
-  paymentType?: "cash" | "credit";
+
+  paymentType?: PaymentType;
+  paymentMode?: PaymentMode;
+
   customerName?: string;
 };
 
@@ -73,11 +84,15 @@ export default function InvoicePage() {
       defaultBusiness
     );
 
+  /*
+   * =====================================
+   * LOAD DATA
+   * =====================================
+   */
+
   useEffect(() => {
     /*
-     * =====================================
-     * LOAD LAST INVOICE
-     * =====================================
+     * LAST INVOICE
      */
 
     const savedSale =
@@ -98,17 +113,7 @@ export default function InvoicePage() {
     }
 
     /*
-     * =====================================
-     * LOAD ACTIVE BUSINESS
-     * =====================================
-     *
-     * New system:
-     * hisabpro_businesses
-     * +
-     * hisabpro_active_business
-     *
-     * Old system fallback:
-     * hisabpro_business
+     * BUSINESS PROFILES
      */
 
     const savedBusinesses =
@@ -138,11 +143,6 @@ export default function InvoicePage() {
             | Business
             | undefined;
 
-          /*
-           * If active business ID exists,
-           * use that business.
-           */
-
           if (savedActiveId) {
             const activeId =
               Number(
@@ -156,11 +156,6 @@ export default function InvoicePage() {
                   activeId
               );
           }
-
-          /*
-           * If no active business was found,
-           * use the first business.
-           */
 
           if (!activeBusiness) {
             activeBusiness =
@@ -181,9 +176,7 @@ export default function InvoicePage() {
       }
     } else {
       /*
-       * =====================================
-       * OLD SINGLE BUSINESS FALLBACK
-       * =====================================
+       * OLD BUSINESS FALLBACK
        */
 
       const savedBusiness =
@@ -210,6 +203,45 @@ export default function InvoicePage() {
 
   /*
    * =====================================
+   * PAYMENT LABEL
+   * =====================================
+   */
+
+  function getPaymentModeLabel(
+    paymentType?: PaymentType,
+    paymentMode?: PaymentMode
+  ) {
+    if (
+      paymentType === "credit"
+    ) {
+      return "Credit / Udhaar";
+    }
+
+    switch (
+      paymentMode || "cash"
+    ) {
+      case "cash":
+        return "Cash";
+
+      case "upi":
+        return "UPI";
+
+      case "card":
+        return "Card";
+
+      case "bank":
+        return "Bank Transfer";
+
+      case "online":
+        return "Online";
+
+      default:
+        return "Cash";
+    }
+  }
+
+  /*
+   * =====================================
    * NO INVOICE
    * =====================================
    */
@@ -221,8 +253,10 @@ export default function InvoicePage() {
         <header className="invoice-header">
 
           <button
+            type="button"
             onClick={() =>
-              window.history.back()
+              window.location.href =
+                "/hisabpro/"
             }
             className="back-button"
           >
@@ -266,10 +300,6 @@ export default function InvoicePage() {
    * =====================================
    * SALE ITEMS
    * =====================================
-   *
-   * Supports both:
-   * 1. New multi-item sale
-   * 2. Old single-product sale
    */
 
   const items: SaleItem[] =
@@ -280,15 +310,20 @@ export default function InvoicePage() {
         ? [
             {
               productId: 0,
+
               product:
                 sale.product,
+
               price:
                 sale.price || 0,
+
               purchasePrice:
                 sale.purchasePrice ||
                 0,
+
               quantity:
                 sale.quantity || 1,
+
               amount:
                 (sale.price || 0) *
                 (sale.quantity || 1),
@@ -300,10 +335,6 @@ export default function InvoicePage() {
    * =====================================
    * INVOICE LINES
    * =====================================
-   *
-   * Batch-aware sale:
-   * Same product can appear at
-   * different rates.
    */
 
   const invoiceLines:
@@ -369,6 +400,18 @@ export default function InvoicePage() {
 
   /*
    * =====================================
+   * PAYMENT LABEL
+   * =====================================
+   */
+
+  const paymentLabel =
+    getPaymentModeLabel(
+      sale.paymentType,
+      sale.paymentMode
+    );
+
+  /*
+   * =====================================
    * WHATSAPP MESSAGE
    * =====================================
    */
@@ -377,9 +420,13 @@ export default function InvoicePage() {
     invoiceLines
       .map(
         (item) =>
-          `${item.product} × ${item.quantity} @ ₹${item.price.toLocaleString(
+          `${item.product} × ${item.quantity} @ ₹${Number(
+            item.price || 0
+          ).toLocaleString(
             "en-IN"
-          )} = ₹${item.amount.toLocaleString(
+          )} = ₹${Number(
+            item.amount || 0
+          ).toLocaleString(
             "en-IN"
           )}`
       )
@@ -406,20 +453,19 @@ ${
 
 ${whatsappItems}
 
-Subtotal: ₹${sale.subtotal.toLocaleString(
-      "en-IN"
-    )}
-Discount: ₹${sale.discount.toLocaleString(
-      "en-IN"
-    )}
-Total: ₹${sale.total.toLocaleString(
-      "en-IN"
-    )}
-Payment: ${
-      sale.paymentType === "credit"
-        ? "Credit / Udhaar"
-        : "Cash"
-    }`;
+Subtotal: ₹${Number(
+      sale.subtotal || 0
+    ).toLocaleString("en-IN")}
+
+Discount: ₹${Number(
+      sale.discount || 0
+    ).toLocaleString("en-IN")}
+
+Total: ₹${Number(
+      sale.total || 0
+    ).toLocaleString("en-IN")}
+
+Payment: ${paymentLabel}`;
 
   /*
    * =====================================
@@ -435,8 +481,10 @@ Payment: ${
       <header className="invoice-header">
 
         <button
+          type="button"
           onClick={() =>
-            window.history.back()
+            window.location.href =
+              "/hisabpro/"
           }
           className="back-button"
         >
@@ -448,6 +496,7 @@ Payment: ${
         </h1>
 
         <button
+          type="button"
           onClick={() =>
             window.print()
           }
@@ -556,10 +605,7 @@ Payment: ${
             </span>
 
             <strong>
-              {sale.paymentType ===
-              "credit"
-                ? "Credit / Udhaar"
-                : "Cash"}
+              {paymentLabel}
             </strong>
 
           </div>
@@ -582,7 +628,7 @@ Payment: ${
           </div>
         )}
 
-        {/* ITEMS TABLE */}
+        {/* ITEMS */}
 
         <div className="invoice-table">
 
@@ -623,14 +669,18 @@ Payment: ${
 
                 <span>
                   ₹
-                  {item.price.toLocaleString(
+                  {Number(
+                    item.price || 0
+                  ).toLocaleString(
                     "en-IN"
                   )}
                 </span>
 
                 <span>
                   ₹
-                  {item.amount.toLocaleString(
+                  {Number(
+                    item.amount || 0
+                  ).toLocaleString(
                     "en-IN"
                   )}
                 </span>
@@ -653,7 +703,9 @@ Payment: ${
 
             <strong>
               ₹
-              {sale.subtotal.toLocaleString(
+              {Number(
+                sale.subtotal || 0
+              ).toLocaleString(
                 "en-IN"
               )}
             </strong>
@@ -668,7 +720,9 @@ Payment: ${
 
             <strong>
               ₹
-              {sale.discount.toLocaleString(
+              {Number(
+                sale.discount || 0
+              ).toLocaleString(
                 "en-IN"
               )}
             </strong>
@@ -683,7 +737,9 @@ Payment: ${
 
             <strong>
               ₹
-              {sale.total.toLocaleString(
+              {Number(
+                sale.total || 0
+              ).toLocaleString(
                 "en-IN"
               )}
             </strong>
@@ -713,6 +769,7 @@ Payment: ${
       <div className="invoice-actions">
 
         <button
+          type="button"
           onClick={() =>
             window.print()
           }
@@ -721,6 +778,7 @@ Payment: ${
         </button>
 
         <button
+          type="button"
           onClick={() => {
             window.open(
               `https://wa.me/?text=${encodeURIComponent(
