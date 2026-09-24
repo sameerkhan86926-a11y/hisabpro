@@ -73,6 +73,18 @@ type Transaction = {
   amount: number;
   note: string;
   date: string;
+  saleId?: number;
+};
+
+type CashTransaction = {
+  id: number;
+  type: "in" | "out";
+  amount: number;
+  category: string;
+  note: string;
+  date: string;
+  referenceType?: string;
+  referenceId?: number;
 };
 
 export default function SalesHistoryPage() {
@@ -84,21 +96,33 @@ export default function SalesHistoryPage() {
   }, []);
 
   function loadSales() {
-    const savedSales: Sale[] = JSON.parse(
-      localStorage.getItem(
-        "hisabpro_sales"
-      ) || "[]"
-    );
+    try {
+      const savedSales: Sale[] =
+        JSON.parse(
+          localStorage.getItem(
+            "hisabpro_sales"
+          ) || "[]"
+        );
 
-    setSales(
-      [...savedSales].reverse()
-    );
+      setSales(
+        [...savedSales].reverse()
+      );
+    } catch (error) {
+      console.error(
+        "Sales history loading error:",
+        error
+      );
+
+      setSales([]);
+    }
   }
 
   /*
-   * Convert old single-product sale
-   * into the new items format.
+   * =====================================
+   * OLD + NEW SALE COMPATIBILITY
+   * =====================================
    */
+
   function getSaleItems(
     sale: Sale
   ): SaleItem[] {
@@ -131,7 +155,7 @@ export default function SalesHistoryPage() {
 
   const totalSales = sales.reduce(
     (sum, sale) =>
-      sum + sale.total,
+      sum + Number(sale.total || 0),
     0
   );
 
@@ -145,7 +169,7 @@ export default function SalesHistoryPage() {
         items.reduce(
           (itemSum, item) =>
             itemSum +
-            item.quantity,
+            Number(item.quantity || 0),
           0
         )
       );
@@ -153,14 +177,20 @@ export default function SalesHistoryPage() {
     0
   );
 
+  /*
+   * =====================================
+   * DELETE SALE
+   * =====================================
+   */
+
   function deleteSale(sale: Sale) {
     setMessage("");
 
     const confirmDelete =
       window.confirm(
-        `Delete this bill for ₹${sale.total.toLocaleString(
-          "en-IN"
-        )}?`
+        `Delete this bill for ₹${Number(
+          sale.total || 0
+        ).toLocaleString("en-IN")}?`
       );
 
     if (!confirmDelete) {
@@ -172,7 +202,7 @@ export default function SalesHistoryPage() {
 
     /*
      * =====================================
-     * 1. REMOVE SALE FROM SALES HISTORY
+     * 1. REMOVE SALE
      * =====================================
      */
 
@@ -202,7 +232,7 @@ export default function SalesHistoryPage() {
 
     /*
      * =====================================
-     * 2. RESTORE STOCK BATCH-WISE
+     * 2. RESTORE STOCK
      * =====================================
      */
 
@@ -230,9 +260,6 @@ export default function SalesHistoryPage() {
             return product;
           }
 
-          /*
-           * New batch-aware sale
-           */
           const hasBatchDetails =
             productItems.some(
               (item) =>
@@ -241,8 +268,13 @@ export default function SalesHistoryPage() {
                   0
             );
 
-          if (hasBatchDetails) {
+          /*
+           * =================================
+           * NEW BATCH-AWARE SALE
+           * =================================
+           */
 
+          if (hasBatchDetails) {
             let batches: StockBatch[] =
               product.batches
                 ? [...product.batches]
@@ -251,10 +283,6 @@ export default function SalesHistoryPage() {
             productItems.forEach(
               (item) => {
 
-                /*
-                 * Restore exact quantities
-                 * into their original batches.
-                 */
                 if (
                   item.batchDetails &&
                   item.batchDetails.length >
@@ -281,19 +309,20 @@ export default function SalesHistoryPage() {
                           ...batches[
                             batchIndex
                           ],
+
                           quantity:
-                            batches[
-                              batchIndex
-                            ].quantity +
-                            soldBatch.quantity,
+                            Number(
+                              batches[
+                                batchIndex
+                              ].quantity
+                            ) +
+                            Number(
+                              soldBatch.quantity
+                            ),
                         };
 
                       } else {
 
-                        /*
-                         * If original batch was
-                         * removed, recreate it.
-                         */
                         batches.push({
                           id:
                             soldBatch.batchId,
@@ -317,15 +346,15 @@ export default function SalesHistoryPage() {
 
                 } else {
 
-                  /*
-                   * Fallback for an item without
-                   * batchDetails.
-                   */
                   const fallbackBatchIndex =
                     batches.findIndex(
                       (batch) =>
-                        batch.sellingPrice ===
-                        item.price
+                        Number(
+                          batch.sellingPrice
+                        ) ===
+                        Number(
+                          item.price
+                        )
                     );
 
                   if (
@@ -339,11 +368,16 @@ export default function SalesHistoryPage() {
                       ...batches[
                         fallbackBatchIndex
                       ],
+
                       quantity:
-                        batches[
-                          fallbackBatchIndex
-                        ].quantity +
-                        item.quantity,
+                        Number(
+                          batches[
+                            fallbackBatchIndex
+                          ].quantity
+                        ) +
+                        Number(
+                          item.quantity
+                        ),
                     };
 
                   } else {
@@ -370,14 +404,10 @@ export default function SalesHistoryPage() {
                     });
 
                   }
-
                 }
               }
             );
 
-            /*
-             * Recalculate total stock
-             */
             const totalStock =
               batches.reduce(
                 (sum, batch) =>
@@ -388,10 +418,6 @@ export default function SalesHistoryPage() {
                 0
               );
 
-            /*
-             * Latest remaining batch
-             * becomes current display rate.
-             */
             const sortedBatches =
               [...batches].sort(
                 (a, b) =>
@@ -424,30 +450,24 @@ export default function SalesHistoryPage() {
                   ? latestBatch.sellingPrice
                   : product.sellingPrice,
             };
-
           }
 
           /*
            * =================================
            * OLD SALE COMPATIBILITY
            * =================================
-           *
-           * Old sales did not contain batchDetails.
-           * Restore their quantity normally.
            */
 
           const totalQuantity =
             productItems.reduce(
               (sum, item) =>
                 sum +
-                item.quantity,
+                Number(
+                  item.quantity || 0
+                ),
               0
             );
 
-          /*
-           * If old product has no batches,
-           * simply restore stock.
-           */
           if (
             !product.batches ||
             product.batches.length === 0
@@ -455,18 +475,13 @@ export default function SalesHistoryPage() {
 
             return {
               ...product,
+
               stock:
-                product.stock +
+                Number(product.stock || 0) +
                 totalQuantity,
             };
-
           }
 
-          /*
-           * If batches exist but old sale
-           * has no batch information, restore
-           * into a matching selling-price batch.
-           */
           const batches =
             [...product.batches];
 
@@ -476,8 +491,10 @@ export default function SalesHistoryPage() {
               const batchIndex =
                 batches.findIndex(
                   (batch) =>
-                    batch.sellingPrice ===
-                    item.price
+                    Number(
+                      batch.sellingPrice
+                    ) ===
+                    Number(item.price)
                 );
 
               if (
@@ -490,11 +507,16 @@ export default function SalesHistoryPage() {
                   ...batches[
                     batchIndex
                   ],
+
                   quantity:
-                    batches[
-                      batchIndex
-                    ].quantity +
-                    item.quantity,
+                    Number(
+                      batches[
+                        batchIndex
+                      ].quantity
+                    ) +
+                    Number(
+                      item.quantity
+                    ),
                 };
 
               } else {
@@ -528,14 +550,18 @@ export default function SalesHistoryPage() {
             batches.reduce(
               (sum, batch) =>
                 sum +
-                batch.quantity,
+                Number(
+                  batch.quantity
+                ),
               0
             );
 
           return {
             ...product,
+
             stock:
               totalStock,
+
             batches,
           };
         }
@@ -550,7 +576,7 @@ export default function SalesHistoryPage() {
 
     /*
      * =====================================
-     * 3. REVERSE CUSTOMER DUE
+     * 3. CREDIT SALE → REVERSE KHATA
      * =====================================
      */
 
@@ -575,10 +601,15 @@ export default function SalesHistoryPage() {
             sale.customerId
               ? {
                   ...customer,
+
                   due: Math.max(
                     0,
-                    customer.due -
-                      sale.total
+                    Number(
+                      customer.due || 0
+                    ) -
+                    Number(
+                      sale.total || 0
+                    )
                   ),
                 }
               : customer
@@ -592,21 +623,9 @@ export default function SalesHistoryPage() {
       );
 
       /*
-       * =================================
-       * 4. REMOVE CREDIT TRANSACTION
-       * =================================
+       * Remove exact sale transaction
+       * for new sales.
        */
-
-      const productNames =
-        items
-          .map(
-            (item) =>
-              item.product
-          )
-          .join(", ");
-
-      const newNote =
-        `Credit Sale - ${productNames}`;
 
       const savedTransactions:
         Transaction[] =
@@ -616,36 +635,55 @@ export default function SalesHistoryPage() {
           ) || "[]"
         );
 
-      let transactionRemoved =
-        false;
+      const itemsText =
+        items
+          .map(
+            (item) =>
+              `${item.product} (${item.quantity})`
+          )
+          .join(", ");
+
+      const newNote =
+        `Credit Sale - ${itemsText}`;
 
       const updatedTransactions =
         savedTransactions.filter(
           (transaction) => {
 
+            /*
+             * New transaction format:
+             * use saleId.
+             */
             if (
+              transaction.saleId !==
+                undefined
+            ) {
+              return (
+                transaction.saleId !==
+                sale.id
+              );
+            }
+
+            /*
+             * Old transaction format:
+             * fallback matching.
+             */
+            return !(
               transaction.customerId ===
                 sale.customerId &&
               transaction.type ===
                 "credit" &&
-              transaction.amount ===
-                sale.total &&
+              Number(
+                transaction.amount
+              ) ===
+                Number(sale.total) &&
               (
                 transaction.note ===
                   newNote ||
                 transaction.note ===
                   `Credit Sale - ${sale.product}`
-              ) &&
-              !transactionRemoved
-            ) {
-
-              transactionRemoved =
-                true;
-
-              return false;
-            }
-
-            return true;
+              )
+            );
           }
         );
 
@@ -659,19 +697,64 @@ export default function SalesHistoryPage() {
 
     /*
      * =====================================
+     * 4. CASH SALE → REMOVE CASHBOOK ENTRY
+     * =====================================
+     */
+
+    if (
+      sale.paymentType ===
+      "cash"
+    ) {
+
+      const savedCashbook:
+        CashTransaction[] =
+        JSON.parse(
+          localStorage.getItem(
+            "hisabpro_cashbook"
+          ) || "[]"
+        );
+
+      /*
+       * New automatic entries have
+       * referenceType + referenceId.
+       *
+       * Old cash sales without a reference
+       * are NOT touched.
+       */
+      const updatedCashbook =
+        savedCashbook.filter(
+          (transaction) =>
+            !(
+              transaction.referenceType ===
+                "sale" &&
+              Number(
+                transaction.referenceId
+              ) ===
+                Number(sale.id)
+            )
+        );
+
+      localStorage.setItem(
+        "hisabpro_cashbook",
+        JSON.stringify(
+          updatedCashbook
+        )
+      );
+    }
+
+    /*
+     * =====================================
      * SUCCESS
      * =====================================
      */
 
     setMessage(
-      "Bill deleted, original stock batches & Khata updated successfully ✅"
+      "Bill deleted, stock restored and linked accounts updated successfully ✅"
     );
   }
 
   return (
     <main className="history-page">
-
-      {/* HEADER */}
 
       <header className="history-header">
 
@@ -693,8 +776,6 @@ export default function SalesHistoryPage() {
         </a>
 
       </header>
-
-      {/* MESSAGE */}
 
       {message && (
         <div
@@ -722,8 +803,6 @@ export default function SalesHistoryPage() {
           {message}
         </div>
       )}
-
-      {/* STATS */}
 
       <section className="history-stats">
 
@@ -768,8 +847,6 @@ export default function SalesHistoryPage() {
 
       </section>
 
-      {/* SALES LIST */}
-
       <section className="sales-list">
 
         <div className="history-title">
@@ -781,6 +858,7 @@ export default function SalesHistoryPage() {
         </div>
 
         {sales.length === 0 ? (
+
           <div className="empty-sales">
 
             <div>🧾</div>
@@ -799,7 +877,9 @@ export default function SalesHistoryPage() {
             </a>
 
           </div>
+
         ) : (
+
           sales.map((sale) => {
 
             const items =
@@ -813,13 +893,9 @@ export default function SalesHistoryPage() {
                 key={sale.id}
               >
 
-                {/* ICON */}
-
                 <div className="sale-icon">
                   🧾
                 </div>
-
-                {/* INFO */}
 
                 <div className="sale-info">
 
@@ -830,8 +906,6 @@ export default function SalesHistoryPage() {
                           .product
                       : `${items.length} Items`}
                   </strong>
-
-                  {/* PRODUCTS */}
 
                   <div className="history-products">
 
@@ -856,14 +930,18 @@ export default function SalesHistoryPage() {
                             <span>
                               {item.quantity}
                               {" × ₹"}
-                              {item.price.toLocaleString(
+                              {Number(
+                                item.price
+                              ).toLocaleString(
                                 "en-IN"
                               )}
                             </span>
 
                             <strong>
                               ₹
-                              {item.amount.toLocaleString(
+                              {Number(
+                                item.amount
+                              ).toLocaleString(
                                 "en-IN"
                               )}
                             </strong>
@@ -882,7 +960,9 @@ export default function SalesHistoryPage() {
                                 {item.batchDetails!
                                   .map(
                                     (batch) =>
-                                      `${batch.quantity} × ₹${batch.sellingPrice.toLocaleString(
+                                      `${batch.quantity} × ₹${Number(
+                                        batch.sellingPrice
+                                      ).toLocaleString(
                                         "en-IN"
                                       )}`
                                   )
@@ -899,8 +979,6 @@ export default function SalesHistoryPage() {
 
                   </div>
 
-                  {/* DATE */}
-
                   <small>
                     {new Date(
                       sale.date
@@ -909,10 +987,9 @@ export default function SalesHistoryPage() {
                     )}
                   </small>
 
-                  {/* PAYMENT */}
-
                   {sale.paymentType ===
                   "credit" ? (
+
                     <div className="sale-customer">
 
                       <span className="credit-badge">
@@ -927,7 +1004,9 @@ export default function SalesHistoryPage() {
                       )}
 
                     </div>
+
                   ) : (
+
                     <div className="sale-customer">
 
                       <span className="cash-badge">
@@ -935,17 +1014,18 @@ export default function SalesHistoryPage() {
                       </span>
 
                     </div>
+
                   )}
 
                 </div>
-
-                {/* RIGHT */}
 
                 <div className="sale-right">
 
                   <strong>
                     ₹
-                    {sale.total.toLocaleString(
+                    {Number(
+                      sale.total
+                    ).toLocaleString(
                       "en-IN"
                     )}
                   </strong>
@@ -965,6 +1045,7 @@ export default function SalesHistoryPage() {
               </div>
             );
           })
+
         )}
 
       </section>
