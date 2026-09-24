@@ -719,12 +719,12 @@ export default function CustomerPage() {
             Customer record nahi mila.
           </p>
 
-          <a
-            href="/hisabpro/khata/"
-          >
-            Back to Khata
-          </a>
-
+          <button
+          onClick={() => window.history.back()}
+          className="back-button"
+        >
+          ← Back
+        </button>
         </div>
 
       </main>
