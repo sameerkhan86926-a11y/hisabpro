@@ -33,6 +33,15 @@ export default function KhataPage() {
     setCustomers(savedCustomers);
   }, []);
 
+  function goToDashboard() {
+    window.location.href = "/hisabpro/";
+  }
+
+  function goToCustomer(customerId: number) {
+    window.location.href =
+      `/hisabpro/khata/customer/?id=${customerId}`;
+  }
+
   function handlePhotoChange(
     e: React.ChangeEvent<HTMLInputElement>
   ) {
@@ -140,25 +149,34 @@ export default function KhataPage() {
   return (
     <main className="khata-page">
 
+      {/* HEADER */}
+
       <header className="khata-header">
 
         <button
-          onClick={() => window.history.back()}
+          type="button"
+          onClick={goToDashboard}
           className="back-button"
         >
           ← Back
         </button>
 
-        <h1>Khata</h1>
+        <h1>
+          Khata
+        </h1>
 
         <span></span>
 
       </header>
 
+      {/* STATS */}
+
       <section className="khata-stats">
 
         <div>
-          <span>Total Customers</span>
+          <span>
+            Total Customers
+          </span>
 
           <strong>
             {customers.length}
@@ -166,7 +184,9 @@ export default function KhataPage() {
         </div>
 
         <div>
-          <span>Total Due</span>
+          <span>
+            Total Due
+          </span>
 
           <strong>
             ₹{totalDue.toLocaleString("en-IN")}
@@ -175,9 +195,13 @@ export default function KhataPage() {
 
       </section>
 
+      {/* ADD CUSTOMER */}
+
       <section className="customer-form">
 
-        <h2>Add Customer</h2>
+        <h2>
+          Add Customer
+        </h2>
 
         {/* PHOTO */}
 
@@ -191,7 +215,9 @@ export default function KhataPage() {
                 alt="Customer"
               />
             ) : (
-              <span>👤</span>
+              <span>
+                👤
+              </span>
             )}
 
           </div>
@@ -222,7 +248,9 @@ export default function KhataPage() {
               <button
                 type="button"
                 className="remove-photo-button"
-                onClick={() => setPhoto("")}
+                onClick={() =>
+                  setPhoto("")
+                }
               >
                 Remove Photo
               </button>
@@ -312,7 +340,10 @@ export default function KhataPage() {
           }
         />
 
-        <button onClick={addCustomer}>
+        <button
+          type="button"
+          onClick={addCustomer}
+        >
           + Add Customer
         </button>
 
@@ -340,7 +371,9 @@ export default function KhataPage() {
 
           <div className="empty-customers">
 
-            <div>👤</div>
+            <div>
+              👤
+            </div>
 
             <h3>
               No Customers Yet
@@ -426,21 +459,27 @@ export default function KhataPage() {
                 </strong>
 
                 <span>
-                  {customer.due > 0
+                  {Number(customer.due || 0) > 0
                     ? "Due"
                     : "No Due"}
                 </span>
 
                 <div className="customer-actions">
 
-                  <a
-                    href={`/hisabpro/khata/customer/?id=${customer.id}`}
+                  <button
+                    type="button"
                     className="view-customer"
+                    onClick={() =>
+                      goToCustomer(
+                        customer.id
+                      )
+                    }
                   >
                     View
-                  </a>
+                  </button>
 
                   <button
+                    type="button"
                     onClick={() =>
                       deleteCustomer(
                         customer.id
