@@ -9065,7 +9065,8 @@ button {
   line-height: 1.5;
 }
 
-.header {
+./* Sirf backup page ke header ke liye */
+.backup-header {
   display: flex;
   align-items: center;
   gap: 16px;
@@ -9086,6 +9087,7 @@ button {
   cursor: pointer;
   flex-shrink: 0;
 }
+
 
 
 @media (max-width: 600px) {
