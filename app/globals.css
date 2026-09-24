@@ -5468,3 +5468,211 @@ button {
   }
 
 }
+/* =========================
+   APP LOCK
+========================= */
+
+.app-lock-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: #f5f7fb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.app-lock-box {
+  width: min(380px, 100%);
+  background: #ffffff;
+  border-radius: 22px;
+  padding: 30px 24px;
+  text-align: center;
+  box-shadow: 0 10px 35px rgba(20, 40, 80, 0.10);
+}
+
+.app-lock-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 15px;
+  border-radius: 50%;
+  background: #edf3ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+}
+
+.app-lock-box h1 {
+  color: #102a56;
+  font-size: 25px;
+  font-weight: 800;
+}
+
+.app-lock-box > p {
+  margin-top: 5px;
+  color: #687386;
+  font-size: 14px;
+}
+
+.app-lock-dots {
+  display: flex;
+  justify-content: center;
+  gap: 11px;
+  margin: 24px 0 12px;
+}
+
+.app-lock-dots span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #dfe4ec;
+  border: 1px solid #cbd2dd;
+}
+
+.app-lock-dots span.filled {
+  background: #1559b7;
+  border-color: #1559b7;
+}
+
+.app-lock-error {
+  min-height: 20px;
+  margin-bottom: 10px;
+  color: #d73535;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.app-lock-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  max-width: 290px;
+  margin: 18px auto;
+}
+
+.app-lock-keypad button {
+  height: 58px;
+  border-radius: 15px;
+  background: #f5f7fb;
+  border: 1px solid #e3e7ee;
+  color: #172033;
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.app-lock-keypad button:active {
+  transform: scale(0.96);
+  background: #e9eef7;
+}
+
+.app-lock-keypad .empty-key {
+  visibility: hidden;
+}
+
+.app-lock-keypad .delete-key {
+  color: #687386;
+  font-size: 22px;
+}
+
+.app-lock-unlock {
+  width: 100%;
+  height: 50px;
+  margin-top: 4px;
+  border-radius: 13px;
+  background: #1559b7;
+  color: white;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.app-lock-unlock:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* =========================
+   SECURITY SETTINGS
+========================= */
+
+.security-settings-box {
+  margin-top: 24px;
+}
+
+.security-row {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid #e5e9ef;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  background: #fafbfc;
+}
+
+.security-row strong {
+  display: block;
+  color: #172033;
+  font-size: 15px;
+}
+
+.security-row small {
+  display: block;
+  margin-top: 5px;
+  color: #687386;
+  font-size: 12px;
+}
+
+.security-toggle {
+  min-width: 58px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 20px;
+  background: #dfe4ec;
+  color: #687386;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.security-toggle.active {
+  background: #138a50;
+  color: white;
+}
+
+.security-form {
+  margin-top: 18px;
+  display: grid;
+  gap: 15px;
+}
+
+.security-form select,
+.security-form input {
+  width: 100%;
+  margin-top: 7px;
+  padding: 13px 14px;
+  border: 1px solid #dfe4ec;
+  border-radius: 11px;
+  background: white;
+  color: #172033;
+  outline: none;
+}
+
+.security-form input:focus,
+.security-form select:focus {
+  border-color: #1559b7;
+}
+
+.security-message {
+  margin-top: 15px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #edf8f2;
+  color: #138a50;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.security-save-button {
+  margin-top: 18px;
+}
