@@ -22,22 +22,22 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Install Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Check Android SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          sdkmanager --version
+          adb version
 
       - name: Install Android platform
         run: |
+          yes | sdkmanager --licenses > /dev/null || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Create Android project
         run: |
           mkdir -p android/app/src/main/java/com/hisabpro/app
-          mkdir -p android/app/src/main/res/drawable
-          mkdir -p android/app/src/main/res/mipmap-hdpi
-          mkdir -p android/app/src/main/res/mipmap-mdpi
-          mkdir -p android/app/src/main/res/mipmap-xhdpi
-          mkdir -p android/app/src/main/res/mipmap-xxhdpi
-          mkdir -p android/app/src/main/res/mipmap-xxxhdpi
+          mkdir -p android/app/src/main/res/values
 
       - name: Create settings.gradle
         run: |
@@ -122,8 +122,6 @@ jobs:
 
       - name: Create styles
         run: |
-          mkdir -p android/app/src/main/res/values
-
           cat > android/app/src/main/res/values/styles.xml <<'EOF'
           <resources>
 
@@ -174,7 +172,9 @@ jobs:
 
                   webView.setWebViewClient(new WebViewClient());
 
-                  webView.loadUrl("https://sameerkhan86926-a11y.github.io/hisabpro/");
+                  webView.loadUrl(
+                      "https://sameerkhan86926-a11y.github.io/hisabpro/"
+                  );
               }
 
               @Override
@@ -195,7 +195,8 @@ jobs:
 
       - name: Build APK
         working-directory: android
-        run: ../gradle-8.10.2/bin/gradle assembleDebug
+        run: |
+          ../gradle-8.10.2/bin/gradle assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
