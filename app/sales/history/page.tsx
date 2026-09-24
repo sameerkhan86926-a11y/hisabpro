@@ -2,6 +2,15 @@
 
 import { useEffect, useState } from "react";
 
+type PaymentType = "cash" | "credit";
+
+type PaymentMode =
+  | "cash"
+  | "upi"
+  | "card"
+  | "bank"
+  | "online";
+
 type BatchDetail = {
   batchId: number;
   quantity: number;
@@ -25,7 +34,6 @@ type Sale = {
   items?: SaleItem[];
   subtotal?: number;
 
-  // Old format compatibility
   product?: string;
   price?: number;
   purchasePrice?: number;
@@ -35,7 +43,9 @@ type Sale = {
   total: number;
   date: string;
 
-  paymentType?: "cash" | "credit";
+  paymentType?: PaymentType;
+  paymentMode?: PaymentMode;
+
   customerId?: number | null;
   customerName?: string;
 };
@@ -88,8 +98,11 @@ type CashTransaction = {
 };
 
 export default function SalesHistoryPage() {
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [message, setMessage] = useState("");
+  const [sales, setSales] =
+    useState<Sale[]>([]);
+
+  const [message, setMessage] =
+    useState("");
 
   useEffect(() => {
     loadSales();
@@ -119,6 +132,45 @@ export default function SalesHistoryPage() {
 
   /*
    * =====================================
+   * PAYMENT MODE LABEL
+   * =====================================
+   */
+
+  function getPaymentModeLabel(
+    paymentType?: PaymentType,
+    paymentMode?: PaymentMode
+  ) {
+    if (
+      paymentType === "credit"
+    ) {
+      return "Credit / Udhaar";
+    }
+
+    switch (
+      paymentMode || "cash"
+    ) {
+      case "cash":
+        return "Cash";
+
+      case "upi":
+        return "UPI";
+
+      case "card":
+        return "Card";
+
+      case "bank":
+        return "Bank Transfer";
+
+      case "online":
+        return "Online";
+
+      default:
+        return "Cash";
+    }
+  }
+
+  /*
+   * =====================================
    * OLD + NEW SALE COMPATIBILITY
    * =====================================
    */
@@ -137,12 +189,19 @@ export default function SalesHistoryPage() {
       return [
         {
           productId: 0,
-          product: sale.product,
-          price: sale.price || 0,
+
+          product:
+            sale.product,
+
+          price:
+            sale.price || 0,
+
           purchasePrice:
             sale.purchasePrice || 0,
+
           quantity:
             sale.quantity || 1,
+
           amount:
             (sale.price || 0) *
             (sale.quantity || 1),
@@ -153,29 +212,45 @@ export default function SalesHistoryPage() {
     return [];
   }
 
-  const totalSales = sales.reduce(
-    (sum, sale) =>
-      sum + Number(sale.total || 0),
-    0
-  );
+  /*
+   * =====================================
+   * TOTALS
+   * =====================================
+   */
 
-  const totalItems = sales.reduce(
-    (sum, sale) => {
-      const items =
-        getSaleItems(sale);
-
-      return (
+  const totalSales =
+    sales.reduce(
+      (sum, sale) =>
         sum +
-        items.reduce(
-          (itemSum, item) =>
-            itemSum +
-            Number(item.quantity || 0),
-          0
-        )
-      );
-    },
-    0
-  );
+        Number(
+          sale.total || 0
+        ),
+      0
+    );
+
+  const totalItems =
+    sales.reduce(
+      (sum, sale) => {
+        const items =
+          getSaleItems(sale);
+
+        return (
+          sum +
+          items.reduce(
+            (
+              itemSum,
+              item
+            ) =>
+              itemSum +
+              Number(
+                item.quantity || 0
+              ),
+            0
+          )
+        );
+      },
+      0
+    );
 
   /*
    * =====================================
@@ -183,14 +258,18 @@ export default function SalesHistoryPage() {
    * =====================================
    */
 
-  function deleteSale(sale: Sale) {
+  function deleteSale(
+    sale: Sale
+  ) {
     setMessage("");
 
     const confirmDelete =
       window.confirm(
         `Delete this bill for ₹${Number(
           sale.total || 0
-        ).toLocaleString("en-IN")}?`
+        ).toLocaleString(
+          "en-IN"
+        )}?`
       );
 
     if (!confirmDelete) {
@@ -236,7 +315,8 @@ export default function SalesHistoryPage() {
      * =====================================
      */
 
-    const savedProducts: Product[] =
+    const savedProducts:
+      Product[] =
       JSON.parse(
         localStorage.getItem(
           "hisabpro_products"
@@ -246,7 +326,6 @@ export default function SalesHistoryPage() {
     const updatedProducts =
       savedProducts.map(
         (product) => {
-
           const productItems =
             items.filter(
               (item) =>
@@ -255,7 +334,8 @@ export default function SalesHistoryPage() {
             );
 
           if (
-            productItems.length === 0
+            productItems.length ===
+            0
           ) {
             return product;
           }
@@ -264,8 +344,8 @@ export default function SalesHistoryPage() {
             productItems.some(
               (item) =>
                 item.batchDetails &&
-                item.batchDetails.length >
-                  0
+                item.batchDetails
+                  .length > 0
             );
 
           /*
@@ -274,24 +354,26 @@ export default function SalesHistoryPage() {
            * =================================
            */
 
-          if (hasBatchDetails) {
-            let batches: StockBatch[] =
+          if (
+            hasBatchDetails
+          ) {
+            let batches:
+              StockBatch[] =
               product.batches
-                ? [...product.batches]
+                ? [
+                    ...product.batches,
+                  ]
                 : [];
 
             productItems.forEach(
               (item) => {
-
                 if (
                   item.batchDetails &&
-                  item.batchDetails.length >
-                    0
+                  item.batchDetails
+                    .length > 0
                 ) {
-
                   item.batchDetails.forEach(
                     (soldBatch) => {
-
                       const batchIndex =
                         batches.findIndex(
                           (batch) =>
@@ -300,9 +382,9 @@ export default function SalesHistoryPage() {
                         );
 
                       if (
-                        batchIndex !== -1
+                        batchIndex !==
+                        -1
                       ) {
-
                         batches[
                           batchIndex
                         ] = {
@@ -314,15 +396,14 @@ export default function SalesHistoryPage() {
                             Number(
                               batches[
                                 batchIndex
-                              ].quantity
+                              ]
+                                .quantity
                             ) +
                             Number(
                               soldBatch.quantity
                             ),
                         };
-
                       } else {
-
                         batches.push({
                           id:
                             soldBatch.batchId,
@@ -339,13 +420,10 @@ export default function SalesHistoryPage() {
                           date:
                             sale.date,
                         });
-
                       }
                     }
                   );
-
                 } else {
-
                   const fallbackBatchIndex =
                     batches.findIndex(
                       (batch) =>
@@ -361,7 +439,6 @@ export default function SalesHistoryPage() {
                     fallbackBatchIndex !==
                     -1
                   ) {
-
                     batches[
                       fallbackBatchIndex
                     ] = {
@@ -373,15 +450,14 @@ export default function SalesHistoryPage() {
                         Number(
                           batches[
                             fallbackBatchIndex
-                          ].quantity
+                          ]
+                            .quantity
                         ) +
                         Number(
                           item.quantity
                         ),
                     };
-
                   } else {
-
                     batches.push({
                       id:
                         Date.now() +
@@ -402,7 +478,6 @@ export default function SalesHistoryPage() {
                       date:
                         sale.date,
                     });
-
                   }
                 }
               }
@@ -410,7 +485,10 @@ export default function SalesHistoryPage() {
 
             const totalStock =
               batches.reduce(
-                (sum, batch) =>
+                (
+                  sum,
+                  batch
+                ) =>
                   sum +
                   Number(
                     batch.quantity
@@ -460,7 +538,10 @@ export default function SalesHistoryPage() {
 
           const totalQuantity =
             productItems.reduce(
-              (sum, item) =>
+              (
+                sum,
+                item
+              ) =>
                 sum +
                 Number(
                   item.quantity || 0
@@ -470,37 +551,42 @@ export default function SalesHistoryPage() {
 
           if (
             !product.batches ||
-            product.batches.length === 0
+            product.batches.length ===
+              0
           ) {
-
             return {
               ...product,
 
               stock:
-                Number(product.stock || 0) +
+                Number(
+                  product.stock || 0
+                ) +
                 totalQuantity,
             };
           }
 
           const batches =
-            [...product.batches];
+            [
+              ...product.batches,
+            ];
 
           productItems.forEach(
             (item) => {
-
               const batchIndex =
                 batches.findIndex(
                   (batch) =>
                     Number(
                       batch.sellingPrice
                     ) ===
-                    Number(item.price)
+                    Number(
+                      item.price
+                    )
                 );
 
               if (
-                batchIndex !== -1
+                batchIndex !==
+                -1
               ) {
-
                 batches[
                   batchIndex
                 ] = {
@@ -518,9 +604,7 @@ export default function SalesHistoryPage() {
                       item.quantity
                     ),
                 };
-
               } else {
-
                 batches.push({
                   id:
                     Date.now() +
@@ -541,14 +625,16 @@ export default function SalesHistoryPage() {
                   date:
                     sale.date,
                 });
-
               }
             }
           );
 
           const totalStock =
             batches.reduce(
-              (sum, batch) =>
+              (
+                sum,
+                batch
+              ) =>
                 sum +
                 Number(
                   batch.quantity
@@ -585,7 +671,6 @@ export default function SalesHistoryPage() {
         "credit" &&
       sale.customerId
     ) {
-
       const savedCustomers:
         Customer[] =
         JSON.parse(
@@ -605,11 +690,13 @@ export default function SalesHistoryPage() {
                   due: Math.max(
                     0,
                     Number(
-                      customer.due || 0
+                      customer.due ||
+                        0
                     ) -
-                    Number(
-                      sale.total || 0
-                    )
+                      Number(
+                        sale.total ||
+                          0
+                      )
                   ),
                 }
               : customer
@@ -623,8 +710,7 @@ export default function SalesHistoryPage() {
       );
 
       /*
-       * Remove exact sale transaction
-       * for new sales.
+       * Remove exact sale transaction.
        */
 
       const savedTransactions:
@@ -649,14 +735,12 @@ export default function SalesHistoryPage() {
       const updatedTransactions =
         savedTransactions.filter(
           (transaction) => {
-
             /*
-             * New transaction format:
-             * use saleId.
+             * New transaction format
              */
             if (
               transaction.saleId !==
-                undefined
+              undefined
             ) {
               return (
                 transaction.saleId !==
@@ -665,8 +749,7 @@ export default function SalesHistoryPage() {
             }
 
             /*
-             * Old transaction format:
-             * fallback matching.
+             * Old transaction format
              */
             return !(
               transaction.customerId ===
@@ -676,7 +759,9 @@ export default function SalesHistoryPage() {
               Number(
                 transaction.amount
               ) ===
-                Number(sale.total) &&
+                Number(
+                  sale.total
+                ) &&
               (
                 transaction.note ===
                   newNote ||
@@ -697,15 +782,32 @@ export default function SalesHistoryPage() {
 
     /*
      * =====================================
-     * 4. CASH SALE → REMOVE CASHBOOK ENTRY
+     * 4. CASH SALE → REMOVE CASHBOOK
      * =====================================
+     *
+     * IMPORTANT:
+     *
+     * Only actual CASH sale affects
+     * Cashbook.
+     *
+     * UPI / Card / Bank / Online
+     * do NOT affect Cashbook.
      */
 
-    if (
+    const actualPaymentMode:
+      PaymentMode =
       sale.paymentType ===
-      "cash"
-    ) {
+        "credit"
+        ? "cash"
+        : sale.paymentMode ||
+          "cash";
 
+    if (
+      sale.paymentType !==
+        "credit" &&
+      actualPaymentMode ===
+        "cash"
+    ) {
       const savedCashbook:
         CashTransaction[] =
         JSON.parse(
@@ -718,9 +820,10 @@ export default function SalesHistoryPage() {
        * New automatic entries have
        * referenceType + referenceId.
        *
-       * Old cash sales without a reference
-       * are NOT touched.
+       * Old cash sales without a
+       * reference are NOT touched.
        */
+
       const updatedCashbook =
         savedCashbook.filter(
           (transaction) =>
@@ -730,7 +833,9 @@ export default function SalesHistoryPage() {
               Number(
                 transaction.referenceId
               ) ===
-                Number(sale.id)
+                Number(
+                  sale.id
+                )
             )
         );
 
@@ -756,11 +861,15 @@ export default function SalesHistoryPage() {
   return (
     <main className="history-page">
 
+      {/* HEADER */}
+
       <header className="history-header">
 
         <button
+          type="button"
           onClick={() =>
-            window.history.back()
+            window.location.href =
+              "/hisabpro/sales/"
           }
           className="back-button"
         >
@@ -777,25 +886,35 @@ export default function SalesHistoryPage() {
 
       </header>
 
+      {/* MESSAGE */}
+
       {message && (
         <div
           style={{
             width:
               "min(1100px, 92%)",
+
             margin:
               "18px auto 0",
+
             padding:
               "12px 15px",
+
             background:
               "#edf9f2",
+
             color:
               "#138a50",
+
             borderRadius:
               "10px",
+
             fontSize:
               "13px",
+
             fontWeight:
               600,
+
             textAlign:
               "center",
           }}
@@ -803,6 +922,8 @@ export default function SalesHistoryPage() {
           {message}
         </div>
       )}
+
+      {/* STATS */}
 
       <section className="history-stats">
 
@@ -847,6 +968,8 @@ export default function SalesHistoryPage() {
 
       </section>
 
+      {/* SALES */}
+
       <section className="sales-list">
 
         <div className="history-title">
@@ -861,7 +984,9 @@ export default function SalesHistoryPage() {
 
           <div className="empty-sales">
 
-            <div>🧾</div>
+            <div>
+              🧾
+            </div>
 
             <h3>
               No Sales Yet
@@ -880,171 +1005,202 @@ export default function SalesHistoryPage() {
 
         ) : (
 
-          sales.map((sale) => {
+          sales.map(
+            (sale) => {
+              const items =
+                getSaleItems(
+                  sale
+                );
 
-            const items =
-              getSaleItems(
-                sale
-              );
+              const paymentLabel =
+                getPaymentModeLabel(
+                  sale.paymentType,
+                  sale.paymentMode
+                );
 
-            return (
-              <div
-                className="sale-history-item"
-                key={sale.id}
-              >
+              const isCredit =
+                sale.paymentType ===
+                "credit";
 
-                <div className="sale-icon">
-                  🧾
-                </div>
+              return (
+                <div
+                  className="sale-history-item"
+                  key={sale.id}
+                >
 
-                <div className="sale-info">
-
-                  <strong>
-                    {items.length ===
-                    1
-                      ? items[0]
-                          .product
-                      : `${items.length} Items`}
-                  </strong>
-
-                  <div className="history-products">
-
-                    {items.map(
-                      (item, itemIndex) => {
-
-                        const hasBatches =
-                          item.batchDetails &&
-                          item.batchDetails
-                            .length > 0;
-
-                        return (
-                          <div
-                            key={`${item.productId}-${itemIndex}`}
-                            className="history-product-row"
-                          >
-
-                            <span>
-                              {item.product}
-                            </span>
-
-                            <span>
-                              {item.quantity}
-                              {" × ₹"}
-                              {Number(
-                                item.price
-                              ).toLocaleString(
-                                "en-IN"
-                              )}
-                            </span>
-
-                            <strong>
-                              ₹
-                              {Number(
-                                item.amount
-                              ).toLocaleString(
-                                "en-IN"
-                              )}
-                            </strong>
-
-                            {hasBatches && (
-                              <small
-                                style={{
-                                  gridColumn:
-                                    "1 / -1",
-                                  color:
-                                    "#687386",
-                                  fontSize:
-                                    "10px",
-                                }}
-                              >
-                                {item.batchDetails!
-                                  .map(
-                                    (batch) =>
-                                      `${batch.quantity} × ₹${Number(
-                                        batch.sellingPrice
-                                      ).toLocaleString(
-                                        "en-IN"
-                                      )}`
-                                  )
-                                  .join(
-                                    " + "
-                                  )}
-                              </small>
-                            )}
-
-                          </div>
-                        );
-                      }
-                    )}
-
+                  <div className="sale-icon">
+                    🧾
                   </div>
 
-                  <small>
-                    {new Date(
-                      sale.date
-                    ).toLocaleString(
-                      "en-IN"
-                    )}
-                  </small>
+                  <div className="sale-info">
 
-                  {sale.paymentType ===
-                  "credit" ? (
+                    <strong>
+                      {items.length ===
+                      1
+                        ? items[0]
+                            .product
+                        : `${items.length} Items`}
+                    </strong>
 
-                    <div className="sale-customer">
+                    <div className="history-products">
 
-                      <span className="credit-badge">
-                        Credit / Udhaar
-                      </span>
+                      {items.map(
+                        (
+                          item,
+                          itemIndex
+                        ) => {
 
-                      {sale.customerName && (
-                        <span className="customer-name">
-                          👤{" "}
-                          {sale.customerName}
-                        </span>
+                          const hasBatches =
+                            item.batchDetails &&
+                            item
+                              .batchDetails
+                              .length >
+                              0;
+
+                          return (
+                            <div
+                              key={`${item.productId}-${itemIndex}`}
+                              className="history-product-row"
+                            >
+
+                              <span>
+                                {item.product}
+                              </span>
+
+                              <span>
+                                {
+                                  item.quantity
+                                }
+                                {" × ₹"}
+                                {Number(
+                                  item.price
+                                ).toLocaleString(
+                                  "en-IN"
+                                )}
+                              </span>
+
+                              <strong>
+                                ₹
+                                {Number(
+                                  item.amount
+                                ).toLocaleString(
+                                  "en-IN"
+                                )}
+                              </strong>
+
+                              {hasBatches && (
+                                <small
+                                  style={{
+                                    gridColumn:
+                                      "1 / -1",
+
+                                    color:
+                                      "#687386",
+
+                                    fontSize:
+                                      "10px",
+                                  }}
+                                >
+                                  {item.batchDetails!
+                                    .map(
+                                      (
+                                        batch
+                                      ) =>
+                                        `${batch.quantity} × ₹${Number(
+                                          batch.sellingPrice
+                                        ).toLocaleString(
+                                          "en-IN"
+                                        )}`
+                                    )
+                                    .join(
+                                      " + "
+                                    )}
+                                </small>
+                              )}
+
+                            </div>
+                          );
+                        }
                       )}
 
                     </div>
 
-                  ) : (
+                    <small>
+                      {new Date(
+                        sale.date
+                      ).toLocaleString(
+                        "en-IN"
+                      )}
+                    </small>
+
+                    {/* PAYMENT */}
 
                     <div className="sale-customer">
 
-                      <span className="cash-badge">
-                        Cash
+                      <span
+                        className={
+                          isCredit
+                            ? "credit-badge"
+                            : sale.paymentMode ===
+                                "upi"
+                              ? "upi-badge"
+                              : sale.paymentMode ===
+                                  "card"
+                                ? "card-badge"
+                                : sale.paymentMode ===
+                                    "bank"
+                                  ? "bank-badge"
+                                  : sale.paymentMode ===
+                                      "online"
+                                    ? "online-badge"
+                                    : "cash-badge"
+                        }
+                      >
+                        {paymentLabel}
                       </span>
+
+                      {isCredit &&
+                        sale.customerName && (
+                          <span className="customer-name">
+                            👤{" "}
+                            {
+                              sale.customerName
+                            }
+                          </span>
+                        )}
 
                     </div>
 
-                  )}
+                  </div>
+
+                  <div className="sale-right">
+
+                    <strong>
+                      ₹
+                      {Number(
+                        sale.total
+                      ).toLocaleString(
+                        "en-IN"
+                      )}
+                    </strong>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        deleteSale(
+                          sale
+                        )
+                      }
+                    >
+                      Delete
+                    </button>
+
+                  </div>
 
                 </div>
-
-                <div className="sale-right">
-
-                  <strong>
-                    ₹
-                    {Number(
-                      sale.total
-                    ).toLocaleString(
-                      "en-IN"
-                    )}
-                  </strong>
-
-                  <button
-                    onClick={() =>
-                      deleteSale(
-                        sale
-                      )
-                    }
-                  >
-                    Delete
-                  </button>
-
-                </div>
-
-              </div>
-            );
-          })
+              );
+            }
+          )
 
         )}
 
