@@ -2,6 +2,15 @@
 
 import { useEffect, useState } from "react";
 
+type PaymentType = "cash" | "credit";
+
+type PaymentMode =
+  | "cash"
+  | "upi"
+  | "card"
+  | "bank"
+  | "online";
+
 type ReturnRecord = {
   id: number;
   type: "sales" | "purchase";
@@ -21,7 +30,9 @@ type ReturnRecord = {
   quantity: number;
   amount: number;
 
-  paymentType: "cash" | "credit";
+  paymentType: PaymentType;
+  paymentMode?: PaymentMode;
+
   reason: string;
   date: string;
 };
@@ -71,11 +82,20 @@ type CashTransaction = {
   referenceId?: number;
 };
 
-const RETURNS_KEY = "hisabpro_returns";
-const PRODUCT_KEY = "hisabpro_products";
-const CUSTOMER_KEY = "hisabpro_customers";
-const SUPPLIER_KEY = "hisabpro_suppliers";
-const CASHBOOK_KEY = "hisabpro_cashbook";
+const RETURNS_KEY =
+  "hisabpro_returns";
+
+const PRODUCT_KEY =
+  "hisabpro_products";
+
+const CUSTOMER_KEY =
+  "hisabpro_customers";
+
+const SUPPLIER_KEY =
+  "hisabpro_suppliers";
+
+const CASHBOOK_KEY =
+  "hisabpro_cashbook";
 
 export default function ReturnHistoryPage() {
   const [returns, setReturns] =
@@ -99,8 +119,12 @@ export default function ReturnHistoryPage() {
 
       saved.sort(
         (a, b) =>
-          new Date(b.date).getTime() -
-          new Date(a.date).getTime()
+          new Date(
+            b.date
+          ).getTime() -
+          new Date(
+            a.date
+          ).getTime()
       );
 
       setReturns(saved);
@@ -109,52 +133,120 @@ export default function ReturnHistoryPage() {
     }
   };
 
-  const formatMoney = (amount: number) =>
+  const formatMoney = (
+    amount: number
+  ) =>
     `₹${Number(
       amount || 0
-    ).toLocaleString("en-IN", {
-      maximumFractionDigits: 2,
-    })}`;
+    ).toLocaleString(
+      "en-IN",
+      {
+        maximumFractionDigits: 2,
+      }
+    )}`;
+
+  function getPaymentMode(
+    returnRecord: ReturnRecord
+  ): PaymentMode | undefined {
+    if (
+      returnRecord.paymentType ===
+      "credit"
+    ) {
+      return undefined;
+    }
+
+    /*
+     * Old return records don't have
+     * paymentMode, so treat them as Cash.
+     */
+    return (
+      returnRecord.paymentMode ||
+      "cash"
+    );
+  }
+
+  function getPaymentModeLabel(
+    returnRecord: ReturnRecord
+  ) {
+    if (
+      returnRecord.paymentType ===
+      "credit"
+    ) {
+      return "Credit";
+    }
+
+    switch (
+      getPaymentMode(
+        returnRecord
+      )
+    ) {
+      case "cash":
+        return "Cash";
+
+      case "upi":
+        return "UPI";
+
+      case "card":
+        return "Card";
+
+      case "bank":
+        return "Bank Transfer";
+
+      case "online":
+        return "Online";
+
+      default:
+        return "Cash";
+    }
+  }
 
   const deleteReturn = (
     returnRecord: ReturnRecord
   ) => {
-    const confirmed = window.confirm(
-      "Delete this return? Stock, account balance and linked Cashbook entry will be reversed."
-    );
+    const confirmed =
+      window.confirm(
+        "Delete this return? Stock, account balance and linked Cashbook entry will be reversed."
+      );
 
-    if (!confirmed) return;
+    if (!confirmed) {
+      return;
+    }
 
     try {
-      const savedReturns: ReturnRecord[] =
+      const savedReturns:
+        ReturnRecord[] =
         JSON.parse(
           localStorage.getItem(
             RETURNS_KEY
           ) || "[]"
         );
 
-      const products: Product[] =
+      const products:
+        Product[] =
         JSON.parse(
           localStorage.getItem(
             PRODUCT_KEY
           ) || "[]"
         );
 
-      const customers: Customer[] =
+      const customers:
+        Customer[] =
         JSON.parse(
           localStorage.getItem(
             CUSTOMER_KEY
           ) || "[]"
         );
 
-      const suppliers: Supplier[] =
+      const suppliers:
+        Supplier[] =
         JSON.parse(
           localStorage.getItem(
             SUPPLIER_KEY
           ) || "[]"
         );
 
-      const cashbook: CashTransaction[] =
+      const cashbook:
+        CashTransaction[] =
         JSON.parse(
           localStorage.getItem(
             CASHBOOK_KEY
@@ -164,13 +256,17 @@ export default function ReturnHistoryPage() {
       const productIndex =
         products.findIndex(
           (product) =>
-            Number(product.id) ===
+            Number(
+              product.id
+            ) ===
             Number(
               returnRecord.productId
             )
         );
 
-      if (productIndex === -1) {
+      if (
+        productIndex === -1
+      ) {
         setMessage(
           "Product not found."
         );
@@ -178,18 +274,25 @@ export default function ReturnHistoryPage() {
       }
 
       const product =
-        products[productIndex];
+        products[
+          productIndex
+        ];
 
-      let batches = Array.isArray(
-        product.batches
-      )
-        ? [...product.batches]
-        : [];
+      let batches =
+        Array.isArray(
+          product.batches
+        )
+          ? [
+              ...product.batches,
+            ]
+          : [];
 
       /*
+       * ============================
        * SALES RETURN DELETE
+       * ============================
        *
-       * Original Sales Return:
+       * Original:
        * Stock + quantity
        *
        * Delete:
@@ -199,7 +302,9 @@ export default function ReturnHistoryPage() {
         returnRecord.type ===
         "sales"
       ) {
-        if (batches.length > 0) {
+        if (
+          batches.length > 0
+        ) {
           let remaining =
             Number(
               returnRecord.quantity ||
@@ -207,24 +312,30 @@ export default function ReturnHistoryPage() {
             );
 
           /*
-           * Returned sales stock was added
+           * Sales return adds stock
            * to the latest batch.
            *
-           * Remove from newest batches first.
+           * Therefore remove returned
+           * quantity from newest batches.
            */
           for (
             let i =
-              batches.length - 1;
-            i >= 0 && remaining > 0;
+              batches.length -
+              1;
+            i >= 0 &&
+            remaining > 0;
             i--
           ) {
             const available =
               Number(
                 batches[i]
-                  .quantity || 0
+                  .quantity ||
+                  0
               );
 
-            if (available <= 0) {
+            if (
+              available <= 0
+            ) {
               continue;
             }
 
@@ -236,21 +347,27 @@ export default function ReturnHistoryPage() {
 
             batches[i] = {
               ...batches[i],
+
               quantity:
-                available - remove,
+                available -
+                remove,
             };
 
-            remaining -= remove;
+            remaining -=
+              remove;
           }
         }
 
-        products[productIndex] = {
+        products[
+          productIndex
+        ] = {
           ...product,
 
           stock: Math.max(
             0,
             Number(
-              product.stock || 0
+              product.stock ||
+                0
             ) -
               Number(
                 returnRecord.quantity ||
@@ -258,22 +375,23 @@ export default function ReturnHistoryPage() {
               )
           ),
 
-          batches: batches.filter(
-            (batch) =>
-              Number(
-                batch.quantity
-              ) > 0
-          ),
+          batches:
+            batches.filter(
+              (batch) =>
+                Number(
+                  batch.quantity
+                ) > 0
+            ),
         };
 
         /*
-         * CREDIT SALES RETURN DELETE
+         * CREDIT SALES RETURN
          *
          * Original return reduced
          * customer due.
          *
-         * Deleting return therefore
-         * increases customer due again.
+         * Delete reverses that:
+         * customer due increases.
          */
         if (
           returnRecord.paymentType ===
@@ -292,7 +410,8 @@ export default function ReturnHistoryPage() {
             );
 
           if (
-            customerIndex !== -1
+            customerIndex !==
+            -1
           ) {
             customers[
               customerIndex
@@ -316,23 +435,30 @@ export default function ReturnHistoryPage() {
         }
 
         /*
-         * CASH SALES RETURN DELETE
+         * SALES RETURN CASHBOOK
          *
-         * Original Sales Return created:
-         * Cashbook Cash Out
+         * Only Cash refund created
+         * Cashbook Cash Out.
          *
-         * Delete only the linked automatic
-         * transaction.
-         *
-         * Manual Cashbook entries remain safe.
+         * UPI/Card/Bank/Online:
+         * NO Cashbook reversal.
          */
+        const paymentMode =
+          getPaymentMode(
+            returnRecord
+          );
+
         if (
           returnRecord.paymentType ===
-          "cash"
+            "cash" &&
+          paymentMode ===
+            "cash"
         ) {
           const updatedCashbook =
             cashbook.filter(
-              (transaction) =>
+              (
+                transaction
+              ) =>
                 !(
                   transaction.referenceType ===
                     "sales_return" &&
@@ -355,9 +481,11 @@ export default function ReturnHistoryPage() {
       }
 
       /*
+       * ============================
        * PURCHASE RETURN DELETE
+       * ============================
        *
-       * Original Purchase Return:
+       * Original:
        * Stock - quantity
        *
        * Delete:
@@ -367,41 +495,47 @@ export default function ReturnHistoryPage() {
         returnRecord.type ===
         "purchase"
       ) {
-        const newBatch: ProductBatch =
-          {
-            id:
-              Date.now() +
-              10,
+        const newBatch:
+          ProductBatch = {
+          id:
+            Date.now() +
+            10,
 
-            quantity: Number(
+          quantity:
+            Number(
               returnRecord.quantity ||
                 0
             ),
 
-            purchasePrice: Number(
+          purchasePrice:
+            Number(
               product.purchasePrice ||
                 0
             ),
 
-            sellingPrice: Number(
+          sellingPrice:
+            Number(
               product.sellingPrice ||
                 0
             ),
 
-            date:
-              new Date().toISOString(),
-          };
+          date:
+            new Date().toISOString(),
+        };
 
         batches.push(
           newBatch
         );
 
-        products[productIndex] = {
+        products[
+          productIndex
+        ] = {
           ...product,
 
           stock:
             Number(
-              product.stock || 0
+              product.stock ||
+                0
             ) +
             Number(
               returnRecord.quantity ||
@@ -412,13 +546,13 @@ export default function ReturnHistoryPage() {
         };
 
         /*
-         * CREDIT PURCHASE RETURN DELETE
+         * CREDIT PURCHASE RETURN
          *
          * Original return reduced
-         * supplier payable.
+         * supplier due.
          *
-         * Deleting return therefore
-         * increases supplier due again.
+         * Delete increases
+         * supplier due again.
          */
         if (
           returnRecord.paymentType ===
@@ -437,7 +571,8 @@ export default function ReturnHistoryPage() {
             );
 
           if (
-            supplierIndex !== -1
+            supplierIndex !==
+            -1
           ) {
             suppliers[
               supplierIndex
@@ -461,23 +596,30 @@ export default function ReturnHistoryPage() {
         }
 
         /*
-         * CASH PURCHASE RETURN DELETE
+         * PURCHASE RETURN CASHBOOK
          *
-         * Original Purchase Return created:
-         * Cashbook Cash In
+         * Only Cash supplier refund
+         * created Cashbook Cash In.
          *
-         * Delete only the linked automatic
-         * Cash In transaction.
-         *
-         * Manual Cashbook entries remain safe.
+         * UPI/Card/Bank/Online:
+         * NO Cashbook reversal.
          */
+        const paymentMode =
+          getPaymentMode(
+            returnRecord
+          );
+
         if (
           returnRecord.paymentType ===
-          "cash"
+            "cash" &&
+          paymentMode ===
+            "cash"
         ) {
           const updatedCashbook =
             cashbook.filter(
-              (transaction) =>
+              (
+                transaction
+              ) =>
                 !(
                   transaction.referenceType ===
                     "purchase_return" &&
@@ -505,14 +647,16 @@ export default function ReturnHistoryPage() {
       const updatedReturns =
         savedReturns.filter(
           (item) =>
-            Number(item.id) !==
+            Number(
+              item.id
+            ) !==
             Number(
               returnRecord.id
             )
         );
 
       /*
-       * Save everything.
+       * Save all data.
        */
       localStorage.setItem(
         RETURNS_KEY,
@@ -547,19 +691,34 @@ export default function ReturnHistoryPage() {
       );
 
       /*
-       * Different success message
-       * depending on payment type.
+       * Success message.
        */
+      const paymentMode =
+        getPaymentMode(
+          returnRecord
+        );
+
       if (
         returnRecord.paymentType ===
-        "cash"
+          "cash" &&
+        paymentMode ===
+          "cash"
       ) {
         setMessage(
           "Return deleted, stock reversed and linked Cashbook entry removed successfully ✅"
         );
-      } else {
+      } else if (
+        returnRecord.paymentType ===
+        "credit"
+      ) {
         setMessage(
           "Return deleted, stock and account balance reversed successfully ✅"
+        );
+      } else {
+        setMessage(
+          `${getPaymentModeLabel(
+            returnRecord
+          )} return deleted and stock reversed successfully. Cashbook was not changed ✅`
         );
       }
     } catch (error) {
@@ -578,7 +737,8 @@ export default function ReturnHistoryPage() {
     returns
       .filter(
         (item) =>
-          item.type === "sales"
+          item.type ===
+          "sales"
       )
       .reduce(
         (sum, item) =>
@@ -612,9 +772,10 @@ export default function ReturnHistoryPage() {
 
         <button
           className="return-history-back"
-          onClick={() =>
-            window.history.back()
-          }
+          onClick={() => {
+            window.location.href =
+              "/hisabpro/returns/";
+          }}
         >
           ←
         </button>
@@ -780,10 +941,9 @@ export default function ReturnHistoryPage() {
                     </strong>
 
                     <span>
-                      {item.paymentType ===
-                      "credit"
-                        ? "Credit"
-                        : "Cash"}
+                      {getPaymentModeLabel(
+                        item
+                      )}
                     </span>
 
                     <button
