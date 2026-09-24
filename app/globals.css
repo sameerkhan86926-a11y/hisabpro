@@ -190,7 +190,7 @@ button {
   justify-content: center;
   gap: 55px;
   align-items: center;
-  z-index: 10;
+  z-index: 100;
 }
 
 .bottom-nav a {
