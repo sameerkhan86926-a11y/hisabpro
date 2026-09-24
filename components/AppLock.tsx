@@ -193,13 +193,24 @@ export default function AppLock({
      * Immediately means lock when
      * the app/page is opened.
      */
-    if (
-      autoLock === "immediately"
-    ) {
-      setLocked(true);
-      setReady(true);
-      return;
-    }
+    if (autoLock === "immediately") {
+  const lastUnlocked =
+    Number(
+      sessionStorage.getItem(
+        SESSION_KEY
+      ) || "0"
+    );
+
+  if (lastUnlocked > 0) {
+    setLocked(false);
+    setReady(true);
+    return;
+  }
+
+  setLocked(true);
+  setReady(true);
+  return;
+}
 
     /*
      * Check whether the previous
