@@ -29,6 +29,13 @@ type Customer = {
 
 type PaymentType = "cash" | "credit";
 
+type PaymentMode =
+  | "cash"
+  | "upi"
+  | "card"
+  | "bank"
+  | "online";
+
 type CartItem = {
   productId: number;
   product: string;
@@ -77,6 +84,9 @@ export default function SalesPage() {
 
   const [paymentType, setPaymentType] =
     useState<PaymentType>("cash");
+
+  const [paymentMode, setPaymentMode] =
+    useState<PaymentMode>("cash");
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [message, setMessage] = useState("");
@@ -365,6 +375,24 @@ export default function SalesPage() {
         Number(customerId)
     );
 
+  function selectPaymentType(
+    type: PaymentType
+  ) {
+    setPaymentType(type);
+
+    if (type === "credit") {
+      setPaymentMode("cash");
+    }
+  }
+
+  function selectPaymentMode(
+    mode: PaymentMode
+  ) {
+    setPaymentType("cash");
+    setPaymentMode(mode);
+    setCustomerId("");
+  }
+
   function saveSale() {
     setMessage("");
 
@@ -402,7 +430,13 @@ export default function SalesPage() {
       subtotal,
       discount: safeDiscount,
       total,
+
       paymentType,
+
+      paymentMode:
+        paymentType === "credit"
+          ? undefined
+          : paymentMode,
 
       customerId:
         paymentType === "credit"
@@ -623,11 +657,14 @@ export default function SalesPage() {
 
     /*
      * =====================================
-     * 4. CASH SALE → CASHBOOK
+     * 4. ONLY CASH SALE → CASHBOOK
      * =====================================
      */
 
-    if (paymentType === "cash") {
+    if (
+      paymentType === "cash" &&
+      paymentMode === "cash"
+    ) {
       const oldCashbook:
         CashTransaction[] =
         JSON.parse(
@@ -688,6 +725,7 @@ export default function SalesPage() {
     setCustomerId("");
     setDiscount(0);
     setPaymentType("cash");
+    setPaymentMode("cash");
 
     window.location.href =
       "/hisabpro/invoice/";
@@ -719,7 +757,14 @@ export default function SalesPage() {
 
           <div className="sale-heading-icon">
 
-            <svg viewBox="0 0 24 24">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M4 7h16" />
               <path d="M6 7V5h12v2" />
               <path d="M5 7l1 13h12l1-13" />
@@ -898,7 +943,13 @@ export default function SalesPage() {
           onClick={addToBill}
         >
 
-          <svg viewBox="0 0 24 24">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
             <path d="M12 5v14" />
             <path d="M5 12h14" />
           </svg>
@@ -938,7 +989,14 @@ export default function SalesPage() {
 
           <div className="empty-bill">
 
-            <svg viewBox="0 0 24 24">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M6 3h12v18l-2-1-2 1-2-1-2 1-2-1-2 1V3z" />
               <path d="M9 7h6" />
               <path d="M9 11h6" />
@@ -1009,18 +1067,19 @@ export default function SalesPage() {
                       aria-label="Remove"
                     >
 
-                      <svg viewBox="0 0 24 24">
-
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
                         <path d="M3 6h18" />
-
                         <path d="M8 6V4h8v2" />
-
                         <path d="M19 6l-1 15H6L5 6" />
-
                         <path d="M10 11v6" />
-
                         <path d="M14 11v6" />
-
                       </svg>
 
                     </button>
@@ -1053,19 +1112,28 @@ export default function SalesPage() {
 
         <div className="payment-buttons">
 
+          {/* CASH */}
+
           <button
             className={
-              paymentType === "cash"
+              paymentType === "cash" &&
+              paymentMode === "cash"
                 ? "active"
                 : ""
             }
             onClick={() =>
-              setPaymentType("cash")
+              selectPaymentMode("cash")
             }
           >
 
-            <svg viewBox="0 0 24 24">
-
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <rect
                 x="3"
                 y="6"
@@ -1080,11 +1148,173 @@ export default function SalesPage() {
                 r="3"
               />
 
+              <path d="M3 9h2" />
+              <path d="M19 9h2" />
+              <path d="M3 15h2" />
+              <path d="M19 15h2" />
             </svg>
 
             Cash
 
           </button>
+
+          {/* UPI */}
+
+          <button
+            className={
+              paymentType === "cash" &&
+              paymentMode === "upi"
+                ? "active"
+                : ""
+            }
+            onClick={() =>
+              selectPaymentMode("upi")
+            }
+          >
+
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect
+                x="6"
+                y="2"
+                width="12"
+                height="20"
+                rx="2"
+              />
+
+              <path d="M10 18h4" />
+
+              <path d="M9 7h6" />
+              <path d="M9 11h3" />
+            </svg>
+
+            UPI
+
+          </button>
+
+          {/* CARD */}
+
+          <button
+            className={
+              paymentType === "cash" &&
+              paymentMode === "card"
+                ? "active"
+                : ""
+            }
+            onClick={() =>
+              selectPaymentMode("card")
+            }
+          >
+
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect
+                x="2.5"
+                y="5"
+                width="19"
+                height="14"
+                rx="2"
+              />
+
+              <path d="M2.5 10h19" />
+
+              <path d="M6 15h4" />
+            </svg>
+
+            Card
+
+          </button>
+
+          {/* BANK */}
+
+          <button
+            className={
+              paymentType === "cash" &&
+              paymentMode === "bank"
+                ? "active"
+                : ""
+            }
+            onClick={() =>
+              selectPaymentMode("bank")
+            }
+          >
+
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 9h18" />
+
+              <path d="M4 9l8-5 8 5" />
+
+              <path d="M5 9v9" />
+              <path d="M9 9v9" />
+              <path d="M15 9v9" />
+              <path d="M19 9v9" />
+
+              <path d="M3 18h18" />
+              <path d="M2 21h20" />
+            </svg>
+
+            Bank
+
+          </button>
+
+          {/* ONLINE */}
+
+          <button
+            className={
+              paymentType === "cash" &&
+              paymentMode === "online"
+                ? "active"
+                : ""
+            }
+            onClick={() =>
+              selectPaymentMode("online")
+            }
+          >
+
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle
+                cx="12"
+                cy="12"
+                r="9"
+              />
+
+              <path d="M3 12h18" />
+
+              <path d="M12 3c3 3 4 6 4 9s-1 6-4 9" />
+              <path d="M12 3c-3 3-4 6-4 9s1 6 4 9" />
+            </svg>
+
+            Online
+
+          </button>
+
+          {/* CREDIT */}
 
           <button
             className={
@@ -1093,20 +1323,23 @@ export default function SalesPage() {
                 : ""
             }
             onClick={() =>
-              setPaymentType("credit")
+              selectPaymentType("credit")
             }
           >
 
-            <svg viewBox="0 0 24 24">
-
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M4 5h16v14H4z" />
 
               <path d="M8 9h8" />
-
               <path d="M8 13h5" />
-
               <path d="M8 17h3" />
-
             </svg>
 
             Credit
@@ -1254,14 +1487,17 @@ export default function SalesPage() {
           onClick={saveSale}
         >
 
-          <svg viewBox="0 0 24 24">
-
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M5 3h11l3 3v15H5z" />
-
             <path d="M8 3v6h8V3" />
-
             <path d="M8 15h8v6H8z" />
-
           </svg>
 
           Save Sale & Generate Invoice
