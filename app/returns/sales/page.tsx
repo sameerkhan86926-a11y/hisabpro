@@ -2,6 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+type PaymentType = "cash" | "credit";
+
+type PaymentMode =
+  | "cash"
+  | "upi"
+  | "card"
+  | "bank"
+  | "online";
+
 type SaleItem = {
   id?: number;
   productId: number;
@@ -18,7 +27,8 @@ type Sale = {
   subtotal: number;
   discount: number;
   total: number;
-  paymentType: "cash" | "credit";
+  paymentType: PaymentType;
+  paymentMode?: PaymentMode;
   customerId?: number | null;
   customerName?: string;
   date: string;
@@ -64,6 +74,22 @@ type CashTransaction = {
   referenceId?: number;
 };
 
+type SalesReturn = {
+  id: number;
+  type: "sales";
+  saleId: number;
+  customerId: number | null;
+  customerName: string;
+  productId: number;
+  productName: string;
+  quantity: number;
+  amount: number;
+  paymentType: PaymentType;
+  paymentMode?: PaymentMode;
+  reason: string;
+  date: string;
+};
+
 const SALES_KEY = "hisabpro_sales";
 const PRODUCT_KEY = "hisabpro_products";
 const CUSTOMER_KEY = "hisabpro_customers";
@@ -75,12 +101,20 @@ export default function SalesReturnPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
 
-  const [selectedSaleId, setSelectedSaleId] = useState("");
-  const [selectedItemIndex, setSelectedItemIndex] = useState("");
-  const [quantity, setQuantity] = useState("1");
-  const [reason, setReason] = useState("");
+  const [selectedSaleId, setSelectedSaleId] =
+    useState("");
 
-  const [message, setMessage] = useState("");
+  const [selectedItemIndex, setSelectedItemIndex] =
+    useState("");
+
+  const [quantity, setQuantity] =
+    useState("1");
+
+  const [reason, setReason] =
+    useState("");
+
+  const [message, setMessage] =
+    useState("");
 
   useEffect(() => {
     loadData();
@@ -90,19 +124,22 @@ export default function SalesReturnPage() {
     try {
       setSales(
         JSON.parse(
-          localStorage.getItem(SALES_KEY) || "[]"
+          localStorage.getItem(SALES_KEY) ||
+            "[]"
         )
       );
 
       setProducts(
         JSON.parse(
-          localStorage.getItem(PRODUCT_KEY) || "[]"
+          localStorage.getItem(PRODUCT_KEY) ||
+            "[]"
         )
       );
 
       setCustomers(
         JSON.parse(
-          localStorage.getItem(CUSTOMER_KEY) || "[]"
+          localStorage.getItem(CUSTOMER_KEY) ||
+            "[]"
         )
       );
     } catch {
@@ -115,9 +152,13 @@ export default function SalesReturnPage() {
   const selectedSale = useMemo(() => {
     return sales.find(
       (sale) =>
-        String(sale.id) === selectedSaleId
+        String(sale.id) ===
+        selectedSaleId
     );
-  }, [sales, selectedSaleId]);
+  }, [
+    sales,
+    selectedSaleId,
+  ]);
 
   const selectedItem = useMemo(() => {
     if (
@@ -152,6 +193,37 @@ export default function SalesReturnPage() {
       Number(quantity) || 0
     );
 
+  function getPaymentModeLabel(
+    paymentType: PaymentType,
+    paymentMode?: PaymentMode
+  ) {
+    if (paymentType === "credit") {
+      return "Credit";
+    }
+
+    switch (
+      paymentMode || "cash"
+    ) {
+      case "cash":
+        return "Cash";
+
+      case "upi":
+        return "UPI";
+
+      case "card":
+        return "Card";
+
+      case "bank":
+        return "Bank Transfer";
+
+      case "online":
+        return "Online";
+
+      default:
+        return "Cash";
+    }
+  }
+
   const saveReturn = () => {
     setMessage("");
 
@@ -169,7 +241,8 @@ export default function SalesReturnPage() {
       return;
     }
 
-    const returnQty = Number(quantity);
+    const returnQty =
+      Number(quantity);
 
     if (
       !Number.isFinite(returnQty) ||
@@ -230,6 +303,13 @@ export default function SalesReturnPage() {
           ) || "[]"
         );
 
+      const existingReturns: SalesReturn[] =
+        JSON.parse(
+          localStorage.getItem(
+            RETURNS_KEY
+          ) || "[]"
+        );
+
       const productIndex =
         savedProducts.findIndex(
           (product) =>
@@ -247,7 +327,9 @@ export default function SalesReturnPage() {
       }
 
       const product =
-        savedProducts[productIndex];
+        savedProducts[
+          productIndex
+        ];
 
       const batches = Array.isArray(
         product.batches
@@ -256,7 +338,7 @@ export default function SalesReturnPage() {
         : [];
 
       /*
-       * Returned stock is currently added
+       * Returned stock is added
        * to the latest batch.
        */
       if (batches.length > 0) {
@@ -264,44 +346,72 @@ export default function SalesReturnPage() {
           batches.length - 1;
 
         batches[lastBatchIndex] = {
-          ...batches[lastBatchIndex],
+          ...batches[
+            lastBatchIndex
+          ],
+
           quantity:
             Number(
-              batches[lastBatchIndex]
-                .quantity || 0
+              batches[
+                lastBatchIndex
+              ].quantity || 0
             ) + returnQty,
         };
       } else {
         batches.push({
           id: Date.now(),
-          quantity: returnQty,
+
+          quantity:
+            returnQty,
+
           purchasePrice:
             Number(
               product.purchasePrice
             ) || 0,
+
           sellingPrice:
             Number(
               product.sellingPrice
             ) || itemPrice,
+
           date:
             new Date().toISOString(),
         });
       }
 
-      savedProducts[productIndex] = {
+      savedProducts[
+        productIndex
+      ] = {
         ...product,
+
         stock:
-          Number(product.stock || 0) +
-          returnQty,
+          Number(
+            product.stock || 0
+          ) + returnQty,
+
         batches,
       };
 
       /*
-       * Credit sale:
-       * Reduce customer payable.
+       * Original payment mode.
        *
-       * No Cashbook entry because
-       * this is a due adjustment.
+       * Old sales without paymentMode
+       * are treated as Cash.
+       */
+      const originalPaymentMode: PaymentMode =
+        selectedSale.paymentType ===
+        "credit"
+          ? "cash"
+          : selectedSale.paymentMode ||
+            "cash";
+
+      /*
+       * CREDIT SALE
+       *
+       * Return reduces customer's
+       * outstanding payable.
+       *
+       * No Cashbook entry.
        */
       if (
         selectedSale.paymentType ===
@@ -311,7 +421,9 @@ export default function SalesReturnPage() {
         const customerIndex =
           savedCustomers.findIndex(
             (customer) =>
-              Number(customer.id) ===
+              Number(
+                customer.id
+              ) ===
               Number(
                 selectedSale.customerId
               )
@@ -324,8 +436,10 @@ export default function SalesReturnPage() {
             ...savedCustomers[
               customerIndex
             ],
+
             due: Math.max(
               0,
+
               Number(
                 savedCustomers[
                   customerIndex
@@ -337,37 +451,58 @@ export default function SalesReturnPage() {
       }
 
       /*
-       * Cash sale:
-       * Customer gets cash refund,
-       * therefore record Cash Out.
+       * CASH SALE RETURN
+       *
+       * Only actual Cash refund
+       * affects Cashbook.
+       *
+       * UPI/Card/Bank/Online refunds
+       * do NOT affect Cashbook.
        */
       let updatedCashbook =
         savedCashbook;
 
-      const returnId = Date.now();
+      const returnId =
+        Date.now();
+
       const returnDate =
         new Date().toISOString();
 
       if (
         selectedSale.paymentType ===
-        "cash"
+          "cash" &&
+        originalPaymentMode ===
+          "cash"
       ) {
-        const cashTransaction: CashTransaction =
-          {
-            id: returnId + 1,
+        const cashTransaction:
+          CashTransaction = {
+            id:
+              returnId + 1,
+
             type: "out",
-            amount: returnAmount,
+
+            amount:
+              returnAmount,
+
             category:
               "Sales Return",
+
             note:
               `Cash Refund - ${selectedItem.productName}` +
-              ` - ${selectedSale.customerName || "Walk-in Customer"}` +
+              ` - ${
+                selectedSale.customerName ||
+                "Walk-in Customer"
+              }` +
               (reason.trim()
                 ? ` - ${reason.trim()}`
                 : ""),
-            date: returnDate,
+
+            date:
+              returnDate,
+
             referenceType:
               "sales_return",
+
             referenceId:
               returnId,
           };
@@ -378,43 +513,66 @@ export default function SalesReturnPage() {
         ];
       }
 
-      const existingReturns =
-        JSON.parse(
-          localStorage.getItem(
-            RETURNS_KEY
-          ) || "[]"
-        );
+      /*
+       * Save return record.
+       *
+       * paymentType tells whether
+       * original sale was Cash/Credit.
+       *
+       * paymentMode tells the actual
+       * refund/payment channel.
+       */
+      const returnRecord:
+        SalesReturn = {
+          id: returnId,
 
-      const returnRecord = {
-        id: returnId,
-        type: "sales",
-        saleId:
-          selectedSale.id,
-        customerId:
-          selectedSale.customerId ||
-          null,
-        customerName:
-          selectedSale.customerName ||
-          "",
-        productId:
-          selectedItem.productId,
-        productName:
-          selectedItem.productName,
-        quantity: returnQty,
-        amount: returnAmount,
-        paymentType:
-          selectedSale.paymentType,
-        reason:
-          reason.trim(),
-        date: returnDate,
-      };
+          type: "sales",
+
+          saleId:
+            selectedSale.id,
+
+          customerId:
+            selectedSale.customerId ||
+            null,
+
+          customerName:
+            selectedSale.customerName ||
+            "",
+
+          productId:
+            selectedItem.productId,
+
+          productName:
+            selectedItem.productName,
+
+          quantity:
+            returnQty,
+
+          amount:
+            returnAmount,
+
+          paymentType:
+            selectedSale.paymentType,
+
+          paymentMode:
+            selectedSale.paymentType ===
+            "credit"
+              ? undefined
+              : originalPaymentMode,
+
+          reason:
+            reason.trim(),
+
+          date:
+            returnDate,
+        };
 
       existingReturns.push(
         returnRecord
       );
 
       /*
-       * Save all related data.
+       * Save products.
        */
       localStorage.setItem(
         PRODUCT_KEY,
@@ -423,6 +581,10 @@ export default function SalesReturnPage() {
         )
       );
 
+      /*
+       * Save customer only for
+       * credit return.
+       */
       if (
         selectedSale.paymentType ===
         "credit"
@@ -435,6 +597,9 @@ export default function SalesReturnPage() {
         );
       }
 
+      /*
+       * Save return record.
+       */
       localStorage.setItem(
         RETURNS_KEY,
         JSON.stringify(
@@ -443,12 +608,14 @@ export default function SalesReturnPage() {
       );
 
       /*
-       * Cash sale return gets a
-       * Cashbook entry.
+       * Cashbook changes ONLY for
+       * actual Cash refund.
        */
       if (
         selectedSale.paymentType ===
-        "cash"
+          "cash" &&
+        originalPaymentMode ===
+          "cash"
       ) {
         localStorage.setItem(
           CASHBOOK_KEY,
@@ -474,8 +641,20 @@ export default function SalesReturnPage() {
       setReason("");
       setSelectedItemIndex("");
 
+      /*
+       * Success messages.
+       */
       if (
         selectedSale.paymentType ===
+        "credit"
+      ) {
+        setMessage(
+          `${formatMoney(
+            returnAmount
+          )} sales return saved and customer payable adjusted successfully ✅`
+        );
+      } else if (
+        originalPaymentMode ===
         "cash"
       ) {
         setMessage(
@@ -487,7 +666,10 @@ export default function SalesReturnPage() {
         setMessage(
           `${formatMoney(
             returnAmount
-          )} sales return saved and customer payable adjusted successfully ✅`
+          )} ${getPaymentModeLabel(
+            "cash",
+            originalPaymentMode
+          )} refund recorded. Cashbook was not changed ✅`
         );
       }
     } catch (error) {
@@ -507,9 +689,12 @@ export default function SalesReturnPage() {
   ) =>
     `₹${Number(
       amount || 0
-    ).toLocaleString("en-IN", {
-      maximumFractionDigits: 2,
-    })}`;
+    ).toLocaleString(
+      "en-IN",
+      {
+        maximumFractionDigits: 2,
+      }
+    )}`;
 
   return (
     <main className="sales-return-page">
@@ -518,15 +703,19 @@ export default function SalesReturnPage() {
 
         <button
           className="sales-return-back"
-          onClick={() =>
-            window.history.back()
-          }
+          onClick={() => {
+            window.location.href =
+              "/hisabpro/returns/";
+          }}
         >
           ←
         </button>
 
         <div>
-          <h1>Sales Return</h1>
+          <h1>
+            Sales Return
+          </h1>
+
           <p>
             Customer returned product
           </p>
@@ -543,34 +732,41 @@ export default function SalesReturnPage() {
           </label>
 
           <select
-            value={selectedSaleId}
+            value={
+              selectedSaleId
+            }
             onChange={(e) => {
               setSelectedSaleId(
                 e.target.value
               );
-              setSelectedItemIndex("");
+
+              setSelectedItemIndex(
+                ""
+              );
             }}
           >
             <option value="">
               Select a sale
             </option>
 
-            {sales.map((sale) => (
-              <option
-                key={sale.id}
-                value={sale.id}
-              >
-                #{sale.id} •{" "}
-                {sale.customerName ||
-                  "Walk-in Customer"}{" "}
-                •{" "}
-                {formatMoney(
-                  Number(
-                    sale.total
-                  ) || 0
-                )}
-              </option>
-            ))}
+            {sales.map(
+              (sale) => (
+                <option
+                  key={sale.id}
+                  value={sale.id}
+                >
+                  #{sale.id} •{" "}
+                  {sale.customerName ||
+                    "Walk-in Customer"}{" "}
+                  •{" "}
+                  {formatMoney(
+                    Number(
+                      sale.total
+                    ) || 0
+                  )}
+                </option>
+              )
+            )}
 
           </select>
 
@@ -580,7 +776,9 @@ export default function SalesReturnPage() {
 
                 <strong>
                   Sale #
-                  {selectedSale.id}
+                  {
+                    selectedSale.id
+                  }
                 </strong>
 
                 <span>
@@ -598,10 +796,10 @@ export default function SalesReturnPage() {
 
                 <span>
                   Payment:{" "}
-                  {selectedSale.paymentType ===
-                  "cash"
-                    ? "Cash"
-                    : "Credit"}
+                  {getPaymentModeLabel(
+                    selectedSale.paymentType,
+                    selectedSale.paymentMode
+                  )}
                 </span>
 
               </div>
@@ -625,13 +823,21 @@ export default function SalesReturnPage() {
                 </option>
 
                 {selectedSale.items.map(
-                  (item, index) => (
+                  (
+                    item,
+                    index
+                  ) => (
                     <option
                       key={index}
                       value={index}
                     >
-                      {item.productName} • Qty{" "}
-                      {item.quantity}
+                      {
+                        item.productName
+                      }{" "}
+                      • Qty{" "}
+                      {
+                        item.quantity
+                      }
                     </option>
                   )
                 )}
@@ -678,7 +884,9 @@ export default function SalesReturnPage() {
                     max={
                       selectedItem.quantity
                     }
-                    value={quantity}
+                    value={
+                      quantity
+                    }
                     onChange={(e) =>
                       setQuantity(
                         e.target.value
@@ -693,7 +901,9 @@ export default function SalesReturnPage() {
                   <input
                     type="text"
                     placeholder="Damaged, wrong size, customer changed mind..."
-                    value={reason}
+                    value={
+                      reason
+                    }
                     onChange={(e) =>
                       setReason(
                         e.target.value
