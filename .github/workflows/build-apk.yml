@@ -39,18 +39,18 @@ jobs:
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
       # ============================================
-      # 5. INSTALL & EXPORT NEXT.JS
+      # 5. INSTALL & BUILD NEXT.JS STATIC EXPORT
       # ============================================
-      - name: Install npm dependencies
+      - name: Install dependencies
         run: npm install
 
-      - name: Build Next.js Static Export
+      - name: Build Next.js
         run: npm run build
 
       # ============================================
-      # 6. INITIALIZE ANDROID PROJECT STRUCTURE
+      # 6. CREATE ANDROID DIRECTORIES
       # ============================================
-      - name: Create Android project scaffolding
+      - name: Create Android project directories
         run: |
           mkdir -p android/app/src/main/java/com/hisabpro/app
           mkdir -p android/app/src/main/res/values
@@ -66,34 +66,31 @@ jobs:
           EOF
 
       # ============================================
-      # 7. COPY NEXT.JS ASSETS & APP ICON
+      # 7. COPY NEXT.JS ASSETS & ICON
       # ============================================
       - name: Copy static export to Android assets
         run: |
           if [ -d "out" ]; then
             cp -R out/. android/app/src/main/assets/hisabpro/
           else
-            echo "ERROR: 'out' directory not found. Ensure output: 'export' is configured in next.config.ts"
+            echo "ERROR: 'out' directory not found."
             exit 1
           fi
 
       - name: Copy App Launcher Icon
         run: |
-          if [ -f "public/hisabpro/icon-512.png" ]; then
-            cp public/hisabpro/icon-512.png android/app/src/main/res/drawable/ic_launcher.png
-          elif [ -f "public/icon-512.png" ]; then
+          if [ -f "public/icon-512.png" ]; then
             cp public/icon-512.png android/app/src/main/res/drawable/ic_launcher.png
-          elif [ -f "public/hisabpro/icon-192.png" ]; then
-            cp public/hisabpro/icon-192.png android/app/src/main/res/drawable/ic_launcher.png
+          elif [ -f "public/hisabpro/icon-512.png" ]; then
+            cp public/hisabpro/icon-512.png android/app/src/main/res/drawable/ic_launcher.png
           elif [ -f "public/icon-192.png" ]; then
             cp public/icon-192.png android/app/src/main/res/drawable/ic_launcher.png
           else
-            echo "WARNING: Launcher icon missing, creating placeholder"
             touch android/app/src/main/res/drawable/ic_launcher.png
           fi
 
       # ============================================
-      # 8. GRADLE SETTINGS & BUILD CONFIG
+      # 8. GRADLE CONFIGURATION (FIXED AAPT OPTIONS)
       # ============================================
       - name: Create settings.gradle
         run: |
@@ -146,6 +143,11 @@ jobs:
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
                   targetCompatibility JavaVersion.VERSION_17
+              }
+
+              // CRITICAL: Prevents AAPT from dropping the Next.js '_next' folder
+              androidResources {
+                  ignoreAssetsPattern "!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~"
               }
 
               buildTypes {
@@ -205,7 +207,7 @@ jobs:
           EOF
 
       # ============================================
-      # 10. MAIN ACTIVITY (ROBUST ASSET ROUTING)
+      # 10. MAIN ACTIVITY (COMPLETE WEBVIEW ENGINE)
       # ============================================
       - name: Create MainActivity.java
         run: |
@@ -217,13 +219,17 @@ jobs:
           import android.net.Uri;
           import android.os.Bundle;
           import android.webkit.MimeTypeMap;
+          import android.webkit.WebChromeClient;
           import android.webkit.WebResourceRequest;
           import android.webkit.WebResourceResponse;
           import android.webkit.WebSettings;
           import android.webkit.WebView;
           import android.webkit.WebViewClient;
           import androidx.webkit.WebViewAssetLoader;
+
           import java.io.InputStream;
+          import java.util.HashMap;
+          import java.util.Map;
 
           public class MainActivity extends Activity {
               private WebView webView;
@@ -242,12 +248,16 @@ jobs:
                   settings.setJavaScriptEnabled(true);
                   settings.setDomStorageEnabled(true);
                   settings.setDatabaseEnabled(true);
-                  settings.setAllowFileAccess(false);
-                  settings.setAllowContentAccess(false);
+                  settings.setAllowFileAccess(true);
+                  settings.setAllowContentAccess(true);
                   settings.setBuiltInZoomControls(false);
                   settings.setDisplayZoomControls(false);
 
+                  // Essential for alert(), confirm(), and running modern JS frameworks
+                  webView.setWebChromeClient(new WebChromeClient());
+
                   assetLoader = new WebViewAssetLoader.Builder()
+                          .setDomain(APP_HOST)
                           .addPathHandler("/hisabpro/", new HisabProPathHandler())
                           .build();
 
@@ -270,20 +280,40 @@ jobs:
                   @Override
                   public WebResourceResponse handle(String path) {
                       String cleanPath = path != null ? path : "";
+
+                      // 1. Remove query string and fragment (?v=123, #hash)
+                      int queryIdx = cleanPath.indexOf("?");
+                      if (queryIdx != -1) {
+                          cleanPath = cleanPath.substring(0, queryIdx);
+                      }
+                      int hashIdx = cleanPath.indexOf("#");
+                      if (hashIdx != -1) {
+                          cleanPath = cleanPath.substring(0, hashIdx);
+                      }
+
+                      // 2. Strip leading slashes
                       while (cleanPath.startsWith("/")) {
                           cleanPath = cleanPath.substring(1);
                       }
 
+                      // 3. Fallback to index.html for root or directories
                       if (cleanPath.isEmpty() || cleanPath.endsWith("/")) {
                           cleanPath += "index.html";
-                      } else if (!cleanPath.contains(".")) {
+                      } else if (!cleanPath.contains(".") && !cleanPath.startsWith("_next")) {
                           cleanPath += "/index.html";
                       }
 
                       String assetPath = "hisabpro/" + cleanPath;
                       try {
                           InputStream is = getAssets().open(assetPath);
-                          return new WebResourceResponse(getMimeType(cleanPath), "UTF-8", is);
+                          String mimeType = getMimeType(cleanPath);
+
+                          // Set CORS headers so scripts and styles with 'crossorigin' load smoothly
+                          Map<String, String> responseHeaders = new HashMap<>();
+                          responseHeaders.put("Access-Control-Allow-Origin", "*");
+                          responseHeaders.put("Access-Control-Allow-Methods", "GET, OPTIONS");
+
+                          return new WebResourceResponse(mimeType, "UTF-8", 200, "OK", responseHeaders, is);
                       } catch (Exception e) {
                           return null;
                       }
@@ -291,17 +321,24 @@ jobs:
               }
 
               private String getMimeType(String path) {
+                  if (path.endsWith(".css")) return "text/css";
+                  if (path.endsWith(".js") || path.endsWith(".mjs")) return "application/javascript";
+                  if (path.endsWith(".html") || path.endsWith(".htm")) return "text/html";
+                  if (path.endsWith(".json")) return "application/json";
+                  if (path.endsWith(".svg")) return "image/svg+xml";
+                  if (path.endsWith(".png")) return "image/png";
+                  if (path.endsWith(".jpg") || path.endsWith(".jpeg")) return "image/jpeg";
+                  if (path.endsWith(".webp")) return "image/webp";
+                  if (path.endsWith(".ico")) return "image/x-icon";
+                  if (path.endsWith(".woff")) return "font/woff";
+                  if (path.endsWith(".woff2")) return "font/woff2";
+                  if (path.endsWith(".ttf")) return "font/ttf";
+
                   String extension = MimeTypeMap.getFileExtensionFromUrl(path);
                   if (extension != null && !extension.isEmpty()) {
                       String mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension.toLowerCase());
                       if (mime != null) return mime;
                   }
-                  if (path.endsWith(".js")) return "application/javascript";
-                  if (path.endsWith(".css")) return "text/css";
-                  if (path.endsWith(".json")) return "application/json";
-                  if (path.endsWith(".svg")) return "image/svg+xml";
-                  if (path.endsWith(".html")) return "text/html";
-                  if (path.endsWith(".png")) return "image/png";
                   return "application/octet-stream";
               }
 
