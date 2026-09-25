@@ -222,7 +222,7 @@ jobs:
           EOF
 
       # ============================================
-      # 10. MAIN ACTIVITY (CRASH FIX: IMPORTS & JAVA BRIDGES)
+      # 10. MAIN ACTIVITY (CRASH FIX & CORS FETCH SETTINGS)
       # ============================================
       - name: Create MainActivity.java
         run: |
@@ -284,6 +284,8 @@ jobs:
                   settings.setAllowContentAccess(true);
                   settings.setBuiltInZoomControls(false);
                   settings.setDisplayZoomControls(false);
+                  settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+                  settings.setAllowUniversalAccessFromFileURLs(true);
 
                   // 1. Bridges: Print aur Backup File Saver
                   webView.addJavascriptInterface(new PrintInterface(), "AndroidPrint");
