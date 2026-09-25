@@ -33,8 +33,7 @@ export default function AppLock({
   const [error, setError] = useState("");
   const [pinLength, setPinLength] = useState(4);
 
-  const timerRef =
-    useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearAutoLockTimer = () => {
     if (timerRef.current !== null) {
@@ -77,14 +76,6 @@ export default function AppLock({
         AUTO_LOCK_KEY
       ) || "immediately") as AutoLockTime;
 
-    /*
-     * Important:
-     *
-     * "immediately" ka matlab page navigation
-     * par PIN dobara nahi maangna.
-     *
-     * Navigation ko lock trigger nahi karna hai.
-     */
     if (autoLock === "immediately") {
       return;
     }
@@ -148,13 +139,6 @@ export default function AppLock({
         SESSION_KEY
       );
 
-    /*
-     * IMPORTANT:
-     *
-     * Agar current browser session mein
-     * user already PIN unlock kar chuka hai,
-     * to page change ke baad unlocked rehna hai.
-     */
     if (unlockedAt) {
       if (autoLock === "immediately") {
         setLocked(false);
@@ -185,13 +169,6 @@ export default function AppLock({
       }
     }
 
-    /*
-     * Yahan tabhi lock hoga jab:
-     *
-     * 1. User ne abhi tak unlock nahi kiya
-     * OR
-     * 2. Auto-lock time expire ho chuka hai.
-     */
     clearAutoLockTimer();
 
     sessionStorage.removeItem(
@@ -376,7 +353,37 @@ export default function AppLock({
       setEnteredPin(
         numbersOnly
       );
+      setError("");
     }
+  };
+
+  const addDigit = (digit: string) => {
+    if (
+      enteredPin.length >= pinLength
+    ) {
+      return;
+    }
+
+    setEnteredPin(
+      (current) =>
+        current + digit
+    );
+
+    setError("");
+  };
+
+  const removeDigit = () => {
+    setEnteredPin(
+      (current) =>
+        current.slice(0, -1)
+    );
+
+    setError("");
+  };
+
+  const clearPin = () => {
+    setEnteredPin("");
+    setError("");
   };
 
   if (!ready) {
@@ -395,7 +402,9 @@ export default function AppLock({
     <div className="app-lock-screen">
       <div className="app-lock-card">
         <div className="app-lock-icon">
-          🔒
+          <span className="app-lock-icon-symbol">
+            LOCK
+          </span>
         </div>
 
         <h1>
@@ -403,9 +412,23 @@ export default function AppLock({
         </h1>
 
         <p>
-          Continue karne ke liye
-          apna PIN enter karein.
+          Continue karne ke liye apna PIN enter karein.
         </p>
+
+        <div className="app-lock-pin-dots">
+          {Array.from({
+            length: pinLength
+          }).map((_, index) => (
+            <span
+              key={index}
+              className={
+                index < enteredPin.length
+                  ? "filled"
+                  : ""
+              }
+            />
+          ))}
+        </div>
 
         <input
           type="password"
@@ -425,10 +448,119 @@ export default function AppLock({
             }
           }}
           maxLength={pinLength}
-          placeholder={`${pinLength} digit PIN`}
-          className="app-lock-pin-input"
+          className="app-lock-hidden-input"
+          aria-label="PIN"
           autoFocus
         />
+
+        <div className="app-lock-keypad">
+          <button
+            type="button"
+            onClick={() =>
+              addDigit("1")
+            }
+          >
+            1
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              addDigit("2")
+            }
+          >
+            2
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              addDigit("3")
+            }
+          >
+            3
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              addDigit("4")
+            }
+          >
+            4
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              addDigit("5")
+            }
+          >
+            5
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              addDigit("6")
+            }
+          >
+            6
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              addDigit("7")
+            }
+          >
+            7
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              addDigit("8")
+            }
+          >
+            8
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              addDigit("9")
+            }
+          >
+            9
+          </button>
+
+          <button
+            type="button"
+            className="app-lock-keypad-action"
+            onClick={clearPin}
+          >
+            Clear
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              addDigit("0")
+            }
+          >
+            0
+          </button>
+
+          <button
+            type="button"
+            className="app-lock-keypad-action"
+            onClick={removeDigit}
+            aria-label="Delete last digit"
+          >
+            Back
+          </button>
+        </div>
 
         {error && (
           <div className="app-lock-error">
