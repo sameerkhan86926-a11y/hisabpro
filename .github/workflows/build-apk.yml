@@ -39,18 +39,18 @@ jobs:
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
       # ============================================
-      # 5. INSTALL & BUILD NEXT.JS STATIC EXPORT
+      # 5. INSTALL & EXPORT NEXT.JS
       # ============================================
-      - name: Install dependencies
+      - name: Install npm dependencies
         run: npm install
 
-      - name: Build Next.js
+      - name: Build Next.js Static Export
         run: npm run build
 
       # ============================================
-      # 6. CREATE ANDROID DIRECTORIES
+      # 6. INITIALIZE ANDROID PROJECT STRUCTURE
       # ============================================
-      - name: Create Android project directories
+      - name: Create Android project scaffolding
         run: |
           mkdir -p android/app/src/main/java/com/hisabpro/app
           mkdir -p android/app/src/main/res/values
@@ -66,23 +66,25 @@ jobs:
           EOF
 
       # ============================================
-      # 7. COPY NEXT.JS ASSETS & ICON
+      # 7. COPY NEXT.JS ASSETS & APP ICON
       # ============================================
       - name: Copy static export to Android assets
         run: |
           if [ -d "out" ]; then
             cp -R out/. android/app/src/main/assets/hisabpro/
           else
-            echo "ERROR: 'out' directory not found."
+            echo "ERROR: 'out' directory not found. Ensure output: 'export' is configured in next.config.ts"
             exit 1
           fi
 
       - name: Copy App Launcher Icon
         run: |
-          if [ -f "public/icon-512.png" ]; then
-            cp public/icon-512.png android/app/src/main/res/drawable/ic_launcher.png
-          elif [ -f "public/hisabpro/icon-512.png" ]; then
+          if [ -f "public/hisabpro/icon-512.png" ]; then
             cp public/hisabpro/icon-512.png android/app/src/main/res/drawable/ic_launcher.png
+          elif [ -f "public/icon-512.png" ]; then
+            cp public/icon-512.png android/app/src/main/res/drawable/ic_launcher.png
+          elif [ -f "public/hisabpro/icon-192.png" ]; then
+            cp public/hisabpro/icon-192.png android/app/src/main/res/drawable/ic_launcher.png
           elif [ -f "public/icon-192.png" ]; then
             cp public/icon-192.png android/app/src/main/res/drawable/ic_launcher.png
           else
@@ -90,7 +92,7 @@ jobs:
           fi
 
       # ============================================
-      # 8. GRADLE CONFIGURATION (FIXED AAPT OPTIONS)
+      # 8. GRADLE SETTINGS & BUILD CONFIG
       # ============================================
       - name: Create settings.gradle
         run: |
@@ -145,7 +147,6 @@ jobs:
                   targetCompatibility JavaVersion.VERSION_17
               }
 
-              // CRITICAL: Prevents AAPT from dropping the Next.js '_next' folder
               androidResources {
                   ignoreAssetsPattern "!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~"
               }
@@ -166,13 +167,15 @@ jobs:
           EOF
 
       # ============================================
-      # 9. ANDROID MANIFEST & STYLES
+      # 9. ANDROID MANIFEST WITH STORAGE PERMISSIONS
       # ============================================
       - name: Create AndroidManifest.xml
         run: |
           cat > android/app/src/main/AndroidManifest.xml <<'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+              <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
 
               <application
                   android:allowBackup="true"
@@ -207,7 +210,7 @@ jobs:
           EOF
 
       # ============================================
-      # 10. MAIN ACTIVITY (COMPLETE WEBVIEW ENGINE)
+      # 10. MAIN ACTIVITY (UPLOAD & DOWNLOAD SUPPORT)
       # ============================================
       - name: Create MainActivity.java
         run: |
@@ -216,17 +219,25 @@ jobs:
 
           import android.annotation.SuppressLint;
           import android.app.Activity;
+          import android.content.Intent;
           import android.net.Uri;
           import android.os.Bundle;
+          import android.os.Environment;
+          import android.util.Base64;
+          import android.webkit.DownloadListener;
           import android.webkit.MimeTypeMap;
+          import android.webkit.ValueCallback;
           import android.webkit.WebChromeClient;
           import android.webkit.WebResourceRequest;
           import android.webkit.WebResourceResponse;
           import android.webkit.WebSettings;
           import android.webkit.WebView;
           import android.webkit.WebViewClient;
+          import android.widget.Toast;
           import androidx.webkit.WebViewAssetLoader;
 
+          import java.io.File;
+          import java.io.FileOutputStream;
           import java.io.InputStream;
           import java.util.HashMap;
           import java.util.Map;
@@ -235,6 +246,9 @@ jobs:
               private WebView webView;
               private WebViewAssetLoader assetLoader;
               private static final String APP_HOST = "appassets.androidplatform.net";
+
+              private ValueCallback<Uri[]> fileUploadCallback;
+              private static final int FILE_CHOOSER_REQUEST_CODE = 1001;
 
               @SuppressLint("SetJavaScriptEnabled")
               @Override
@@ -253,9 +267,71 @@ jobs:
                   settings.setBuiltInZoomControls(false);
                   settings.setDisplayZoomControls(false);
 
-                  // Essential for alert(), confirm(), and running modern JS frameworks
-                  webView.setWebChromeClient(new WebChromeClient());
+                  // 1. FILE UPLOAD HANDLER (<input type="file">)
+                  webView.setWebChromeClient(new WebChromeClient() {
+                      @Override
+                      public boolean onShowFileChooser(
+                              WebView webView,
+                              ValueCallback<Uri[]> filePathCallback,
+                              FileChooserParams fileChooserParams
+                      ) {
+                          if (fileUploadCallback != null) {
+                              fileUploadCallback.onReceiveValue(null);
+                          }
+                          fileUploadCallback = filePathCallback;
 
+                          Intent intent = fileChooserParams.createIntent();
+                          try {
+                              startActivityForResult(intent, FILE_CHOOSER_REQUEST_CODE);
+                          } catch (Exception e) {
+                              fileUploadCallback = null;
+                              Toast.makeText(MainActivity.this, "File picker open nahi ho paya", Toast.LENGTH_SHORT).show();
+                              return false;
+                          }
+                          return true;
+                      }
+                  });
+
+                  // 2. FILE DOWNLOAD HANDLER (Data URL / Blob / Links)
+                  webView.setDownloadListener(new DownloadListener() {
+                      @Override
+                      public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimeType, long contentLength) {
+                          try {
+                              if (url.startsWith("data:")) {
+                                  String[] parts = url.split(",");
+                                  if (parts.length > 1) {
+                                      String meta = parts[0];
+                                      String base64Data = parts[1];
+                                      byte[] decodedBytes = Base64.decode(base64Data, Base64.DEFAULT);
+
+                                      String ext = ".bin";
+                                      if (meta.contains("csv")) ext = ".csv";
+                                      else if (meta.contains("pdf")) ext = ".pdf";
+                                      else if (meta.contains("json")) ext = ".json";
+                                      else if (meta.contains("png")) ext = ".png";
+                                      else if (meta.contains("jpeg") || meta.contains("jpg")) ext = ".jpg";
+
+                                      String filename = "HisabPro_" + System.currentTimeMillis() + ext;
+                                      File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                                      File file = new File(path, filename);
+
+                                      FileOutputStream os = new FileOutputStream(file);
+                                      os.write(decodedBytes);
+                                      os.close();
+
+                                      Toast.makeText(MainActivity.this, "Downloads me save ho gaya: " + filename, Toast.LENGTH_LONG).show();
+                                  }
+                              } else {
+                                  Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                                  startActivity(intent);
+                              }
+                          } catch (Exception e) {
+                              Toast.makeText(MainActivity.this, "Download error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                          }
+                      }
+                  });
+
+                  // 3. ASSET ROUTING
                   assetLoader = new WebViewAssetLoader.Builder()
                           .setDomain(APP_HOST)
                           .addPathHandler("/hisabpro/", new HisabProPathHandler())
@@ -276,12 +352,30 @@ jobs:
                   webView.loadUrl("https://" + APP_HOST + "/hisabpro/");
               }
 
+              @Override
+              protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+                  if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
+                      if (fileUploadCallback != null) {
+                          Uri[] results = null;
+                          if (resultCode == Activity.RESULT_OK && data != null) {
+                              String dataString = data.getDataString();
+                              if (dataString != null) {
+                                  results = new Uri[]{Uri.parse(dataString)};
+                              }
+                          }
+                          fileUploadCallback.onReceiveValue(results);
+                          fileUploadCallback = null;
+                      }
+                  } else {
+                      super.onActivityResult(requestCode, resultCode, data);
+                  }
+              }
+
               private class HisabProPathHandler implements WebViewAssetLoader.PathHandler {
                   @Override
                   public WebResourceResponse handle(String path) {
                       String cleanPath = path != null ? path : "";
 
-                      // 1. Remove query string and fragment (?v=123, #hash)
                       int queryIdx = cleanPath.indexOf("?");
                       if (queryIdx != -1) {
                           cleanPath = cleanPath.substring(0, queryIdx);
@@ -291,12 +385,10 @@ jobs:
                           cleanPath = cleanPath.substring(0, hashIdx);
                       }
 
-                      // 2. Strip leading slashes
                       while (cleanPath.startsWith("/")) {
                           cleanPath = cleanPath.substring(1);
                       }
 
-                      // 3. Fallback to index.html for root or directories
                       if (cleanPath.isEmpty() || cleanPath.endsWith("/")) {
                           cleanPath += "index.html";
                       } else if (!cleanPath.contains(".") && !cleanPath.startsWith("_next")) {
@@ -308,7 +400,6 @@ jobs:
                           InputStream is = getAssets().open(assetPath);
                           String mimeType = getMimeType(cleanPath);
 
-                          // Set CORS headers so scripts and styles with 'crossorigin' load smoothly
                           Map<String, String> responseHeaders = new HashMap<>();
                           responseHeaders.put("Access-Control-Allow-Origin", "*");
                           responseHeaders.put("Access-Control-Allow-Methods", "GET, OPTIONS");
