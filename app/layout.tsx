@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import AppLock from "../components/AppLock";
 
 export const metadata: Metadata = {
   title: "HisabPro",
@@ -59,12 +58,12 @@ export default function RootLayout({
         />
 
         <meta
-          name="apple-mobile-web-app-capable"
+          name="apple-web-app-capable"
           content="yes"
         />
 
         <meta
-          name="apple-mobile-web-app-title"
+          name="apple-web-app-title"
           content="HisabPro"
         />
 
@@ -80,7 +79,7 @@ export default function RootLayout({
       </head>
 
       <body>
-        <AppLock>{children}</AppLock>
+        {children}
       </body>
     </html>
   );
