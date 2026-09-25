@@ -1,496 +1,324 @@
 "use client";
 
 import {
+  ReactNode,
   useEffect,
-  useRef,
-  useState,
+  useState
 } from "react";
 
-const LOCK_KEY =
-  "hisabpro_app_lock";
+const LOCK_KEY = "hisabpro_app_lock";
+const PIN_HASH_KEY = "hisabpro_app_lock_pin_hash";
+const PIN_LENGTH_KEY = "hisabpro_app_lock_pin_length";
+const AUTO_LOCK_KEY = "hisabpro_app_lock_auto";
 
-const PIN_HASH_KEY =
-  "hisabpro_app_lock_pin_hash";
+const SESSION_KEY = "hisabpro_app_unlocked_at";
 
-const PIN_LENGTH_KEY =
-  "hisabpro_app_lock_pin_length";
+type AutoLockTime =
+  | "immediately"
+  | "1"
+  | "5"
+  | "15";
 
-const AUTO_LOCK_KEY =
-  "hisabpro_app_lock_auto";
-
-const SESSION_KEY =
-  "hisabpro_app_unlocked_at";
-
-const LOCK_CHANGE_EVENT =
-  "hisabpro-app-lock-changed";
-
-async function hashPin(
-  value: string
-) {
-  const data =
-    new TextEncoder().encode(value);
-
-  const hashBuffer =
-    await crypto.subtle.digest(
-      "SHA-256",
-      data
-    );
-
-  return Array.from(
-    new Uint8Array(hashBuffer)
-  )
-    .map((byte) =>
-      byte
-        .toString(16)
-        .padStart(2, "0")
-    )
-    .join("");
-}
+type AppLockProps = {
+  children: ReactNode;
+};
 
 export default function AppLock({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [ready, setReady] =
-    useState(false);
+  children
+}: AppLockProps) {
+  const [ready, setReady] = useState(false);
+  const [locked, setLocked] = useState(false);
+  const [enteredPin, setEnteredPin] = useState("");
+  const [error, setError] = useState("");
+  const [pinLength, setPinLength] = useState(4);
 
-  const [locked, setLocked] =
-    useState(false);
-
-  const [pinLength, setPinLength] =
-    useState(4);
-
-  const [enteredPin, setEnteredPin] =
-    useState("");
-
-  const [error, setError] =
-    useState("");
-
-  const timerRef =
-    useRef<ReturnType<
-      typeof setTimeout
-    > | null>(null);
-
-  function clearTimer() {
-    if (timerRef.current) {
-      clearTimeout(
-        timerRef.current
-      );
-
-      timerRef.current = null;
-    }
-  }
-
-  function lockApp() {
-    clearTimer();
-
-    sessionStorage.removeItem(
-      SESSION_KEY
-    );
-
-    setEnteredPin("");
-    setError("");
-    setLocked(true);
-  }
-
-  function markUnlocked() {
+  const markUnlocked = () => {
     sessionStorage.setItem(
       SESSION_KEY,
       String(Date.now())
     );
-  }
+  };
 
-  function startAutoLockTimer() {
-    clearTimer();
+  const lockApp = () => {
+    sessionStorage.removeItem(SESSION_KEY);
 
+    setEnteredPin("");
+    setError("");
+    setLocked(true);
+  };
+
+  const startAutoLockTimer = () => {
     const enabled =
-      localStorage.getItem(
-        LOCK_KEY
-      ) === "true";
+      localStorage.getItem(LOCK_KEY) === "true";
+
+    const autoLock =
+      (localStorage.getItem(
+        AUTO_LOCK_KEY
+      ) || "immediately") as AutoLockTime;
 
     if (!enabled) {
       return;
     }
 
-    const autoLock =
-      localStorage.getItem(
-        AUTO_LOCK_KEY
-      ) || "immediately";
-
-    if (
-      autoLock === "immediately"
-    ) {
+    if (autoLock === "immediately") {
       return;
     }
 
-    const minutes =
-      Number(autoLock);
+    const minutes = Number(autoLock);
 
     if (!minutes || minutes <= 0) {
       return;
     }
 
-    timerRef.current =
-      setTimeout(() => {
-        lockApp();
-      }, minutes * 60 * 1000);
-  }
+    window.setTimeout(() => {
+      lockApp();
+    }, minutes * 60 * 1000);
+  };
 
-  function loadLockSettings(
+  const loadLockSettings = (
     keepUnlocked = false
-  ) {
+  ) => {
     const enabled =
-      localStorage.getItem(
-        LOCK_KEY
-      ) === "true";
+      localStorage.getItem(LOCK_KEY) === "true";
 
-    const savedHash =
-      localStorage.getItem(
-        PIN_HASH_KEY
-      );
+    const hash =
+      localStorage.getItem(PIN_HASH_KEY);
 
-    const savedLength =
+    const savedPinLength =
       Number(
-        localStorage.getItem(
-          PIN_LENGTH_KEY
-        ) || "4"
-      );
+        localStorage.getItem(PIN_LENGTH_KEY)
+      ) || 4;
 
     const autoLock =
-      localStorage.getItem(
+      (localStorage.getItem(
         AUTO_LOCK_KEY
-      ) || "immediately";
+      ) || "immediately") as AutoLockTime;
 
-    setPinLength(
-      savedLength === 6
-        ? 6
-        : 4
-    );
+    setPinLength(savedPinLength);
 
-    if (!enabled || !savedHash) {
-      clearTimer();
-
+    if (!enabled || !hash) {
       setLocked(false);
       setReady(true);
-
       return;
     }
 
-    /*
-     * When App Lock is enabled
-     * from Settings, keep the
-     * current session unlocked.
-     */
     if (keepUnlocked) {
       markUnlocked();
-
       setLocked(false);
       setReady(true);
-
       startAutoLockTimer();
-
       return;
     }
 
-    /*
-     * Immediately:
-     *
-     * Do NOT lock when navigating
-     * between pages.
-     *
-     * Only lock when there is no
-     * unlocked session.
-     */
-    if (
-      autoLock === "immediately"
-    ) {
-      const lastUnlocked =
-        Number(
-          sessionStorage.getItem(
-            SESSION_KEY
-          ) || "0"
-        );
+    const unlockedAt =
+      sessionStorage.getItem(SESSION_KEY);
 
-      if (lastUnlocked > 0) {
+    if (autoLock === "immediately") {
+      if (unlockedAt) {
         setLocked(false);
-        setReady(true);
-
-        return;
+      } else {
+        setLocked(true);
       }
 
-      setLocked(true);
       setReady(true);
-
       return;
     }
 
-    /*
-     * For 1 / 5 / 15 minute modes,
-     * check whether the unlocked
-     * session is still valid.
-     */
-    const lastUnlocked =
-      Number(
-        sessionStorage.getItem(
+    const minutes = Number(autoLock);
+
+    if (
+      unlockedAt &&
+      minutes > 0
+    ) {
+      const elapsed =
+        Date.now() -
+        Number(unlockedAt);
+
+      const allowedTime =
+        minutes * 60 * 1000;
+
+      if (elapsed < allowedTime) {
+        setLocked(false);
+        startAutoLockTimer();
+      } else {
+        sessionStorage.removeItem(
           SESSION_KEY
-        ) || "0"
-      );
+        );
 
-    const minutes =
-      Number(autoLock);
-
-    const validFor =
-      minutes *
-      60 *
-      1000;
-
-    const stillValid =
-      lastUnlocked > 0 &&
-      Date.now() -
-        lastUnlocked <
-        validFor;
-
-    if (stillValid) {
-      setLocked(false);
-      setReady(true);
-
-      startAutoLockTimer();
+        setLocked(true);
+      }
     } else {
-      sessionStorage.removeItem(
-        SESSION_KEY
-      );
-
       setLocked(true);
-      setReady(true);
     }
-  }
 
-  /*
-   * Initial load + settings changes
-   */
+    setReady(true);
+  };
+
   useEffect(() => {
     loadLockSettings();
 
-    function handleLockChange() {
+    const handleLockChange = () => {
       loadLockSettings(true);
-    }
+    };
 
     window.addEventListener(
-      LOCK_CHANGE_EVENT,
+      "hisabpro-app-lock-changed",
       handleLockChange
     );
 
     return () => {
       window.removeEventListener(
-        LOCK_CHANGE_EVENT,
+        "hisabpro-app-lock-changed",
         handleLockChange
       );
-
-      clearTimer();
     };
   }, []);
 
-  /*
-   * Activity handling for
-   * 1 / 5 / 15 minute auto lock.
-   */
   useEffect(() => {
-    if (
-      !ready ||
-      locked
-    ) {
+    if (!ready || locked) {
       return;
     }
 
     const handleActivity = () => {
       markUnlocked();
-      startAutoLockTimer();
     };
-
-    const events = [
-      "click",
-      "touchstart",
-      "keydown",
-      "scroll",
-    ];
-
-    events.forEach(
-      (event) => {
-        window.addEventListener(
-          event,
-          handleActivity,
-          {
-            passive: true,
-          }
-        );
-      }
-    );
-
-    return () => {
-      events.forEach(
-        (event) => {
-          window.removeEventListener(
-            event,
-            handleActivity
-          );
-        }
-      );
-    };
-  }, [
-    ready,
-    locked,
-  ]);
-
-  /*
-   * IMPORTANT:
-   *
-   * Immediately mode locks when
-   * the app/browser goes into the
-   * background.
-   *
-   * Normal page navigation does
-   * NOT trigger this because the
-   * new page finds the session
-   * timestamp and remains unlocked.
-   */
-  useEffect(() => {
-    if (
-      !ready ||
-      locked
-    ) {
-      return;
-    }
-
-    function handleVisibility() {
-      if (
-        document.visibilityState ===
-          "hidden" &&
-        localStorage.getItem(
-          LOCK_KEY
-        ) === "true" &&
-        localStorage.getItem(
-          AUTO_LOCK_KEY
-        ) === "immediately"
-      ) {
-        sessionStorage.removeItem(
-          SESSION_KEY
-        );
-
-        setEnteredPin("");
-        setError("");
-        setLocked(true);
-      }
-    }
 
     document.addEventListener(
-      "visibilitychange",
-      handleVisibility
+      "click",
+      handleActivity
+    );
+
+    document.addEventListener(
+      "touchstart",
+      handleActivity
+    );
+
+    document.addEventListener(
+      "keydown",
+      handleActivity
+    );
+
+    document.addEventListener(
+      "scroll",
+      handleActivity
     );
 
     return () => {
       document.removeEventListener(
-        "visibilitychange",
-        handleVisibility
+        "click",
+        handleActivity
+      );
+
+      document.removeEventListener(
+        "touchstart",
+        handleActivity
+      );
+
+      document.removeEventListener(
+        "keydown",
+        handleActivity
+      );
+
+      document.removeEventListener(
+        "scroll",
+        handleActivity
       );
     };
-  }, [
-    ready,
-    locked,
-  ]);
+  }, [ready, locked]);
 
-  async function unlockApp() {
+  const createHash = async (
+    value: string
+  ) => {
+    const encoder =
+      new TextEncoder();
+
+    const data =
+      encoder.encode(value);
+
+    const hashBuffer =
+      await crypto.subtle.digest(
+        "SHA-256",
+        data
+      );
+
+    const hashArray =
+      Array.from(
+        new Uint8Array(hashBuffer)
+      );
+
+    return hashArray
+      .map((byte) =>
+        byte
+          .toString(16)
+          .padStart(2, "0")
+      )
+      .join("");
+  };
+
+  const handleUnlock = async () => {
+    setError("");
+
     if (
-      enteredPin.length !==
-      pinLength
+      enteredPin.length !== pinLength
     ) {
       setError(
-        `Enter your ${pinLength} digit PIN.`
+        `Please enter ${pinLength} digit PIN.`
       );
-
-      return;
-    }
-
-    const savedHash =
-      localStorage.getItem(
-        PIN_HASH_KEY
-      );
-
-    if (!savedHash) {
-      setError(
-        "PIN setup is incomplete."
-      );
-
       return;
     }
 
     try {
       const enteredHash =
-        await hashPin(
-          enteredPin
+        await createHash(enteredPin);
+
+      const savedHash =
+        localStorage.getItem(
+          PIN_HASH_KEY
         );
 
       if (
-        enteredHash ===
-        savedHash
+        enteredHash !== savedHash
       ) {
-        markUnlocked();
-
-        setLocked(false);
-
+        setError("Incorrect PIN.");
         setEnteredPin("");
-
-        setError("");
-
-        startAutoLockTimer();
-      } else {
-        setError(
-          "Incorrect PIN."
-        );
-
-        setEnteredPin("");
+        return;
       }
-    } catch {
-      setError(
-        "Unable to verify PIN."
-      );
+
+      markUnlocked();
 
       setEnteredPin("");
-    }
-  }
+      setError("");
+      setLocked(false);
 
-  function addNumber(
-    number: string
-  ) {
+      startAutoLockTimer();
+    } catch {
+      setError(
+        "PIN verify nahi ho saka."
+      );
+    }
+  };
+
+  const handlePinChange = (
+    value: string
+  ) => {
+    const numbersOnly =
+      value.replace(/\D/g, "");
+
     if (
-      enteredPin.length >=
-      pinLength
+      numbersOnly.length <= pinLength
     ) {
-      return;
+      setEnteredPin(
+        numbersOnly
+      );
     }
-
-    setEnteredPin(
-      (previous) =>
-        previous + number
-    );
-
-    setError("");
-  }
-
-  function removeNumber() {
-    setEnteredPin(
-      (previous) =>
-        previous.slice(
-          0,
-          -1
-        )
-    );
-
-    setError("");
-  }
+  };
 
   if (!ready) {
-    return null;
+    return (
+      <div className="app-lock-loading">
+        Loading...
+      </div>
+    );
   }
 
   if (!locked) {
@@ -498,41 +326,41 @@ export default function AppLock({
   }
 
   return (
-    <main className="app-lock-screen">
-
-      <div className="app-lock-box">
-
+    <div className="app-lock-screen">
+      <div className="app-lock-card">
         <div className="app-lock-icon">
           🔒
         </div>
 
-        <h1>
-          HisabPro
-        </h1>
+        <h1>HisabPro Locked</h1>
 
         <p>
-          App Locked
+          Continue karne ke liye
+          apna PIN enter karein.
         </p>
 
-        <div className="app-lock-dots">
-
-          {Array.from({
-            length: pinLength,
-          }).map(
-            (_, index) => (
-              <span
-                key={index}
-                className={
-                  index <
-                  enteredPin.length
-                    ? "filled"
-                    : ""
-                }
-              />
+        <input
+          type="password"
+          inputMode="numeric"
+          autoComplete="off"
+          value={enteredPin}
+          onChange={(event) =>
+            handlePinChange(
+              event.target.value
             )
-          )}
-
-        </div>
+          }
+          onKeyDown={(event) => {
+            if (
+              event.key === "Enter"
+            ) {
+              handleUnlock();
+            }
+          }}
+          maxLength={pinLength}
+          placeholder={`${pinLength} digit PIN`}
+          className="app-lock-pin-input"
+          autoFocus
+        />
 
         {error && (
           <div className="app-lock-error">
@@ -540,77 +368,14 @@ export default function AppLock({
           </div>
         )}
 
-        <div className="app-lock-keypad">
-
-          {[
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-            "6",
-            "7",
-            "8",
-            "9",
-          ].map(
-            (number) => (
-              <button
-                key={number}
-                type="button"
-                onClick={() =>
-                  addNumber(
-                    number
-                  )
-                }
-              >
-                {number}
-              </button>
-            )
-          )}
-
-          <button
-            type="button"
-            className="empty-key"
-            disabled
-          />
-
-          <button
-            type="button"
-            onClick={() =>
-              addNumber("0")
-            }
-          >
-            0
-          </button>
-
-          <button
-            type="button"
-            className="delete-key"
-            onClick={
-              removeNumber
-            }
-          >
-            ⌫
-          </button>
-
-        </div>
-
         <button
           type="button"
-          className="app-lock-unlock"
-          onClick={
-            unlockApp
-          }
-          disabled={
-            enteredPin.length !==
-            pinLength
-          }
+          onClick={handleUnlock}
+          className="app-lock-button"
         >
           Unlock
         </button>
-
       </div>
-
-    </main>
+    </div>
   );
 }
