@@ -42,7 +42,18 @@ jobs:
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
       # ============================================
-      # 5. INSTALL & EXPORT NEXT.JS
+      # 5. READ DYNAMIC VERSION FROM VERSION.JSON
+      # ============================================
+      - name: Extract Version Info
+        run: |
+          CODE=$(node -p "try { require('./public/version.json').versionCode } catch(e) { 1 }")
+          NAME=$(node -p "try { require('./public/version.json').versionName } catch(e) { '1.0' }")
+          echo "APP_VERSION_CODE=$CODE" >> $GITHUB_ENV
+          echo "APP_VERSION_NAME=$NAME" >> $GITHUB_ENV
+          echo "Building APK with versionCode: $CODE, versionName: $NAME"
+
+      # ============================================
+      # 6. INSTALL & EXPORT NEXT.JS
       # ============================================
       - name: Install npm dependencies
         run: npm install
@@ -51,7 +62,7 @@ jobs:
         run: npm run build
 
       # ============================================
-      # 6. INITIALIZE ANDROID PROJECT STRUCTURE
+      # 7. INITIALIZE ANDROID PROJECT STRUCTURE
       # ============================================
       - name: Create Android project scaffolding
         run: |
@@ -69,7 +80,7 @@ jobs:
           EOF
 
       # ============================================
-      # 7. COPY NEXT.JS ASSETS & APP ICON
+      # 8. COPY NEXT.JS ASSETS & APP ICON
       # ============================================
       - name: Copy static export to Android assets
         run: |
@@ -95,7 +106,7 @@ jobs:
           fi
 
       # ============================================
-      # 8. GRADLE SETTINGS & BUILD CONFIG
+      # 9. GRADLE SETTINGS & BUILD CONFIG
       # ============================================
       - name: Create settings.gradle
         run: |
@@ -128,7 +139,7 @@ jobs:
 
       - name: Create app build.gradle
         run: |
-          cat > android/app/build.gradle <<'EOF'
+          cat > android/app/build.gradle <<EOF
           plugins {
               id 'com.android.application'
           }
@@ -141,8 +152,8 @@ jobs:
                   applicationId 'com.hisabpro.app'
                   minSdk 23
                   targetSdk 35
-                  versionCode 1
-                  versionName '1.0'
+                  versionCode ${{ env.APP_VERSION_CODE }}
+                  versionName '${{ env.APP_VERSION_NAME }}'
               }
 
               compileOptions {
@@ -170,7 +181,7 @@ jobs:
           EOF
 
       # ============================================
-      # 9. ANDROID MANIFEST WITH QUERIES & PERMISSIONS
+      # 10. ANDROID MANIFEST WITH QUERIES & PERMISSIONS
       # ============================================
       - name: Create AndroidManifest.xml
         run: |
@@ -225,7 +236,7 @@ jobs:
           EOF
 
       # ============================================
-      # 10. MAIN ACTIVITY (WITH NATIVE UPDATE CHECKER & BRIDGES)
+      # 11. MAIN ACTIVITY (DYNAMIC VERSION CHECK & BRIDGES)
       # ============================================
       - name: Create MainActivity.java
         run: |
@@ -274,9 +285,6 @@ jobs:
               private WebView webView;
               private WebViewAssetLoader assetLoader;
               private static final String APP_HOST = "appassets.androidplatform.net";
-
-              // Installed APK Version
-              private static final int CURRENT_APP_VERSION = 1;
               private static final String VERSION_URL = "https://raw.githubusercontent.com/sameerkhan86926-a11y/hisabpro/main/public/version.json";
 
               private ValueCallback<Uri[]> fileUploadCallback;
@@ -423,7 +431,7 @@ jobs:
                   checkAppUpdateNative();
               }
 
-              // Native Background Update Check (No CORS restriction)
+              // Background Update Checker checking real installed versionCode
               private void checkAppUpdateNative() {
                   new Thread(() -> {
                       try {
@@ -444,11 +452,18 @@ jobs:
 
                               JSONObject json = new JSONObject(sb.toString());
                               int serverVersion = json.optInt("versionCode", 1);
-                              String versionName = json.optString("versionName", "1.1");
+                              String versionName = json.optString("versionName", "1.0");
                               String downloadUrl = json.optString("downloadUrl", "");
                               String message = json.optString("message", "Naya update uplabdh hai!");
 
-                              if (serverVersion > CURRENT_APP_VERSION) {
+                              // Phone me installed real versionCode get karein
+                              int installedVersion = 1;
+                              try {
+                                  installedVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
+                              } catch (Exception ignored) {}
+
+                              // Server version installed version se bada hoga tabhi popup aayega
+                              if (serverVersion > installedVersion) {
                                   runOnUiThread(() -> showUpdateDialog(versionName, message, downloadUrl));
                               }
                           }
@@ -650,7 +665,7 @@ jobs:
           EOF
 
       # ============================================
-      # 11. COMPILE APK VIA GRADLE
+      # 12. COMPILE APK VIA GRADLE
       # ============================================
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -661,7 +676,7 @@ jobs:
           gradle assembleDebug --stacktrace
 
       # ============================================
-      # 12. UPLOAD APK ARTIFACT
+      # 13. UPLOAD APK ARTIFACT
       # ============================================
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -670,7 +685,7 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
 
       # ============================================
-      # 13. PUBLISH TO GITHUB RELEASES (FIX 404 URL)
+      # 14. PUBLISH TO GITHUB RELEASES
       # ============================================
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
