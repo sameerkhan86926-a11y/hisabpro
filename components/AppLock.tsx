@@ -246,8 +246,12 @@ export default function AppLock({ children }: AppLockProps) {
     <div className="app-lock-screen">
       <div className="app-lock-card">
         <div className="app-lock-icon">
-          <span className="app-lock-icon-symbol">LOCK</span>
-        </div>
+  <img
+    src="/hisabpro/icon-192.png"
+    alt="HisabPro"
+    className="app-lock-logo"
+  />
+</div>
 
         <h1>HisabPro Locked</h1>
         <p>Continue karne ke liye apna PIN enter karein.</p>
