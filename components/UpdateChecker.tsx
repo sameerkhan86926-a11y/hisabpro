@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from "react";
 
-// Current app ka version (ise workflow ke versionCode ke barabar rakhein)
+// Installed Version: Testing ke liye ise 1 rakhein
 const CURRENT_VERSION_CODE = 1;
 
-// GitHub raw file ka URL jahan se version check hoga
 const VERSION_CHECK_URL =
-  "https://raw.githubusercontent.com/AAPKA_USERNAME/AAPKA_REPO/main/public/version.json";
+  "https://raw.githubusercontent.com/sameerkhan86926-a11y/hisabpro/main/public/version.json";
 
 type VersionInfo = {
   versionCode: number;
@@ -20,23 +19,42 @@ export default function UpdateChecker() {
   const [updateInfo, setUpdateInfo] = useState<VersionInfo | null>(null);
 
   useEffect(() => {
-    async function checkForUpdate() {
+    function checkVersion() {
       try {
-        const res = await fetch(`${VERSION_CHECK_URL}?t=${Date.now()}`, {
-          cache: "no-store",
-        });
-        if (!res.ok) return;
-
-        const data: VersionInfo = await res.json();
-        if (data.versionCode > CURRENT_VERSION_CODE) {
-          setUpdateInfo(data);
-        }
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", `${VERSION_CHECK_URL}?_t=${Date.now()}`, true);
+        xhr.setRequestHeader("Cache-Control", "no-cache");
+        xhr.onload = function () {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const data: VersionInfo = JSON.parse(xhr.responseText);
+              if (Number(data.versionCode) > CURRENT_VERSION_CODE) {
+                setUpdateInfo(data);
+              }
+            } catch (e) {
+              console.error("JSON parse error", e);
+            }
+          }
+        };
+        xhr.onerror = function () {
+          // Fetch fallback agar xhr block ho
+          fetch(`${VERSION_CHECK_URL}?_t=${Date.now()}`, { mode: "cors" })
+            .then((r) => r.json())
+            .then((data: VersionInfo) => {
+              if (Number(data.versionCode) > CURRENT_VERSION_CODE) {
+                setUpdateInfo(data);
+              }
+            })
+            .catch(() => {});
+        };
+        xhr.send();
       } catch (err) {
-        // Offline ya network error hone par chupchap ignore karein
+        console.error("Update check failed", err);
       }
     }
 
-    checkForUpdate();
+    const timer = setTimeout(checkVersion, 1200);
+    return () => clearTimeout(timer);
   }, []);
 
   if (!updateInfo) return null;
@@ -49,36 +67,53 @@ export default function UpdateChecker() {
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.7)",
+        backgroundColor: "rgba(0, 0, 0, 0.75)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        zIndex: 99999,
+        zIndex: 999999,
         padding: "16px",
       }}
     >
       <div
         style={{
-          background: "#fff",
+          background: "#ffffff",
           borderRadius: "16px",
           padding: "24px",
-          maxWidth: "360px",
+          maxWidth: "340px",
           width: "100%",
-          boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
           textAlign: "center",
-          color: "#1e293b",
+          boxShadow: "0 12px 30px rgba(0, 0, 0, 0.3)",
+          color: "#0f172a",
         }}
       >
-        <div style={{ fontSize: "40px", marginBottom: "8px" }}>🚀</div>
-        <h3 style={{ margin: "0 0 8px", fontSize: "18px", fontWeight: "700" }}>
-          Naya Update Aaya Hai! (v{updateInfo.versionName})
+        <div style={{ fontSize: "42px", marginBottom: "8px" }}>🚀</div>
+        <h3
+          style={{
+            margin: "0 0 6px",
+            fontSize: "18px",
+            fontWeight: "700",
+            color: "#102a56",
+          }}
+        >
+          Naya Update Uplabdh Hai!
         </h3>
         <p
           style={{
-            margin: "0 0 20px",
+            margin: "0 0 8px",
             fontSize: "14px",
+            fontWeight: "600",
+            color: "#2563eb",
+          }}
+        >
+          Version: v{updateInfo.versionName}
+        </p>
+        <p
+          style={{
+            margin: "0 0 20px",
+            fontSize: "13px",
             color: "#64748b",
-            lineHeight: "1.5",
+            lineHeight: "1.4",
           }}
         >
           {updateInfo.message}
@@ -91,12 +126,13 @@ export default function UpdateChecker() {
             rel="noopener noreferrer"
             style={{
               background: "#102a56",
-              color: "#fff",
-              padding: "12px",
-              borderRadius: "8px",
+              color: "#ffffff",
+              padding: "12px 16px",
+              borderRadius: "10px",
               textDecoration: "none",
               fontWeight: "600",
-              fontSize: "15px",
+              fontSize: "14px",
+              display: "block",
             }}
           >
             Update Download Karein
@@ -107,7 +143,7 @@ export default function UpdateChecker() {
             style={{
               background: "transparent",
               border: "none",
-              color: "#94a3b8",
+              color: "#64748b",
               fontSize: "13px",
               cursor: "pointer",
               padding: "6px",
