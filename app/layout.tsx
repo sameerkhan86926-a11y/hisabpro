@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import AppLock from "../components/AppLock";
-import UpdateChecker from "../components/UpdateChecker";
 
 export const viewport: Viewport = {
   themeColor: "#102a56",
@@ -36,7 +35,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <UpdateChecker />
         <AppLock>{children}</AppLock>
       </body>
     </html>
