@@ -3,6 +3,7 @@
 import {
   ReactNode,
   useEffect,
+  useRef,
   useState
 } from "react";
 
@@ -32,6 +33,16 @@ export default function AppLock({
   const [error, setError] = useState("");
   const [pinLength, setPinLength] = useState(4);
 
+  const timerRef =
+    useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearAutoLockTimer = () => {
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
   const markUnlocked = () => {
     sessionStorage.setItem(
       SESSION_KEY,
@@ -40,7 +51,11 @@ export default function AppLock({
   };
 
   const lockApp = () => {
-    sessionStorage.removeItem(SESSION_KEY);
+    clearAutoLockTimer();
+
+    sessionStorage.removeItem(
+      SESSION_KEY
+    );
 
     setEnteredPin("");
     setError("");
@@ -48,18 +63,28 @@ export default function AppLock({
   };
 
   const startAutoLockTimer = () => {
+    clearAutoLockTimer();
+
     const enabled =
       localStorage.getItem(LOCK_KEY) === "true";
+
+    if (!enabled) {
+      return;
+    }
 
     const autoLock =
       (localStorage.getItem(
         AUTO_LOCK_KEY
       ) || "immediately") as AutoLockTime;
 
-    if (!enabled) {
-      return;
-    }
-
+    /*
+     * Important:
+     *
+     * "immediately" ka matlab page navigation
+     * par PIN dobara nahi maangna.
+     *
+     * Navigation ko lock trigger nahi karna hai.
+     */
     if (autoLock === "immediately") {
       return;
     }
@@ -70,7 +95,7 @@ export default function AppLock({
       return;
     }
 
-    window.setTimeout(() => {
+    timerRef.current = setTimeout(() => {
       lockApp();
     }, minutes * 60 * 1000);
   };
@@ -86,7 +111,9 @@ export default function AppLock({
 
     const savedPinLength =
       Number(
-        localStorage.getItem(PIN_LENGTH_KEY)
+        localStorage.getItem(
+          PIN_LENGTH_KEY
+        )
       ) || 4;
 
     const autoLock =
@@ -97,60 +124,81 @@ export default function AppLock({
     setPinLength(savedPinLength);
 
     if (!enabled || !hash) {
+      clearAutoLockTimer();
+
       setLocked(false);
       setReady(true);
+
       return;
     }
 
     if (keepUnlocked) {
       markUnlocked();
+
       setLocked(false);
       setReady(true);
+
       startAutoLockTimer();
+
       return;
     }
 
     const unlockedAt =
-      sessionStorage.getItem(SESSION_KEY);
+      sessionStorage.getItem(
+        SESSION_KEY
+      );
 
-    if (autoLock === "immediately") {
-      if (unlockedAt) {
+    /*
+     * IMPORTANT:
+     *
+     * Agar current browser session mein
+     * user already PIN unlock kar chuka hai,
+     * to page change ke baad unlocked rehna hai.
+     */
+    if (unlockedAt) {
+      if (autoLock === "immediately") {
         setLocked(false);
-      } else {
-        setLocked(true);
+        setReady(true);
+
+        return;
       }
 
-      setReady(true);
-      return;
-    }
+      const minutes =
+        Number(autoLock);
 
-    const minutes = Number(autoLock);
+      if (minutes > 0) {
+        const elapsed =
+          Date.now() -
+          Number(unlockedAt);
 
-    if (
-      unlockedAt &&
-      minutes > 0
-    ) {
-      const elapsed =
-        Date.now() -
-        Number(unlockedAt);
+        const allowedTime =
+          minutes * 60 * 1000;
 
-      const allowedTime =
-        minutes * 60 * 1000;
+        if (elapsed < allowedTime) {
+          setLocked(false);
+          setReady(true);
 
-      if (elapsed < allowedTime) {
-        setLocked(false);
-        startAutoLockTimer();
-      } else {
-        sessionStorage.removeItem(
-          SESSION_KEY
-        );
+          startAutoLockTimer();
 
-        setLocked(true);
+          return;
+        }
       }
-    } else {
-      setLocked(true);
     }
 
+    /*
+     * Yahan tabhi lock hoga jab:
+     *
+     * 1. User ne abhi tak unlock nahi kiya
+     * OR
+     * 2. Auto-lock time expire ho chuka hai.
+     */
+    clearAutoLockTimer();
+
+    sessionStorage.removeItem(
+      SESSION_KEY
+    );
+
+    setLocked(true);
     setReady(true);
   };
 
@@ -171,6 +219,8 @@ export default function AppLock({
         "hisabpro-app-lock-changed",
         handleLockChange
       );
+
+      clearAutoLockTimer();
     };
   }, []);
 
@@ -181,6 +231,15 @@ export default function AppLock({
 
     const handleActivity = () => {
       markUnlocked();
+
+      const enabled =
+        localStorage.getItem(
+          LOCK_KEY
+        ) === "true";
+
+      if (enabled) {
+        startAutoLockTimer();
+      }
     };
 
     document.addEventListener(
@@ -264,12 +323,15 @@ export default function AppLock({
       setError(
         `Please enter ${pinLength} digit PIN.`
       );
+
       return;
     }
 
     try {
       const enteredHash =
-        await createHash(enteredPin);
+        await createHash(
+          enteredPin
+        );
 
       const savedHash =
         localStorage.getItem(
@@ -279,8 +341,12 @@ export default function AppLock({
       if (
         enteredHash !== savedHash
       ) {
-        setError("Incorrect PIN.");
+        setError(
+          "Incorrect PIN."
+        );
+
         setEnteredPin("");
+
         return;
       }
 
@@ -332,7 +398,9 @@ export default function AppLock({
           🔒
         </div>
 
-        <h1>HisabPro Locked</h1>
+        <h1>
+          HisabPro Locked
+        </h1>
 
         <p>
           Continue karne ke liye
