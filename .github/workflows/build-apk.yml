@@ -93,16 +93,24 @@ jobs:
 
 
       # =========================================
-      # COPY WEBSITE
+      # COPY WEBSITE INTO APK
       # =========================================
 
       - name: Copy website into APK
         run: |
           cp -R out/. android/app/src/main/assets/hisabpro/
 
+          echo "========================================"
+          echo "WEBSITE FILES"
+          echo "========================================"
+
+          find android/app/src/main/assets/hisabpro \
+            -maxdepth 2 \
+            -type f | head -80
+
 
       # =========================================
-      # COPY HISABPRO LOGO
+      # COPY HISABPRO LAUNCHER LOGO
       # =========================================
 
       - name: Copy HisabPro launcher logo
@@ -126,7 +134,9 @@ jobs:
 
           fi
 
-          echo "===== LAUNCHER ICON ====="
+          echo "========================================"
+          echo "LAUNCHER ICON"
+          echo "========================================"
 
           ls -lh \
             android/app/src/main/res/drawable/ic_launcher.png
@@ -205,7 +215,6 @@ jobs:
 
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
-
                   targetCompatibility JavaVersion.VERSION_17
               }
 
@@ -320,7 +329,9 @@ jobs:
 
           import android.annotation.SuppressLint;
           import android.app.Activity;
+          import android.net.Uri;
           import android.os.Bundle;
+          import android.webkit.MimeTypeMap;
           import android.webkit.WebResourceRequest;
           import android.webkit.WebResourceResponse;
           import android.webkit.WebSettings;
@@ -328,6 +339,9 @@ jobs:
           import android.webkit.WebViewClient;
 
           import androidx.webkit.WebViewAssetLoader;
+
+          import java.io.IOException;
+          import java.io.InputStream;
 
           public class MainActivity extends Activity {
 
@@ -344,7 +358,7 @@ jobs:
 
 
                   // =====================================
-                  // WEBVIEW
+                  // CREATE WEBVIEW
                   // =====================================
 
                   webView = new WebView(this);
@@ -383,11 +397,20 @@ jobs:
                   assetLoader =
                           new WebViewAssetLoader.Builder()
 
+                                  // Handles:
+                                  // /assets/hisabpro/...
                                   .addPathHandler(
                                           "/assets/",
                                           new WebViewAssetLoader.AssetsPathHandler(
                                                   this
                                           )
+                                  )
+
+                                  // Handles:
+                                  // /hisabpro/...
+                                  .addPathHandler(
+                                          "/hisabpro/",
+                                          new HisabProPathHandler()
                                   )
 
                                   .build();
@@ -421,12 +444,9 @@ jobs:
                                       String url
                               ) {
 
-                                  android.net.Uri uri =
-                                          android.net.Uri.parse(url);
-
                                   return assetLoader
                                           .shouldInterceptRequest(
-                                                  uri
+                                                  Uri.parse(url)
                                           );
                               }
                           }
@@ -444,13 +464,141 @@ jobs:
 
 
               // =====================================
+              // HISABPRO PATH HANDLER
+              // =====================================
+
+              private class HisabProPathHandler
+                      implements WebViewAssetLoader.PathHandler {
+
+                  @Override
+                  public WebResourceResponse handle(String path) {
+
+                      String cleanPath = path;
+
+                      while (cleanPath.startsWith("/")) {
+                          cleanPath =
+                                  cleanPath.substring(1);
+                      }
+
+                      if (cleanPath.isEmpty()) {
+                          cleanPath = "index.html";
+                      }
+
+                      String assetPath =
+                              "hisabpro/" + cleanPath;
+
+
+                      try {
+
+                          InputStream inputStream =
+                                  getAssets().open(assetPath);
+
+                          String mimeType =
+                                  getMimeType(cleanPath);
+
+
+                          return new WebResourceResponse(
+                                  mimeType,
+                                  "UTF-8",
+                                  inputStream
+                          );
+
+                      } catch (IOException e) {
+
+                          return null;
+                      }
+                  }
+              }
+
+
+              // =====================================
+              // MIME TYPE
+              // =====================================
+
+              private String getMimeType(String path) {
+
+                  String extension = "";
+
+                  int dot =
+                          path.lastIndexOf(".");
+
+
+                  if (dot >= 0 &&
+                          dot < path.length() - 1) {
+
+                      extension =
+                              path.substring(dot + 1);
+                  }
+
+
+                  String mimeType =
+                          MimeTypeMap
+                                  .getSingleton()
+                                  .getMimeTypeFromExtension(
+                                          extension.toLowerCase()
+                                  );
+
+
+                  if (mimeType != null) {
+                      return mimeType;
+                  }
+
+
+                  if (path.endsWith(".js")) {
+                      return "application/javascript";
+                  }
+
+
+                  if (path.endsWith(".css")) {
+                      return "text/css";
+                  }
+
+
+                  if (path.endsWith(".json")) {
+                      return "application/json";
+                  }
+
+
+                  if (path.endsWith(".svg")) {
+                      return "image/svg+xml";
+                  }
+
+
+                  if (path.endsWith(".html")) {
+                      return "text/html";
+                  }
+
+
+                  if (path.endsWith(".png")) {
+                      return "image/png";
+                  }
+
+
+                  if (path.endsWith(".jpg") ||
+                          path.endsWith(".jpeg")) {
+
+                      return "image/jpeg";
+                  }
+
+
+                  if (path.endsWith(".webp")) {
+                      return "image/webp";
+                  }
+
+
+                  return "text/plain";
+              }
+
+
+              // =====================================
               // ANDROID BACK BUTTON
               // =====================================
 
               @Override
               public void onBackPressed() {
 
-                  if (webView.canGoBack()) {
+                  if (webView != null &&
+                          webView.canGoBack()) {
 
                       webView.goBack();
 
@@ -478,6 +626,8 @@ jobs:
                       webView.setWebViewClient(null);
 
                       webView.destroy();
+
+                      webView = null;
                   }
 
                   super.onDestroy();
@@ -518,9 +668,7 @@ jobs:
         run: |
 
           echo "========================================"
-
           echo "APK FILE"
-
           echo "========================================"
 
           ls -lh \
@@ -528,9 +676,7 @@ jobs:
 
 
           echo "========================================"
-
           echo "APK SIZE"
-
           echo "========================================"
 
           du -h \
@@ -538,21 +684,27 @@ jobs:
 
 
           echo "========================================"
-
           echo "WEBSITE INSIDE APK"
-
           echo "========================================"
 
           unzip -l \
             android/app/build/outputs/apk/debug/app-debug.apk \
             | grep "assets/hisabpro" \
-            | head -40
+            | head -80
 
 
           echo "========================================"
+          echo "NEXT.JS FILES"
+          echo "========================================"
 
+          unzip -l \
+            android/app/build/outputs/apk/debug/app-debug.apk \
+            | grep "assets/hisabpro/_next" \
+            | head -30
+
+
+          echo "========================================"
           echo "LAUNCHER ICON"
-
           echo "========================================"
 
           unzip -l \
