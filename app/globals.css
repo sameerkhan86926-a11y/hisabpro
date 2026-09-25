@@ -9240,11 +9240,12 @@ button {
    APP LOCK NUMERIC KEYPAD
    ========================================= */
 
-.app-lock-icon-symbol {
-  color: #102a56;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 1px;
+.app-lock-logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
 }
 
 .app-lock-pin-dots {
