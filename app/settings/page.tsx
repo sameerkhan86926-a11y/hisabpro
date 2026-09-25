@@ -745,7 +745,7 @@ export default function SettingsPage() {
 
             <input
               type="tel"
-              placeholder="e.g. 9876543210"
+              placeholder="e.g. 9876XXXXXX"
               value={
                 business.phone
               }
