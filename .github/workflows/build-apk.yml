@@ -62,7 +62,7 @@ jobs:
           cat > android/gradle.properties <<'EOF'
           android.useAndroidX=true
           android.enableJetifier=true
-          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8
           EOF
 
       # ============================================
@@ -209,8 +209,20 @@ jobs:
           </manifest>
           EOF
 
+      - name: Create styles.xml
+        run: |
+          cat > android/app/src/main/res/values/styles.xml <<'EOF'
+          <resources>
+              <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+                  <item name="android:statusBarColor">#102A56</item>
+                  <item name="android:navigationBarColor">#FFFFFF</item>
+                  <item name="android:windowLightStatusBar">false</item>
+              </style>
+          </resources>
+          EOF
+
       # ============================================
-      # 10. MAIN ACTIVITY (BACKUP BLOB, PRINT, WHATSAPP, UPLOAD)
+      # 10. MAIN ACTIVITY (CRASH FIX: IMPORTS & JAVA BRIDGES)
       # ============================================
       - name: Create MainActivity.java
         run: |
@@ -273,7 +285,7 @@ jobs:
                   settings.setBuiltInZoomControls(false);
                   settings.setDisplayZoomControls(false);
 
-                  // 1. Bridges: Print aur Backup Saver
+                  // 1. Bridges: Print aur Backup File Saver
                   webView.addJavascriptInterface(new PrintInterface(), "AndroidPrint");
                   webView.addJavascriptInterface(new FileSaverInterface(), "AndroidFileSaver");
 
@@ -302,7 +314,7 @@ jobs:
                       }
                   });
 
-                  // 3. File Download Handler (Data URLs & links)
+                  // 3. File Download Handler
                   webView.setDownloadListener(new DownloadListener() {
                       @Override
                       public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimeType, long contentLength) {
@@ -364,7 +376,7 @@ jobs:
                       public void onPageFinished(WebView view, String url) {
                           super.onPageFinished(view, url);
 
-                          // Hook window.print()
+                          // Hook standard window.print()
                           view.evaluateJavascript(
                               "window.print = function() { if (window.AndroidPrint) { window.AndroidPrint.print(); } };",
                               null
@@ -395,7 +407,7 @@ jobs:
               }
 
               // Native File Saver Bridge for Backup JSON
-              private class FileSaverInterface {
+              public class FileSaverInterface {
                   @JavascriptInterface
                   public void saveBlob(String filename, String content) {
                       runOnUiThread(() -> {
@@ -452,7 +464,8 @@ jobs:
                   }
               }
 
-              private class PrintInterface {
+              // Native Android Print Implementation
+              public class PrintInterface {
                   @JavascriptInterface
                   public void print() {
                       runOnUiThread(() -> {
