@@ -1,85 +1,57 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import AppLock from "../components/AppLock";
+
+export const viewport: Viewport = {
+  themeColor: "#102a56",
+};
 
 export const metadata: Metadata = {
   title: "HisabPro",
   description: "Sales • Stock • Khata • Profit",
-
   manifest: "/hisabpro/manifest.json",
-
   icons: {
     icon: [
       {
         url: "/hisabpro/favicon-32.png",
         type: "image/png",
-        sizes: "32x32"
+        sizes: "32x32",
       },
       {
         url: "/hisabpro/icon-192.png",
         type: "image/png",
-        sizes: "192x192"
+        sizes: "192x192",
       },
       {
         url: "/hisabpro/icon-512.png",
         type: "image/png",
-        sizes: "512x512"
-      }
+        sizes: "512x512",
+      },
     ],
-
     apple: [
       {
         url: "/hisabpro/apple-touch-icon.png",
         type: "image/png",
-        sizes: "180x180"
-      }
-    ]
+        sizes: "180x180",
+      },
+    ],
   },
-
   appleWebApp: {
     capable: true,
     title: "HisabPro",
-    statusBarStyle: "default"
-  }
+    statusBarStyle: "default",
+  },
 };
 
 export default function RootLayout({
-  children
+  children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
     <html lang="en">
-      <head>
-        <meta name="theme-color" content="#102a56" />
-
-        <meta
-          name="mobile-web-app-capable"
-          content="yes"
-        />
-
-        <meta
-          name="apple-web-app-capable"
-          content="yes"
-        />
-
-        <meta
-          name="apple-web-app-title"
-          content="HisabPro"
-        />
-
-        <link
-          rel="manifest"
-          href="/hisabpro/manifest.json"
-        />
-
-        <link
-          rel="apple-touch-icon"
-          href="/hisabpro/apple-touch-icon.png"
-        />
-      </head>
-
       <body>
-        {children}
+        <AppLock>{children}</AppLock>
       </body>
     </html>
   );
