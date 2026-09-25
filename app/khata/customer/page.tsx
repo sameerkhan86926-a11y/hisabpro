@@ -246,8 +246,12 @@ export default function CustomerPage() {
 
     setEditing(false);
 
+    window.dispatchEvent(
+      new Event("hisabpro-data-updated")
+    );
+
     setMessage(
-      "Customer profile updated successfully ✅"
+      "Customer profile updated successfully"
     );
   }
 
@@ -279,6 +283,10 @@ export default function CustomerPage() {
       JSON.stringify(
         updatedCustomers
       )
+    );
+
+    window.dispatchEvent(
+      new Event("hisabpro-data-updated")
     );
 
     goToKhata();
@@ -360,10 +368,12 @@ export default function CustomerPage() {
         ...old,
       ]
     );
+
+    window.dispatchEvent(
+      new Event("hisabpro-data-updated")
+    );
   }
-window.dispatchEvent(
-  new Event("hisabpro-data-updated")
-);
+
   function addCredit() {
     if (!customer) return;
 
@@ -408,7 +418,7 @@ window.dispatchEvent(
     setNote("");
 
     setMessage(
-      "Udhaar added successfully ✅"
+      "Udhaar added successfully"
     );
   }
 
@@ -497,13 +507,13 @@ window.dispatchEvent(
 
     if (paymentMode === "cash") {
       setMessage(
-        "Cash payment received and Cashbook updated successfully ✅"
+        "Cash payment received and Cashbook updated successfully"
       );
     } else {
       setMessage(
         `${getPaymentModeLabel(
           paymentMode
-        )} payment received successfully ✅`
+        )} payment received successfully`
       );
     }
   }
@@ -623,8 +633,12 @@ window.dispatchEvent(
         )
     );
 
+    window.dispatchEvent(
+      new Event("hisabpro-data-updated")
+    );
+
     setMessage(
-      "Payment deleted, customer due and linked Cashbook entry updated successfully ✅"
+      "Payment deleted, customer due and linked Cashbook entry updated successfully"
     );
   }
 
@@ -725,8 +739,6 @@ window.dispatchEvent(
   return (
     <main className="customer-detail-page">
 
-      {/* HEADER */}
-
       <header className="customer-detail-header">
 
         <button
@@ -742,15 +754,14 @@ window.dispatchEvent(
         </h1>
 
         <button
+          type="button"
           onClick={startEdit}
           className="edit-customer-top"
         >
-          ✏️ Edit
+          Edit
         </button>
 
       </header>
-
-      {/* PROFILE */}
 
       <section className="customer-profile">
 
@@ -782,18 +793,18 @@ window.dispatchEvent(
           </h2>
 
           <p>
-            📱 {customer.phone}
+            {customer.phone}
           </p>
 
           {customer.email && (
             <p>
-              ✉️ {customer.email}
+              {customer.email}
             </p>
           )}
 
           {customer.address && (
             <p>
-              📍 {customer.address}
+              {customer.address}
             </p>
           )}
 
@@ -810,15 +821,12 @@ window.dispatchEvent(
 
       </section>
 
-      {/* QUICK ACTIONS */}
-
       <section className="customer-quick-actions">
 
         <a
           href={`tel:${customer.phone}`}
           className="quick-call"
         >
-          📞
           <span>
             Call
           </span>
@@ -833,25 +841,22 @@ window.dispatchEvent(
           rel="noopener noreferrer"
           className="quick-whatsapp"
         >
-          💬
           <span>
             WhatsApp
           </span>
         </a>
 
         <button
+          type="button"
           onClick={startEdit}
           className="quick-edit"
         >
-          ✏️
           <span>
             Edit
           </span>
         </button>
 
       </section>
-
-      {/* DUE */}
 
       <section className="customer-due-card">
 
@@ -875,8 +880,6 @@ window.dispatchEvent(
         </small>
 
       </section>
-
-      {/* SUMMARY */}
 
       <section className="customer-summary">
 
@@ -918,8 +921,6 @@ window.dispatchEvent(
 
       </section>
 
-      {/* EDIT PROFILE */}
-
       {editing && (
 
         <section className="customer-edit-form">
@@ -931,11 +932,12 @@ window.dispatchEvent(
             </h2>
 
             <button
+              type="button"
               onClick={() =>
                 setEditing(false)
               }
             >
-              ✕
+              X
             </button>
 
           </div>
@@ -958,7 +960,7 @@ window.dispatchEvent(
                     ? editName
                         .charAt(0)
                         .toUpperCase()
-                    : "👤"}
+                    : "U"}
                 </span>
 
               )}
@@ -1056,6 +1058,7 @@ window.dispatchEvent(
           <div className="edit-form-buttons">
 
             <button
+              type="button"
               className="save-customer-button"
               onClick={
                 saveCustomerChanges
@@ -1065,6 +1068,7 @@ window.dispatchEvent(
             </button>
 
             <button
+              type="button"
               className="cancel-edit-button"
               onClick={() =>
                 setEditing(false)
@@ -1084,8 +1088,6 @@ window.dispatchEvent(
         </section>
 
       )}
-
-      {/* TRANSACTION FORM */}
 
       <section className="transaction-form">
 
@@ -1129,8 +1131,6 @@ window.dispatchEvent(
           }
         />
 
-        {/* PAYMENT MODE */}
-
         <div className="payment-mode-section">
 
           <label>
@@ -1138,8 +1138,6 @@ window.dispatchEvent(
           </label>
 
           <div className="customer-payment-modes">
-
-            {/* CASH */}
 
             <button
               type="button"
@@ -1152,7 +1150,6 @@ window.dispatchEvent(
                 setPaymentMode("cash")
               }
             >
-
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -1168,13 +1165,11 @@ window.dispatchEvent(
                   height="12"
                   rx="2"
                 />
-
                 <circle
                   cx="12"
                   cy="12"
                   r="3"
                 />
-
                 <path d="M3 9h2" />
                 <path d="M19 9h2" />
                 <path d="M3 15h2" />
@@ -1184,10 +1179,7 @@ window.dispatchEvent(
               <span>
                 Cash
               </span>
-
             </button>
-
-            {/* UPI */}
 
             <button
               type="button"
@@ -1200,7 +1192,6 @@ window.dispatchEvent(
                 setPaymentMode("upi")
               }
             >
-
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -1216,7 +1207,6 @@ window.dispatchEvent(
                   height="20"
                   rx="2"
                 />
-
                 <path d="M9 7h6" />
                 <path d="M9 11h3" />
                 <path d="M10 18h4" />
@@ -1225,10 +1215,7 @@ window.dispatchEvent(
               <span>
                 UPI
               </span>
-
             </button>
-
-            {/* CARD */}
 
             <button
               type="button"
@@ -1241,7 +1228,6 @@ window.dispatchEvent(
                 setPaymentMode("card")
               }
             >
-
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -1257,7 +1243,6 @@ window.dispatchEvent(
                   height="14"
                   rx="2"
                 />
-
                 <path d="M2.5 10h19" />
                 <path d="M6 15h4" />
               </svg>
@@ -1265,10 +1250,7 @@ window.dispatchEvent(
               <span>
                 Card
               </span>
-
             </button>
-
-            {/* BANK */}
 
             <button
               type="button"
@@ -1281,7 +1263,6 @@ window.dispatchEvent(
                 setPaymentMode("bank")
               }
             >
-
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -1303,10 +1284,7 @@ window.dispatchEvent(
               <span>
                 Bank
               </span>
-
             </button>
-
-            {/* ONLINE */}
 
             <button
               type="button"
@@ -1319,7 +1297,6 @@ window.dispatchEvent(
                 setPaymentMode("online")
               }
             >
-
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -1333,9 +1310,7 @@ window.dispatchEvent(
                   cy="12"
                   r="9"
                 />
-
                 <path d="M3 12h18" />
-
                 <path d="M12 3c3 3 4 6 4 9s-1 6-4 9" />
                 <path d="M12 3c-3 3-4 6-4 9s1 6 4 9" />
               </svg>
@@ -1343,7 +1318,6 @@ window.dispatchEvent(
               <span>
                 Online
               </span>
-
             </button>
 
           </div>
@@ -1353,6 +1327,7 @@ window.dispatchEvent(
         <div className="transaction-buttons">
 
           <button
+            type="button"
             className="credit-button"
             onClick={addCredit}
           >
@@ -1360,6 +1335,7 @@ window.dispatchEvent(
           </button>
 
           <button
+            type="button"
             className="payment-button"
             onClick={
               receivePayment
@@ -1377,8 +1353,6 @@ window.dispatchEvent(
         )}
 
       </section>
-
-      {/* TRANSACTION HISTORY */}
 
       <section className="transaction-history">
 
@@ -1399,7 +1373,7 @@ window.dispatchEvent(
           <div className="empty-transactions">
 
             <div>
-              📋
+              No transactions
             </div>
 
             <h3>
@@ -1501,7 +1475,7 @@ window.dispatchEvent(
                     }
                     title="Delete payment"
                   >
-                    🗑️
+                    Delete
                   </button>
                 )}
 
@@ -1514,16 +1488,15 @@ window.dispatchEvent(
 
       </section>
 
-      {/* DELETE */}
-
       <section className="customer-danger-zone">
 
         <button
+          type="button"
           onClick={
             deleteCustomer
           }
         >
-          🗑️ Delete Customer
+          Delete Customer
         </button>
 
       </section>
