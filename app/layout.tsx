@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import AppLock from "../components/AppLock";
 
 export const viewport: Viewport = {
   themeColor: "#102a56",
@@ -10,6 +9,7 @@ export const metadata: Metadata = {
   title: "HisabPro",
   description: "Sales • Stock • Khata • Profit",
   manifest: "/hisabpro/manifest.json",
+
   icons: {
     icon: [
       {
@@ -28,6 +28,7 @@ export const metadata: Metadata = {
         sizes: "512x512",
       },
     ],
+
     apple: [
       {
         url: "/hisabpro/apple-touch-icon.png",
@@ -36,6 +37,7 @@ export const metadata: Metadata = {
       },
     ],
   },
+
   appleWebApp: {
     capable: true,
     title: "HisabPro",
@@ -50,9 +52,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>
-        <AppLock>{children}</AppLock>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
