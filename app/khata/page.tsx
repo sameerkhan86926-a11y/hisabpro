@@ -283,7 +283,7 @@ export default function KhataPage() {
 
         <input
           type="tel"
-          placeholder="Example: 9876543210"
+          placeholder="Example: 9876543XXX"
           value={phone}
           onChange={(e) =>
             setPhone(e.target.value)
