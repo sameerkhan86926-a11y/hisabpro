@@ -248,20 +248,30 @@ export default function Dashboard() {
   const [notificationCount, setNotificationCount] = useState(0);
 
   useEffect(() => {
+  loadDashboard();
+
+  const handleStorage = () => {
     loadDashboard();
+  };
 
-    const handleStorage = () => {
-      loadDashboard();
-    };
+  window.addEventListener("storage", handleStorage);
+  window.addEventListener("focus", handleStorage);
 
-    window.addEventListener("storage", handleStorage);
-    window.addEventListener("focus", handleStorage);
+  window.addEventListener(
+    "hisabpro-data-updated",
+    handleStorage
+  );
 
-    return () => {
-      window.removeEventListener("storage", handleStorage);
-      window.removeEventListener("focus", handleStorage);
-    };
-  }, []);
+  return () => {
+    window.removeEventListener("storage", handleStorage);
+    window.removeEventListener("focus", handleStorage);
+
+    window.removeEventListener(
+      "hisabpro-data-updated",
+      handleStorage
+    );
+  };
+}, []);
 
   const loadDashboard = () => {
     try {
