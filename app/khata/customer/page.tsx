@@ -246,12 +246,8 @@ export default function CustomerPage() {
 
     setEditing(false);
 
-    window.dispatchEvent(
-      new Event("hisabpro-data-updated")
-    );
-
     setMessage(
-      "Customer profile updated successfully"
+      "Customer profile updated successfully ✅"
     );
   }
 
@@ -283,10 +279,6 @@ export default function CustomerPage() {
       JSON.stringify(
         updatedCustomers
       )
-    );
-
-    window.dispatchEvent(
-      new Event("hisabpro-data-updated")
     );
 
     goToKhata();
@@ -368,12 +360,10 @@ export default function CustomerPage() {
         ...old,
       ]
     );
-
-    window.dispatchEvent(
-      new Event("hisabpro-data-updated")
-    );
-  }
-
+  
+window.dispatchEvent(
+  new Event("hisabpro-data-updated")
+);}
   function addCredit() {
     if (!customer) return;
 
@@ -418,7 +408,7 @@ export default function CustomerPage() {
     setNote("");
 
     setMessage(
-      "Udhaar added successfully"
+      "Udhaar added successfully ✅"
     );
   }
 
@@ -507,13 +497,13 @@ export default function CustomerPage() {
 
     if (paymentMode === "cash") {
       setMessage(
-        "Cash payment received and Cashbook updated successfully"
+        "Cash payment received and Cashbook updated successfully ✅"
       );
     } else {
       setMessage(
         `${getPaymentModeLabel(
           paymentMode
-        )} payment received successfully`
+        )} payment received successfully ✅`
       );
     }
   }
@@ -633,12 +623,8 @@ export default function CustomerPage() {
         )
     );
 
-    window.dispatchEvent(
-      new Event("hisabpro-data-updated")
-    );
-
     setMessage(
-      "Payment deleted, customer due and linked Cashbook entry updated successfully"
+      "Payment deleted, customer due and linked Cashbook entry updated successfully ✅"
     );
   }
 
@@ -739,6 +725,8 @@ export default function CustomerPage() {
   return (
     <main className="customer-detail-page">
 
+      {/* HEADER */}
+
       <header className="customer-detail-header">
 
         <button
@@ -754,14 +742,15 @@ export default function CustomerPage() {
         </h1>
 
         <button
-          type="button"
           onClick={startEdit}
           className="edit-customer-top"
         >
-          Edit
+          ✏️ Edit
         </button>
 
       </header>
+
+      {/* PROFILE */}
 
       <section className="customer-profile">
 
@@ -793,18 +782,18 @@ export default function CustomerPage() {
           </h2>
 
           <p>
-            {customer.phone}
+            📱 {customer.phone}
           </p>
 
           {customer.email && (
             <p>
-              {customer.email}
+              ✉️ {customer.email}
             </p>
           )}
 
           {customer.address && (
             <p>
-              {customer.address}
+              📍 {customer.address}
             </p>
           )}
 
@@ -821,12 +810,15 @@ export default function CustomerPage() {
 
       </section>
 
+      {/* QUICK ACTIONS */}
+
       <section className="customer-quick-actions">
 
         <a
           href={`tel:${customer.phone}`}
           className="quick-call"
         >
+          📞
           <span>
             Call
           </span>
@@ -841,22 +833,25 @@ export default function CustomerPage() {
           rel="noopener noreferrer"
           className="quick-whatsapp"
         >
+          💬
           <span>
             WhatsApp
           </span>
         </a>
 
         <button
-          type="button"
           onClick={startEdit}
           className="quick-edit"
         >
+          ✏️
           <span>
             Edit
           </span>
         </button>
 
       </section>
+
+      {/* DUE */}
 
       <section className="customer-due-card">
 
@@ -880,6 +875,8 @@ export default function CustomerPage() {
         </small>
 
       </section>
+
+      {/* SUMMARY */}
 
       <section className="customer-summary">
 
@@ -921,6 +918,8 @@ export default function CustomerPage() {
 
       </section>
 
+      {/* EDIT PROFILE */}
+
       {editing && (
 
         <section className="customer-edit-form">
@@ -932,12 +931,11 @@ export default function CustomerPage() {
             </h2>
 
             <button
-              type="button"
               onClick={() =>
                 setEditing(false)
               }
             >
-              X
+              ✕
             </button>
 
           </div>
@@ -960,7 +958,7 @@ export default function CustomerPage() {
                     ? editName
                         .charAt(0)
                         .toUpperCase()
-                    : "U"}
+                    : "👤"}
                 </span>
 
               )}
@@ -1058,7 +1056,6 @@ export default function CustomerPage() {
           <div className="edit-form-buttons">
 
             <button
-              type="button"
               className="save-customer-button"
               onClick={
                 saveCustomerChanges
@@ -1068,7 +1065,6 @@ export default function CustomerPage() {
             </button>
 
             <button
-              type="button"
               className="cancel-edit-button"
               onClick={() =>
                 setEditing(false)
@@ -1088,6 +1084,8 @@ export default function CustomerPage() {
         </section>
 
       )}
+
+      {/* TRANSACTION FORM */}
 
       <section className="transaction-form">
 
@@ -1131,6 +1129,8 @@ export default function CustomerPage() {
           }
         />
 
+        {/* PAYMENT MODE */}
+
         <div className="payment-mode-section">
 
           <label>
@@ -1138,6 +1138,8 @@ export default function CustomerPage() {
           </label>
 
           <div className="customer-payment-modes">
+
+            {/* CASH */}
 
             <button
               type="button"
@@ -1150,6 +1152,7 @@ export default function CustomerPage() {
                 setPaymentMode("cash")
               }
             >
+
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -1165,11 +1168,13 @@ export default function CustomerPage() {
                   height="12"
                   rx="2"
                 />
+
                 <circle
                   cx="12"
                   cy="12"
                   r="3"
                 />
+
                 <path d="M3 9h2" />
                 <path d="M19 9h2" />
                 <path d="M3 15h2" />
@@ -1179,7 +1184,10 @@ export default function CustomerPage() {
               <span>
                 Cash
               </span>
+
             </button>
+
+            {/* UPI */}
 
             <button
               type="button"
@@ -1192,6 +1200,7 @@ export default function CustomerPage() {
                 setPaymentMode("upi")
               }
             >
+
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -1207,6 +1216,7 @@ export default function CustomerPage() {
                   height="20"
                   rx="2"
                 />
+
                 <path d="M9 7h6" />
                 <path d="M9 11h3" />
                 <path d="M10 18h4" />
@@ -1215,7 +1225,10 @@ export default function CustomerPage() {
               <span>
                 UPI
               </span>
+
             </button>
+
+            {/* CARD */}
 
             <button
               type="button"
@@ -1228,6 +1241,7 @@ export default function CustomerPage() {
                 setPaymentMode("card")
               }
             >
+
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -1243,6 +1257,7 @@ export default function CustomerPage() {
                   height="14"
                   rx="2"
                 />
+
                 <path d="M2.5 10h19" />
                 <path d="M6 15h4" />
               </svg>
@@ -1250,7 +1265,10 @@ export default function CustomerPage() {
               <span>
                 Card
               </span>
+
             </button>
+
+            {/* BANK */}
 
             <button
               type="button"
@@ -1263,6 +1281,7 @@ export default function CustomerPage() {
                 setPaymentMode("bank")
               }
             >
+
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -1284,7 +1303,10 @@ export default function CustomerPage() {
               <span>
                 Bank
               </span>
+
             </button>
+
+            {/* ONLINE */}
 
             <button
               type="button"
@@ -1297,6 +1319,7 @@ export default function CustomerPage() {
                 setPaymentMode("online")
               }
             >
+
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -1310,7 +1333,9 @@ export default function CustomerPage() {
                   cy="12"
                   r="9"
                 />
+
                 <path d="M3 12h18" />
+
                 <path d="M12 3c3 3 4 6 4 9s-1 6-4 9" />
                 <path d="M12 3c-3 3-4 6-4 9s1 6 4 9" />
               </svg>
@@ -1318,6 +1343,7 @@ export default function CustomerPage() {
               <span>
                 Online
               </span>
+
             </button>
 
           </div>
@@ -1327,7 +1353,6 @@ export default function CustomerPage() {
         <div className="transaction-buttons">
 
           <button
-            type="button"
             className="credit-button"
             onClick={addCredit}
           >
@@ -1335,7 +1360,6 @@ export default function CustomerPage() {
           </button>
 
           <button
-            type="button"
             className="payment-button"
             onClick={
               receivePayment
@@ -1353,6 +1377,8 @@ export default function CustomerPage() {
         )}
 
       </section>
+
+      {/* TRANSACTION HISTORY */}
 
       <section className="transaction-history">
 
@@ -1373,7 +1399,7 @@ export default function CustomerPage() {
           <div className="empty-transactions">
 
             <div>
-              No transactions
+              📋
             </div>
 
             <h3>
@@ -1475,7 +1501,7 @@ export default function CustomerPage() {
                     }
                     title="Delete payment"
                   >
-                    Delete
+                    🗑️
                   </button>
                 )}
 
@@ -1488,15 +1514,16 @@ export default function CustomerPage() {
 
       </section>
 
+      {/* DELETE */}
+
       <section className="customer-danger-zone">
 
         <button
-          type="button"
           onClick={
             deleteCustomer
           }
         >
-          Delete Customer
+          🗑️ Delete Customer
         </button>
 
       </section>
