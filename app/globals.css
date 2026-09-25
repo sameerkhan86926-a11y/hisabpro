@@ -9236,3 +9236,117 @@ button {
     padding: 18px;
   }
 }
+/* =========================================
+   APP LOCK NUMERIC KEYPAD
+   ========================================= */
+
+.app-lock-icon-symbol {
+  color: #102a56;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.app-lock-pin-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 18px;
+  margin: 0 0 22px;
+}
+
+.app-lock-pin-dots span {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #d8dfeb;
+  border: 1px solid #cbd4e2;
+  box-sizing: border-box;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.app-lock-pin-dots span.filled {
+  background: #102a56;
+  border-color: #102a56;
+  transform: scale(1.05);
+}
+
+.app-lock-hidden-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.app-lock-keypad {
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.app-lock-keypad button {
+  height: 58px;
+  border: 1px solid #dce3ed;
+  border-radius: 14px;
+  background: #f8faff;
+  color: #102a56;
+  font-size: 21px;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 0.15s ease,
+    transform 0.1s ease,
+    border-color 0.15s ease;
+}
+
+.app-lock-keypad button:hover {
+  background: #eef3fb;
+  border-color: #cbd6e5;
+}
+
+.app-lock-keypad button:active {
+  transform: scale(0.95);
+  background: #e6edf8;
+}
+
+.app-lock-keypad
+.app-lock-keypad-action {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.app-lock-button {
+  margin-top: 18px;
+}
+
+@media (max-width: 480px) {
+  .app-lock-keypad {
+    max-width: 270px;
+    gap: 9px;
+  }
+
+  .app-lock-keypad button {
+    height: 56px;
+    border-radius: 13px;
+    font-size: 20px;
+  }
+
+  .app-lock-pin-dots {
+    gap: 11px;
+    margin-bottom: 20px;
+  }
+
+  .app-lock-pin-dots span {
+    width: 10px;
+    height: 10px;
+  }
+}
