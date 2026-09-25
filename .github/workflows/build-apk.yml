@@ -9,17 +9,17 @@ jobs:
 
     steps:
 
-      # =========================================
-      # CHECKOUT
-      # =========================================
+      # --------------------------------------------------
+      # 1. CHECKOUT
+      # --------------------------------------------------
 
       - name: Checkout
         uses: actions/checkout@v4
 
 
-      # =========================================
-      # NODE.JS
-      # =========================================
+      # --------------------------------------------------
+      # 2. NODE 24
+      # --------------------------------------------------
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -27,9 +27,9 @@ jobs:
           node-version: 24
 
 
-      # =========================================
-      # JAVA
-      # =========================================
+      # --------------------------------------------------
+      # 3. JAVA 17
+      # --------------------------------------------------
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -38,25 +38,47 @@ jobs:
           java-version: "17"
 
 
-      # =========================================
-      # INSTALL WEBSITE DEPENDENCIES
-      # =========================================
+      # --------------------------------------------------
+      # 4. INSTALL DEPENDENCIES
+      # --------------------------------------------------
 
       - name: Install dependencies
         run: npm install
 
 
-      # =========================================
-      # BUILD NEXT.JS WEBSITE
-      # =========================================
+      # --------------------------------------------------
+      # 5. BUILD NEXT.JS WEBSITE
+      # --------------------------------------------------
 
       - name: Build Next.js website
         run: npm run build
 
 
-      # =========================================
-      # ANDROID SDK
-      # =========================================
+      # --------------------------------------------------
+      # 6. CHECK WEBSITE OUTPUT
+      # --------------------------------------------------
+
+      - name: Verify website output
+        run: |
+          echo "===== OUT DIRECTORY ====="
+          find out -maxdepth 3 -type f | sort | head -300
+
+          echo ""
+          echo "===== CSS FILES ====="
+          find out -type f | grep "_next/static/css" | head -50 || true
+
+          echo ""
+          echo "===== JS FILES ====="
+          find out -type f | grep "_next/static/chunks" | head -50 || true
+
+          echo ""
+          echo "===== HTML FILES ====="
+          find out -type f -name "*.html" | sort
+
+
+      # --------------------------------------------------
+      # 7. ANDROID SDK PATH
+      # --------------------------------------------------
 
       - name: Setup Android SDK PATH
         run: |
@@ -64,6 +86,10 @@ jobs:
           echo "$ANDROID_HOME/cmdline-tools/16.0/bin" >> $GITHUB_PATH
           echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
+
+      # --------------------------------------------------
+      # 8. ANDROID SDK
+      # --------------------------------------------------
 
       - name: Install Android platform
         run: |
@@ -75,9 +101,9 @@ jobs:
             "build-tools;35.0.0"
 
 
-      # =========================================
-      # CREATE ANDROID PROJECT
-      # =========================================
+      # --------------------------------------------------
+      # 9. CREATE ANDROID PROJECT
+      # --------------------------------------------------
 
       - name: Create Android project
         run: |
@@ -86,36 +112,59 @@ jobs:
           mkdir -p android/app/src/main/res/drawable
           mkdir -p android/app/src/main/assets/hisabpro
 
+
+      # --------------------------------------------------
+      # 10. ANDROIDX
+      # --------------------------------------------------
+
+      - name: Create gradle.properties
+        run: |
           cat > android/gradle.properties <<'EOF'
           android.useAndroidX=true
           android.enableJetifier=true
           EOF
 
 
-      # =========================================
-      # COPY WEBSITE INTO APK
-      # =========================================
+      # --------------------------------------------------
+      # 11. COPY NEXT.JS WEBSITE
+      # --------------------------------------------------
 
-      - name: Copy website into APK
+      - name: Copy website into APK assets
         run: |
+          rm -rf android/app/src/main/assets/hisabpro/*
           cp -R out/. android/app/src/main/assets/hisabpro/
 
-          echo "========================================"
-          echo "WEBSITE FILES"
-          echo "========================================"
 
+      # --------------------------------------------------
+      # 12. VERIFY COPIED WEBSITE
+      # --------------------------------------------------
+
+      - name: Verify APK website assets
+        run: |
+          echo "===== APK ASSETS ====="
+          find android/app/src/main/assets/hisabpro -maxdepth 3 -type f | sort | head -300
+
+          echo ""
+          echo "===== CSS ====="
           find android/app/src/main/assets/hisabpro \
-            -maxdepth 2 \
-            -type f | head -80
+            -type f \
+            | grep "_next/static/css" \
+            | head -50 || true
+
+          echo ""
+          echo "===== JS ====="
+          find android/app/src/main/assets/hisabpro \
+            -type f \
+            | grep "_next/static/chunks" \
+            | head -50 || true
 
 
-      # =========================================
-      # COPY HISABPRO LAUNCHER LOGO
-      # =========================================
+      # --------------------------------------------------
+      # 13. COPY HISABPRO LOGO
+      # --------------------------------------------------
 
       - name: Copy HisabPro launcher logo
         run: |
-
           if [ -f "public/icon-512.png" ]; then
 
             cp public/icon-512.png \
@@ -134,17 +183,10 @@ jobs:
 
           fi
 
-          echo "========================================"
-          echo "LAUNCHER ICON"
-          echo "========================================"
 
-          ls -lh \
-            android/app/src/main/res/drawable/ic_launcher.png
-
-
-      # =========================================
-      # SETTINGS.GRADLE
-      # =========================================
+      # --------------------------------------------------
+      # 14. SETTINGS.GRADLE
+      # --------------------------------------------------
 
       - name: Create settings.gradle
         run: |
@@ -158,7 +200,9 @@ jobs:
           }
 
           dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositoriesMode.set(
+                  RepositoriesMode.FAIL_ON_PROJECT_REPOS
+              )
 
               repositories {
                   google()
@@ -172,9 +216,9 @@ jobs:
           EOF
 
 
-      # =========================================
-      # ROOT BUILD.GRADLE
-      # =========================================
+      # --------------------------------------------------
+      # 15. ROOT BUILD.GRADLE
+      # --------------------------------------------------
 
       - name: Create root build.gradle
         run: |
@@ -185,9 +229,9 @@ jobs:
           EOF
 
 
-      # =========================================
-      # APP BUILD.GRADLE
-      # =========================================
+      # --------------------------------------------------
+      # 16. APP BUILD.GRADLE
+      # --------------------------------------------------
 
       - name: Create app build.gradle
         run: |
@@ -197,11 +241,13 @@ jobs:
           }
 
           android {
+
               namespace 'com.hisabpro.app'
 
               compileSdk 35
 
               defaultConfig {
+
                   applicationId 'com.hisabpro.app'
 
                   minSdk 23
@@ -214,17 +260,21 @@ jobs:
               }
 
               compileOptions {
+
                   sourceCompatibility JavaVersion.VERSION_17
+
                   targetCompatibility JavaVersion.VERSION_17
               }
 
               buildTypes {
 
                   debug {
+
                       minifyEnabled false
                   }
 
                   release {
+
                       minifyEnabled false
                   }
               }
@@ -233,16 +283,15 @@ jobs:
           dependencies {
 
               implementation 'androidx.webkit:webkit:1.12.1'
-
           }
           EOF
 
 
-      # =========================================
-      # ANDROID MANIFEST
-      # =========================================
+      # --------------------------------------------------
+      # 17. ANDROID MANIFEST
+      # --------------------------------------------------
 
-      - name: Create AndroidManifest
+      - name: Create AndroidManifest.xml
         run: |
           cat > android/app/src/main/AndroidManifest.xml <<'EOF'
           <manifest
@@ -252,16 +301,26 @@ jobs:
                   android:name="android.permission.INTERNET" />
 
               <application
+
                   android:allowBackup="true"
+
                   android:label="HisabPro"
+
                   android:icon="@drawable/ic_launcher"
+
                   android:roundIcon="@drawable/ic_launcher"
+
                   android:theme="@style/AppTheme"
+
                   android:usesCleartextTraffic="true">
 
                   <activity
+
                       android:name=".MainActivity"
-                      android:exported="true">
+
+                      android:exported="true"
+
+                      android:screenOrientation="portrait">
 
                       <intent-filter>
 
@@ -281,11 +340,11 @@ jobs:
           EOF
 
 
-      # =========================================
-      # APP THEME
-      # =========================================
+      # --------------------------------------------------
+      # 18. ANDROID STYLE
+      # --------------------------------------------------
 
-      - name: Create styles
+      - name: Create styles.xml
         run: |
           cat > android/app/src/main/res/values/styles.xml <<'EOF'
           <resources>
@@ -294,7 +353,9 @@ jobs:
                   name="AppTheme"
                   parent="android:style/Theme.Material.Light.NoActionBar">
 
-                  <item name="android:fontFamily">sans</item>
+                  <item name="android:fontFamily">
+                      sans
+                  </item>
 
                   <item name="android:colorAccent">
                       #1559B7
@@ -312,17 +373,21 @@ jobs:
                       false
                   </item>
 
+                  <item name="android:windowActionModeOverlay">
+                      true
+                  </item>
+
               </style>
 
           </resources>
           EOF
 
 
-      # =========================================
-      # MAIN ACTIVITY
-      # =========================================
+      # --------------------------------------------------
+      # 19. MAIN ACTIVITY
+      # --------------------------------------------------
 
-      - name: Create MainActivity
+      - name: Create MainActivity.java
         run: |
           cat > android/app/src/main/java/com/hisabpro/app/MainActivity.java <<'EOF'
           package com.hisabpro.app;
@@ -340,6 +405,7 @@ jobs:
 
           import androidx.webkit.WebViewAssetLoader;
 
+          import java.io.ByteArrayOutputStream;
           import java.io.IOException;
           import java.io.InputStream;
 
@@ -349,29 +415,27 @@ jobs:
 
               private WebViewAssetLoader assetLoader;
 
+              private static final String APP_HOST =
+                      "appassets.androidplatform.net";
+
 
               @SuppressLint("SetJavaScriptEnabled")
               @Override
-              protected void onCreate(Bundle savedInstanceState) {
+              protected void onCreate(
+                      Bundle savedInstanceState
+              ) {
 
                   super.onCreate(savedInstanceState);
 
-
-                  // =====================================
-                  // CREATE WEBVIEW
-                  // =====================================
 
                   webView = new WebView(this);
 
                   setContentView(webView);
 
 
-                  // =====================================
-                  // WEBVIEW SETTINGS
-                  // =====================================
-
                   WebSettings settings =
                           webView.getSettings();
+
 
                   settings.setJavaScriptEnabled(true);
 
@@ -379,35 +443,38 @@ jobs:
 
                   settings.setDatabaseEnabled(true);
 
+
                   settings.setAllowFileAccess(false);
 
                   settings.setAllowContentAccess(false);
+
 
                   settings.setBuiltInZoomControls(false);
 
                   settings.setDisplayZoomControls(false);
 
-                  settings.setMediaPlaybackRequiresUserGesture(false);
+
+                  settings.setMediaPlaybackRequiresUserGesture(
+                          false
+                  );
 
 
-                  // =====================================
-                  // LOCAL ASSET LOADER
-                  // =====================================
+                  settings.setJavaScriptCanOpenWindowsAutomatically(
+                          true
+                  );
+
 
                   assetLoader =
                           new WebViewAssetLoader.Builder()
 
-                                  // Handles:
-                                  // /assets/hisabpro/...
                                   .addPathHandler(
                                           "/assets/",
-                                          new WebViewAssetLoader.AssetsPathHandler(
-                                                  this
-                                          )
+                                          new WebViewAssetLoader
+                                                  .AssetsPathHandler(
+                                                          this
+                                                  )
                                   )
 
-                                  // Handles:
-                                  // /hisabpro/...
                                   .addPathHandler(
                                           "/hisabpro/",
                                           new HisabProPathHandler()
@@ -416,16 +483,87 @@ jobs:
                                   .build();
 
 
-                  // =====================================
-                  // WEBVIEW CLIENT
-                  // =====================================
-
                   webView.setWebViewClient(
                           new WebViewClient() {
 
                               @Override
-                              public WebResourceResponse
-                              shouldInterceptRequest(
+                              public boolean shouldOverrideUrlLoading(
+                                      WebView view,
+                                      WebResourceRequest request
+                              ) {
+
+                                  Uri uri =
+                                          request.getUrl();
+
+
+                                  String host =
+                                          uri.getHost();
+
+
+                                  String path =
+                                          uri.getPath();
+
+
+                                  if (
+                                          APP_HOST.equals(host)
+                                                  && path != null
+                                                  && path.startsWith(
+                                                          "/hisabpro/"
+                                                  )
+                                  ) {
+
+                                      loadHisabProPage(
+                                              path
+                                      );
+
+                                      return true;
+                                  }
+
+
+                                  return false;
+                              }
+
+
+                              @Override
+                              public boolean shouldOverrideUrlLoading(
+                                      WebView view,
+                                      String url
+                              ) {
+
+                                  Uri uri =
+                                          Uri.parse(url);
+
+
+                                  String host =
+                                          uri.getHost();
+
+
+                                  String path =
+                                          uri.getPath();
+
+
+                                  if (
+                                          APP_HOST.equals(host)
+                                                  && path != null
+                                                  && path.startsWith(
+                                                          "/hisabpro/"
+                                                  )
+                                  ) {
+
+                                      loadHisabProPage(
+                                              path
+                                      );
+
+                                      return true;
+                                  }
+
+
+                                  return false;
+                              }
+
+
+                              @Override
+                              public WebResourceResponse shouldInterceptRequest(
                                       WebView view,
                                       WebResourceRequest request
                               ) {
@@ -438,8 +576,7 @@ jobs:
 
 
                               @Override
-                              public WebResourceResponse
-                              shouldInterceptRequest(
+                              public WebResourceResponse shouldInterceptRequest(
                                       WebView view,
                                       String url
                               ) {
@@ -453,57 +590,264 @@ jobs:
                   );
 
 
-                  // =====================================
-                  // LOAD HISABPRO
-                  // =====================================
-
-                  webView.loadUrl(
-                          "https://appassets.androidplatform.net/assets/hisabpro/index.html"
+                  loadHisabProPage(
+                          "/hisabpro/"
                   );
               }
 
 
-              // =====================================
-              // HISABPRO PATH HANDLER
-              // =====================================
+              private void loadHisabProPage(
+                      String path
+              ) {
+
+                  String cleanPath =
+                          path;
+
+
+                  while (
+                          cleanPath.startsWith("/")
+                  ) {
+
+                      cleanPath =
+                              cleanPath.substring(1);
+                  }
+
+
+                  if (
+                          cleanPath.equals("hisabpro")
+                                  || cleanPath.equals(
+                                          "hisabpro/"
+                                  )
+                  ) {
+
+                      cleanPath =
+                              "hisabpro/index.html";
+
+                  } else if (
+                          cleanPath.startsWith(
+                                  "hisabpro/"
+                          )
+                  ) {
+
+                      String pagePath =
+                              cleanPath.substring(
+                                      "hisabpro/".length()
+                              );
+
+
+                      if (
+                              pagePath.endsWith("/")
+                      ) {
+
+                          pagePath += "index.html";
+                      }
+
+
+                      if (
+                              !pagePath.contains(".")
+                      ) {
+
+                          pagePath +=
+                                  "/index.html";
+                      }
+
+
+                      cleanPath =
+                              "hisabpro/"
+                                      + pagePath;
+                  }
+
+
+                  try {
+
+                      InputStream inputStream =
+                              getAssets().open(
+                                      cleanPath
+                              );
+
+
+                      byte[] data =
+                              readAllBytes(
+                                      inputStream
+                              );
+
+
+                      inputStream.close();
+
+
+                      String html =
+                              new String(
+                                      data,
+                                      java.nio.charset
+                                              .StandardCharsets
+                                              .UTF_8
+                              );
+
+
+                      int lastSlash =
+                              cleanPath.lastIndexOf("/");
+
+
+                      String basePath;
+
+
+                      if (lastSlash >= 0) {
+
+                          basePath =
+                                  cleanPath.substring(
+                                          0,
+                                          lastSlash + 1
+                                  );
+
+                      } else {
+
+                          basePath =
+                                  "hisabpro/";
+                      }
+
+
+                      String baseUrl =
+                              "https://"
+                                      + APP_HOST
+                                      + "/"
+                                      + basePath;
+
+
+                      webView.loadDataWithBaseURL(
+
+                              baseUrl,
+
+                              html,
+
+                              "text/html",
+
+                              "UTF-8",
+
+                              null
+                      );
+
+                  } catch (
+                          IOException e
+                  ) {
+
+                      String errorHtml =
+                              "<html>"
+                                      + "<body>"
+                                      + "<h2>Page not found</h2>"
+                                      + "<p>"
+                                      + cleanPath
+                                      + "</p>"
+                                      + "</body>"
+                                      + "</html>";
+
+
+                      webView.loadData(
+                              errorHtml,
+                              "text/html",
+                              "UTF-8"
+                      );
+                  }
+              }
+
+
+              private byte[] readAllBytes(
+                      InputStream inputStream
+              ) throws IOException {
+
+                  ByteArrayOutputStream buffer =
+                          new ByteArrayOutputStream();
+
+
+                  byte[] data =
+                          new byte[8192];
+
+
+                  int n;
+
+
+                  while (
+                          (
+                                  n =
+                                          inputStream.read(
+                                                  data
+                                          )
+                          ) != -1
+                  ) {
+
+                      buffer.write(
+                              data,
+                              0,
+                              n
+                      );
+                  }
+
+
+                  return buffer.toByteArray();
+              }
+
 
               private class HisabProPathHandler
-                      implements WebViewAssetLoader.PathHandler {
+                      implements
+                      WebViewAssetLoader.PathHandler {
 
                   @Override
-                  public WebResourceResponse handle(String path) {
+                  public WebResourceResponse handle(
+                          String path
+                  ) {
 
-                      String cleanPath = path;
+                      String cleanPath =
+                              path;
 
-                      while (cleanPath.startsWith("/")) {
+
+                      while (
+                              cleanPath.startsWith("/")
+                      ) {
+
                           cleanPath =
                                   cleanPath.substring(1);
                       }
 
-                      if (cleanPath.isEmpty()) {
-                          cleanPath = "index.html";
+
+                      if (
+                              cleanPath.isEmpty()
+                      ) {
+
+                          cleanPath =
+                                  "index.html";
                       }
 
+
                       String assetPath =
-                              "hisabpro/" + cleanPath;
+                              "hisabpro/"
+                                      + cleanPath;
 
 
                       try {
 
                           InputStream inputStream =
-                                  getAssets().open(assetPath);
+                                  getAssets().open(
+                                          assetPath
+                                  );
+
 
                           String mimeType =
-                                  getMimeType(cleanPath);
+                                  getMimeType(
+                                          cleanPath
+                                  );
 
 
                           return new WebResourceResponse(
+
                                   mimeType,
+
                                   "UTF-8",
+
                                   inputStream
                           );
 
-                      } catch (IOException e) {
+                      } catch (
+                              IOException e
+                      ) {
 
                           return null;
                       }
@@ -511,23 +855,27 @@ jobs:
               }
 
 
-              // =====================================
-              // MIME TYPE
-              // =====================================
+              private String getMimeType(
+                      String path
+              ) {
 
-              private String getMimeType(String path) {
+                  String extension =
+                          "";
 
-                  String extension = "";
 
                   int dot =
                           path.lastIndexOf(".");
 
 
-                  if (dot >= 0 &&
-                          dot < path.length() - 1) {
+                  if (
+                          dot >= 0
+                                  && dot < path.length() - 1
+                  ) {
 
                       extension =
-                              path.substring(dot + 1);
+                              path.substring(
+                                      dot + 1
+                              );
                   }
 
 
@@ -535,54 +883,97 @@ jobs:
                           MimeTypeMap
                                   .getSingleton()
                                   .getMimeTypeFromExtension(
-                                          extension.toLowerCase()
+                                          extension
+                                                  .toLowerCase()
                                   );
 
 
-                  if (mimeType != null) {
+                  if (
+                          mimeType != null
+                  ) {
+
                       return mimeType;
                   }
 
 
-                  if (path.endsWith(".js")) {
+                  if (
+                          path.endsWith(".js")
+                  ) {
+
                       return "application/javascript";
                   }
 
 
-                  if (path.endsWith(".css")) {
+                  if (
+                          path.endsWith(".css")
+                  ) {
+
                       return "text/css";
                   }
 
 
-                  if (path.endsWith(".json")) {
+                  if (
+                          path.endsWith(".json")
+                  ) {
+
                       return "application/json";
                   }
 
 
-                  if (path.endsWith(".svg")) {
+                  if (
+                          path.endsWith(".svg")
+                  ) {
+
                       return "image/svg+xml";
                   }
 
 
-                  if (path.endsWith(".html")) {
+                  if (
+                          path.endsWith(".html")
+                  ) {
+
                       return "text/html";
                   }
 
 
-                  if (path.endsWith(".png")) {
+                  if (
+                          path.endsWith(".png")
+                  ) {
+
                       return "image/png";
                   }
 
 
-                  if (path.endsWith(".jpg") ||
-                          path.endsWith(".jpeg")) {
+                  if (
+                          path.endsWith(".jpg")
+                              || path.endsWith(".jpeg")
+                  ) {
 
                       return "image/jpeg";
                   }
 
 
-                  if (path.endsWith(".webp")) {
+                  if (
+                          path.endsWith(".webp")
+                  ) {
+
                       return "image/webp";
+                  }
+
+
+                  if (
+                          path.endsWith(".woff")
+                  ) {
+
+                      return "font/woff";
+                  }
+
+
+                  if (
+                          path.endsWith(".woff2")
+                  ) {
+
+                      return "font/woff2";
                   }
 
 
@@ -590,45 +981,45 @@ jobs:
               }
 
 
-              // =====================================
-              // ANDROID BACK BUTTON
-              // =====================================
-
               @Override
               public void onBackPressed() {
 
-                  if (webView != null &&
-                          webView.canGoBack()) {
+                  if (
+                          webView != null
+                                  && webView.canGoBack()
+                  ) {
 
                       webView.goBack();
 
                   } else {
 
                       super.onBackPressed();
-
                   }
               }
 
 
-              // =====================================
-              // CLEANUP
-              // =====================================
-
               @Override
               protected void onDestroy() {
 
-                  if (webView != null) {
+                  if (
+                          webView != null
+                  ) {
 
-                      webView.loadUrl("about:blank");
+                      webView.loadUrl(
+                              "about:blank"
+                      );
 
                       webView.stopLoading();
 
-                      webView.setWebViewClient(null);
+                      webView.setWebViewClient(
+                              null
+                      );
 
                       webView.destroy();
 
                       webView = null;
                   }
+
 
                   super.onDestroy();
               }
@@ -636,90 +1027,109 @@ jobs:
           EOF
 
 
-      # =========================================
-      # DOWNLOAD GRADLE
-      # =========================================
+      # --------------------------------------------------
+      # 20. DOWNLOAD GRADLE
+      # --------------------------------------------------
 
       - name: Download Gradle
         run: |
-
           wget -q \
             https://services.gradle.org/distributions/gradle-8.10.2-bin.zip
 
           unzip -q gradle-8.10.2-bin.zip
 
 
-      # =========================================
-      # BUILD APK
-      # =========================================
+      # --------------------------------------------------
+      # 21. BUILD APK
+      # --------------------------------------------------
 
       - name: Build APK
         working-directory: android
         run: |
+          ../gradle-8.10.2/bin/gradle \
+            assembleDebug \
+            --stacktrace
 
-          ../gradle-8.10.2/bin/gradle assembleDebug
 
-
-      # =========================================
-      # VERIFY APK
-      # =========================================
+      # --------------------------------------------------
+      # 22. VERIFY APK
+      # --------------------------------------------------
 
       - name: Verify APK
         run: |
 
-          echo "========================================"
-          echo "APK FILE"
-          echo "========================================"
+          echo "===== APK FILE ====="
 
           ls -lh \
             android/app/build/outputs/apk/debug/
 
 
-          echo "========================================"
-          echo "APK SIZE"
-          echo "========================================"
+          echo ""
+
+          echo "===== APK SIZE ====="
 
           du -h \
             android/app/build/outputs/apk/debug/app-debug.apk
 
 
-          echo "========================================"
-          echo "WEBSITE INSIDE APK"
-          echo "========================================"
+          echo ""
+
+          echo "===== INDEX HTML ====="
 
           unzip -l \
             android/app/build/outputs/apk/debug/app-debug.apk \
-            | grep "assets/hisabpro" \
-            | head -80
+            | grep "assets/hisabpro/index.html"
 
 
-          echo "========================================"
-          echo "NEXT.JS FILES"
-          echo "========================================"
+          echo ""
+
+          echo "===== CSS FILES ====="
 
           unzip -l \
             android/app/build/outputs/apk/debug/app-debug.apk \
-            | grep "assets/hisabpro/_next" \
-            | head -30
+            | grep "assets/hisabpro/_next/static/css" \
+            | head -50 || true
 
 
-          echo "========================================"
-          echo "LAUNCHER ICON"
-          echo "========================================"
+          echo ""
+
+          echo "===== JS FILES ====="
+
+          unzip -l \
+            android/app/build/outputs/apk/debug/app-debug.apk \
+            | grep "assets/hisabpro/_next/static/chunks" \
+            | head -50 || true
+
+
+          echo ""
+
+          echo "===== HTML PAGES ====="
+
+          unzip -l \
+            android/app/build/outputs/apk/debug/app-debug.apk \
+            | grep "assets/hisabpro/.*index.html" \
+            | head -100 || true
+
+
+          echo ""
+
+          echo "===== LAUNCHER ICON ====="
 
           unzip -l \
             android/app/build/outputs/apk/debug/app-debug.apk \
             | grep "ic_launcher.png"
 
 
-      # =========================================
-      # UPLOAD APK
-      # =========================================
+      # --------------------------------------------------
+      # 23. UPLOAD APK
+      # --------------------------------------------------
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
 
         with:
+
           name: HisabPro-APK
 
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path:
+            android/app/build/outputs/apk/debug/app-debug.apk
