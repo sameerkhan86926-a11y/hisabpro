@@ -209,20 +209,8 @@ jobs:
           </manifest>
           EOF
 
-      - name: Create styles.xml
-        run: |
-          cat > android/app/src/main/res/values/styles.xml <<'EOF'
-          <resources>
-              <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
-                  <item name="android:statusBarColor">#102A56</item>
-                  <item name="android:navigationBarColor">#FFFFFF</item>
-                  <item name="android:windowLightStatusBar">false</item>
-              </style>
-          </resources>
-          EOF
-
       # ============================================
-      # 10. MAIN ACTIVITY (PRINT, WHATSAPP, DOWNLOAD, UPLOAD)
+      # 10. MAIN ACTIVITY (BACKUP BLOB, PRINT, WHATSAPP, UPLOAD)
       # ============================================
       - name: Create MainActivity.java
         run: |
@@ -256,6 +244,7 @@ jobs:
           import java.io.File;
           import java.io.FileOutputStream;
           import java.io.InputStream;
+          import java.nio.charset.StandardCharsets;
           import java.util.HashMap;
           import java.util.Map;
 
@@ -284,10 +273,11 @@ jobs:
                   settings.setBuiltInZoomControls(false);
                   settings.setDisplayZoomControls(false);
 
-                  // Native Android Print Bridge
+                  // 1. Bridges: Print aur Backup Saver
                   webView.addJavascriptInterface(new PrintInterface(), "AndroidPrint");
+                  webView.addJavascriptInterface(new FileSaverInterface(), "AndroidFileSaver");
 
-                  // File Chooser Handler (<input type="file">)
+                  // 2. File Chooser Handler (<input type="file">)
                   webView.setWebChromeClient(new WebChromeClient() {
                       @Override
                       public boolean onShowFileChooser(
@@ -305,14 +295,14 @@ jobs:
                               startActivityForResult(intent, FILE_CHOOSER_REQUEST_CODE);
                           } catch (Exception e) {
                               fileUploadCallback = null;
-                              Toast.makeText(MainActivity.this, "File picker open nahi ho paya", Toast.LENGTH_SHORT).show();
+                              Toast.makeText(MainActivity.this, "File picker open nahi ho saka", Toast.LENGTH_SHORT).show();
                               return false;
                           }
                           return true;
                       }
                   });
 
-                  // File Download Handler (CSV, PDF, Base64, Data URLs)
+                  // 3. File Download Handler (Data URLs & links)
                   webView.setDownloadListener(new DownloadListener() {
                       @Override
                       public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimeType, long contentLength) {
@@ -331,15 +321,7 @@ jobs:
                                       else if (meta.contains("png")) ext = ".png";
                                       else if (meta.contains("jpeg") || meta.contains("jpg")) ext = ".jpg";
 
-                                      String filename = "HisabPro_" + System.currentTimeMillis() + ext;
-                                      File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-                                      File file = new File(path, filename);
-
-                                      FileOutputStream os = new FileOutputStream(file);
-                                      os.write(decodedBytes);
-                                      os.close();
-
-                                      Toast.makeText(MainActivity.this, "Downloads me save ho gaya: " + filename, Toast.LENGTH_LONG).show();
+                                      saveToDownloads("HisabPro_" + System.currentTimeMillis() + ext, decodedBytes);
                                   }
                               } else {
                                   Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
@@ -351,7 +333,7 @@ jobs:
                       }
                   });
 
-                  // Asset Routing
+                  // 4. Asset Routing
                   assetLoader = new WebViewAssetLoader.Builder()
                           .setDomain(APP_HOST)
                           .addPathHandler("/hisabpro/", new HisabProPathHandler())
@@ -381,17 +363,68 @@ jobs:
                       @Override
                       public void onPageFinished(WebView view, String url) {
                           super.onPageFinished(view, url);
+
+                          // Hook window.print()
                           view.evaluateJavascript(
                               "window.print = function() { if (window.AndroidPrint) { window.AndroidPrint.print(); } };",
                               null
                           );
+
+                          // Hook Blob download links (Create Backup Fix)
+                          String blobInterceptScript =
+                              "(function() {" +
+                              "  var oldClick = HTMLAnchorElement.prototype.click;" +
+                              "  HTMLAnchorElement.prototype.click = function() {" +
+                              "    if (this.href && this.href.startsWith('blob:') && this.download && window.AndroidFileSaver) {" +
+                              "      var filename = this.download;" +
+                              "      fetch(this.href)" +
+                              "        .then(function(r) { return r.text(); })" +
+                              "        .then(function(content) {" +
+                              "          window.AndroidFileSaver.saveBlob(filename, content);" +
+                              "        });" +
+                              "      return;" +
+                              "    }" +
+                              "    return oldClick.apply(this, arguments);" +
+                              "  };" +
+                              "})();";
+                          view.evaluateJavascript(blobInterceptScript, null);
                       }
                   });
 
                   webView.loadUrl("https://" + APP_HOST + "/hisabpro/");
               }
 
-              // Handle WhatsApp, Call, and External Links
+              // Native File Saver Bridge for Backup JSON
+              private class FileSaverInterface {
+                  @JavascriptInterface
+                  public void saveBlob(String filename, String content) {
+                      runOnUiThread(() -> {
+                          try {
+                              String name = (filename != null && !filename.isEmpty()) ? filename : ("HisabPro_Backup_" + System.currentTimeMillis() + ".json");
+                              saveToDownloads(name, content.getBytes(StandardCharsets.UTF_8));
+                          } catch (Exception e) {
+                              Toast.makeText(MainActivity.this, "Backup save error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                          }
+                      });
+                  }
+              }
+
+              private void saveToDownloads(String filename, byte[] bytes) {
+                  try {
+                      File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                      if (!path.exists()) {
+                          path.mkdirs();
+                      }
+                      File file = new File(path, filename);
+                      FileOutputStream os = new FileOutputStream(file);
+                      os.write(bytes);
+                      os.close();
+                      Toast.makeText(this, "Downloads me save ho gaya: " + filename, Toast.LENGTH_LONG).show();
+                  } catch (Exception e) {
+                      Toast.makeText(this, "Save error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                  }
+              }
+
               private boolean handleExternalUrl(String url) {
                   if (url.startsWith("https://" + APP_HOST)) {
                       return false;
@@ -419,7 +452,6 @@ jobs:
                   }
               }
 
-              // Native Android Print Implementation
               private class PrintInterface {
                   @JavascriptInterface
                   public void print() {
