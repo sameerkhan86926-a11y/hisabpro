@@ -80,7 +80,22 @@ jobs:
           EOF
 
       # ============================================
-      # 8. COPY NEXT.JS ASSETS & APP ICON
+      # 8. GENERATE FIXED SIGNING KEYSTORE
+      # ============================================
+      - name: Generate Fixed Keystore
+        run: |
+          keytool -genkeypair -v \
+            -keystore android/app/hisabpro-release.jks \
+            -alias hisabpro \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass "hisabprokey123" \
+            -keypass "hisabprokey123" \
+            -dname "CN=HisabPro, OU=App, O=HisabPro, L=Delhi, S=Delhi, C=IN"
+
+      # ============================================
+      # 9. COPY NEXT.JS ASSETS & APP ICON
       # ============================================
       - name: Copy static export to Android assets
         run: |
@@ -106,7 +121,7 @@ jobs:
           fi
 
       # ============================================
-      # 9. GRADLE SETTINGS & BUILD CONFIG
+      # 10. GRADLE SETTINGS & BUILD CONFIG
       # ============================================
       - name: Create settings.gradle
         run: |
@@ -156,6 +171,15 @@ jobs:
                   versionName '${{ env.APP_VERSION_NAME }}'
               }
 
+              signingConfigs {
+                  release {
+                      storeFile file('hisabpro-release.jks')
+                      storePassword 'hisabprokey123'
+                      keyAlias 'hisabpro'
+                      keyPassword 'hisabprokey123'
+                  }
+              }
+
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
                   targetCompatibility JavaVersion.VERSION_17
@@ -167,9 +191,11 @@ jobs:
 
               buildTypes {
                   release {
+                      signingConfig signingConfigs.release
                       minifyEnabled false
                   }
                   debug {
+                      signingConfig signingConfigs.release
                       minifyEnabled false
                   }
               }
@@ -181,7 +207,7 @@ jobs:
           EOF
 
       # ============================================
-      # 10. ANDROID MANIFEST WITH QUERIES & PERMISSIONS
+      # 11. ANDROID MANIFEST WITH QUERIES & PERMISSIONS
       # ============================================
       - name: Create AndroidManifest.xml
         run: |
@@ -236,7 +262,7 @@ jobs:
           EOF
 
       # ============================================
-      # 11. MAIN ACTIVITY (DYNAMIC VERSION CHECK & BRIDGES)
+      # 12. MAIN ACTIVITY
       # ============================================
       - name: Create MainActivity.java
         run: |
@@ -427,11 +453,9 @@ jobs:
 
                   webView.loadUrl("https://" + APP_HOST + "/hisabpro/");
 
-                  // Native Update Checker Call
                   checkAppUpdateNative();
               }
 
-              // Background Update Checker checking real installed versionCode
               private void checkAppUpdateNative() {
                   new Thread(() -> {
                       try {
@@ -456,13 +480,11 @@ jobs:
                               String downloadUrl = json.optString("downloadUrl", "");
                               String message = json.optString("message", "Naya update uplabdh hai!");
 
-                              // Phone me installed real versionCode get karein
                               int installedVersion = 1;
                               try {
                                   installedVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
                               } catch (Exception ignored) {}
 
-                              // Server version installed version se bada hoga tabhi popup aayega
                               if (serverVersion > installedVersion) {
                                   runOnUiThread(() -> showUpdateDialog(versionName, message, downloadUrl));
                               }
@@ -665,7 +687,7 @@ jobs:
           EOF
 
       # ============================================
-      # 12. COMPILE APK VIA GRADLE
+      # 13. COMPILE APK VIA GRADLE
       # ============================================
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -676,7 +698,7 @@ jobs:
           gradle assembleDebug --stacktrace
 
       # ============================================
-      # 13. UPLOAD APK ARTIFACT
+      # 14. UPLOAD APK ARTIFACT
       # ============================================
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -685,7 +707,7 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
 
       # ============================================
-      # 14. PUBLISH TO GITHUB RELEASES
+      # 15. PUBLISH TO GITHUB RELEASES
       # ============================================
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
