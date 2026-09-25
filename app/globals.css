@@ -9240,13 +9240,6 @@ button {
    APP LOCK NUMERIC KEYPAD
    ========================================= */
 
-.app-lock-logo {
-  width: 72px;
-  height: 72px;
-  object-fit: contain;
-  display: block;
-  margin: 0 auto;
-}
 
 .app-lock-pin-dots {
   display: flex;
@@ -9349,5 +9342,38 @@ button {
   .app-lock-pin-dots span {
     width: 10px;
     height: 10px;
+  }
+}
+.app-lock-icon {
+  width: 92px;
+  height: 92px;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 1px solid #e3e8f0;
+  border-radius: 24px;
+  box-shadow: 0 8px 24px rgba(16, 42, 86, 0.10);
+}
+
+.app-lock-logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  display: block;
+}
+
+@media (max-width: 480px) {
+  .app-lock-icon {
+    width: 86px;
+    height: 86px;
+    border-radius: 22px;
+    margin-bottom: 18px;
+  }
+
+  .app-lock-logo {
+    width: 68px;
+    height: 68px;
   }
 }
