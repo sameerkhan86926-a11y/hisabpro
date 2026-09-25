@@ -361,7 +361,9 @@ export default function CustomerPage() {
       ]
     );
   }
-
+window.dispatchEvent(
+  new Event("hisabpro-data-updated")
+);
   function addCredit() {
     if (!customer) return;
 
