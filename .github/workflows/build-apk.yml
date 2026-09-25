@@ -222,7 +222,7 @@ jobs:
           EOF
 
       # ============================================
-      # 10. MAIN ACTIVITY (CRASH FIX & CORS FETCH SETTINGS)
+      # 10. MAIN ACTIVITY (WITH NATIVE UPDATE CHECKER & BRIDGES)
       # ============================================
       - name: Create MainActivity.java
         run: |
@@ -231,6 +231,7 @@ jobs:
 
           import android.annotation.SuppressLint;
           import android.app.Activity;
+          import android.app.AlertDialog;
           import android.content.Context;
           import android.content.Intent;
           import android.net.Uri;
@@ -253,9 +254,15 @@ jobs:
           import android.widget.Toast;
           import androidx.webkit.WebViewAssetLoader;
 
+          import org.json.JSONObject;
+
+          import java.io.BufferedReader;
           import java.io.File;
           import java.io.FileOutputStream;
           import java.io.InputStream;
+          import java.io.InputStreamReader;
+          import java.net.HttpURLConnection;
+          import java.net.URL;
           import java.nio.charset.StandardCharsets;
           import java.util.HashMap;
           import java.util.Map;
@@ -264,6 +271,10 @@ jobs:
               private WebView webView;
               private WebViewAssetLoader assetLoader;
               private static final String APP_HOST = "appassets.androidplatform.net";
+
+              // Installed APK Version
+              private static final int CURRENT_APP_VERSION = 1;
+              private static final String VERSION_URL = "https://raw.githubusercontent.com/sameerkhan86926-a11y/hisabpro/main/public/version.json";
 
               private ValueCallback<Uri[]> fileUploadCallback;
               private static final int FILE_CHOOSER_REQUEST_CODE = 1001;
@@ -378,13 +389,11 @@ jobs:
                       public void onPageFinished(WebView view, String url) {
                           super.onPageFinished(view, url);
 
-                          // Hook standard window.print()
                           view.evaluateJavascript(
                               "window.print = function() { if (window.AndroidPrint) { window.AndroidPrint.print(); } };",
                               null
                           );
 
-                          // Hook Blob download links (Create Backup Fix)
                           String blobInterceptScript =
                               "(function() {" +
                               "  var oldClick = HTMLAnchorElement.prototype.click;" +
@@ -406,9 +415,62 @@ jobs:
                   });
 
                   webView.loadUrl("https://" + APP_HOST + "/hisabpro/");
+
+                  // Native Update Checker Call
+                  checkAppUpdateNative();
               }
 
-              // Native File Saver Bridge for Backup JSON
+              // Native Background Update Check (No CORS restriction)
+              private void checkAppUpdateNative() {
+                  new Thread(() -> {
+                      try {
+                          URL url = new URL(VERSION_URL + "?_t=" + System.currentTimeMillis());
+                          HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                          conn.setRequestMethod("GET");
+                          conn.setConnectTimeout(6000);
+                          conn.setReadTimeout(6000);
+
+                          if (conn.getResponseCode() == 200) {
+                              BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                              StringBuilder sb = new StringBuilder();
+                              String line;
+                              while ((line = reader.readLine()) != null) {
+                                  sb.append(line);
+                              }
+                              reader.close();
+
+                              JSONObject json = new JSONObject(sb.toString());
+                              int serverVersion = json.optInt("versionCode", 1);
+                              String versionName = json.optString("versionName", "1.1");
+                              String downloadUrl = json.optString("downloadUrl", "");
+                              String message = json.optString("message", "Naya update uplabdh hai!");
+
+                              if (serverVersion > CURRENT_APP_VERSION) {
+                                  runOnUiThread(() -> showUpdateDialog(versionName, message, downloadUrl));
+                              }
+                          }
+                      } catch (Exception ignored) {}
+                  }).start();
+              }
+
+              private void showUpdateDialog(String versionName, String message, String downloadUrl) {
+                  if (isFinishing()) return;
+                  new AlertDialog.Builder(this)
+                          .setTitle("🚀 Naya Update Aaya Hai! (v" + versionName + ")")
+                          .setMessage(message)
+                          .setCancelable(true)
+                          .setPositiveButton("Update Karein", (dialog, which) -> {
+                              try {
+                                  Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl));
+                                  startActivity(intent);
+                              } catch (Exception e) {
+                                  Toast.makeText(this, "Link open nahi ho saka", Toast.LENGTH_SHORT).show();
+                              }
+                          })
+                          .setNegativeButton("Baad Me", null)
+                          .show();
+              }
+
               public class FileSaverInterface {
                   @JavascriptInterface
                   public void saveBlob(String filename, String content) {
@@ -466,7 +528,6 @@ jobs:
                   }
               }
 
-              // Native Android Print Implementation
               public class PrintInterface {
                   @JavascriptInterface
                   public void print() {
