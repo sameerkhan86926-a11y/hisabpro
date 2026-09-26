@@ -253,21 +253,17 @@ export default function InvoicePage() {
     upiIntentString
   )}`;
 
-  /*
+    /*
    * =====================================
-   * WHATSAPP MESSAGE
+   * WHATSAPP MESSAGE WITH DIRECT AMOUNT LINK
    * =====================================
    */
-  const whatsappItems = invoiceLines
-    .map(
-      (item) =>
-        `${item.product} × ${item.quantity} @ ₹${Number(
-          item.price || 0
-        ).toLocaleString("en-IN")} = ₹${Number(
-          item.amount || 0
-        ).toLocaleString("en-IN")}`
-    )
-    .join("\n");
+  const upiId = business.upiId || (business.phone ? `${business.phone}@upi` : "");
+  const payeeName = business.businessName || business.ownerName || "HisabPro";
+  const invoiceTotal = Number(sale.total || 0).toFixed(2);
+
+  // Intent Link: Direct UPI (GPay/PhonePe intent)
+  const upiDeepLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${invoiceTotal}&cu=INR&tn=${encodeURIComponent(`Bill #${sale.id}`)}`;
 
   const whatsappText = `🧾 *Invoice #${sale.id}*
 *${business.businessName || "HisabPro"}*
@@ -279,14 +275,19 @@ ${whatsappItems}
 *Discount:* ₹${Number(sale.discount || 0).toLocaleString("en-IN")}
 *Grand Total:* ₹${Number(sale.total || 0).toLocaleString("en-IN")}
 *Payment Status:* ${paymentLabel}
+
 ${
   upiId
-    ? `\n📲 *Pay via UPI:* ${upiIntentString}`
+    ? `💳 *Pay Exact Bill Amount (₹${Number(invoiceTotal).toLocaleString("en-IN")}) via UPI:*
+👉 ${upiDeepLink}
+
+_(Click the link above to open PhonePe / Google Pay / Paytm with pre-filled amount)_`
     : ""
 }
 
 _Thank you for your business!_`;
 
+   
   return (
     <main className="invoice-page">
       {/* HEADER */}
