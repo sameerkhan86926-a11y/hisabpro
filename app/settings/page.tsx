@@ -11,6 +11,7 @@ type Business = {
   address: string;
   gstin: string;
   email: string;
+  upiId: string;
 };
 
 const emptyBusiness: Omit<Business, "id"> = {
@@ -20,6 +21,7 @@ const emptyBusiness: Omit<Business, "id"> = {
   address: "",
   gstin: "",
   email: "",
+  upiId: "",
 };
 
 export default function SettingsPage() {
@@ -71,6 +73,7 @@ export default function SettingsPage() {
           address: oldBusiness.address || "",
           gstin: oldBusiness.gstin || "",
           email: oldBusiness.email || "",
+          upiId: oldBusiness.upiId || "",
         };
 
         setBusinesses([migratedBusiness]);
@@ -175,6 +178,7 @@ export default function SettingsPage() {
       address: item.address,
       gstin: item.gstin,
       email: item.email,
+      upiId: item.upiId || "",
     });
 
     setEditingId(item.id);
@@ -381,6 +385,19 @@ export default function SettingsPage() {
           </div>
 
           <div className="form-group">
+            <label>UPI ID (For Bill QR Code)</label>
+            <input
+              type="text"
+              placeholder="e.g. 9876543210@upi, shop@paytm, name@okhdfcbank"
+              value={business.upiId}
+              onChange={(e) => handleChange("upiId", e.target.value.trim().toLowerCase())}
+            />
+            <small style={{ fontSize: "11px", color: "#64748b", marginTop: "4px", display: "block" }}>
+              Is ID ka Dynamic QR Code invoice par show hoga jisme exact bill amount pre-filled rahega.
+            </small>
+          </div>
+
+          <div className="form-group">
             <label>Address</label>
             <textarea
               placeholder="Shop / Business address"
@@ -464,6 +481,7 @@ export default function SettingsPage() {
                         <span>Owner: {item.ownerName}</span>
                       )}
                       {item.phone && <span>📞 {item.phone}</span>}
+                      {item.upiId && <span>📲 UPI: {item.upiId}</span>}
                     </div>
                     {isActive && (
                       <span className="active-business-badge">ACTIVE</span>
