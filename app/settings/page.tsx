@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLanguage } from "../../components/LanguageProvider";
 
 type Business = {
   id: number;
@@ -22,6 +23,8 @@ const emptyBusiness: Omit<Business, "id"> = {
 };
 
 export default function SettingsPage() {
+  const { language, setLanguage } = useLanguage();
+
   const [businesses, setBusinesses] =
     useState<Business[]>([]);
 
@@ -175,14 +178,6 @@ export default function SettingsPage() {
       savedLock
     );
 
-    /*
-     * We don't put the actual PIN
-     * into the input field.
-     *
-     * If a PIN already exists,
-     * user enters a new PIN only
-     * when changing it.
-     */
     setAppPin(
       savedPin ? "******" : ""
     );
@@ -295,8 +290,8 @@ export default function SettingsPage() {
 
     setMessage(
       editingId !== null
-        ? "Business details updated successfully ✅"
-        : "Business added successfully ✅"
+        ? "Business details updated successfully"
+        : "Business added successfully"
     );
   }
 
@@ -435,7 +430,7 @@ export default function SettingsPage() {
     );
 
     setMessage(
-      "Active business changed successfully ✅"
+      "Active business changed successfully"
     );
   }
 
@@ -521,12 +516,6 @@ export default function SettingsPage() {
       return;
     }
 
-    /*
-     * Existing PIN
-     *
-     * "******" means user has not
-     * entered a new PIN.
-     */
     if (
       appPin === "******"
     ) {
@@ -552,7 +541,7 @@ export default function SettingsPage() {
       );
 
       setSecurityMessage(
-        "Security settings updated successfully ✅"
+        "Security settings updated successfully"
       );
 
       return;
@@ -612,10 +601,6 @@ export default function SettingsPage() {
       autoLock
     );
 
-    /*
-     * Tell AppLock component
-     * that security settings changed.
-     */
     window.dispatchEvent(
       new CustomEvent(
         "hisabpro-app-lock-changed"
@@ -626,7 +611,7 @@ export default function SettingsPage() {
     setConfirmPin("");
 
     setSecurityMessage(
-      "App Lock enabled successfully 🔐"
+      "App Lock enabled successfully"
     );
   }
 
@@ -745,7 +730,7 @@ export default function SettingsPage() {
 
             <input
               type="tel"
-              placeholder="e.g. 9876XXXXXX"
+              placeholder="e.g. 9876543210"
               value={
                 business.phone
               }
@@ -1022,6 +1007,99 @@ export default function SettingsPage() {
 
           </div>
         )}
+
+      </section>
+
+      {/* LANGUAGE */}
+
+      <section className="settings-box">
+
+        <div className="settings-title">
+
+          <div className="settings-icon">
+            Aa
+          </div>
+
+          <div>
+            <h2>
+              Language
+            </h2>
+
+            <p>
+              Choose the language for the
+              HisabPro interface.
+            </p>
+          </div>
+
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns:
+              "repeat(2, minmax(0, 1fr))",
+            gap: "10px",
+            marginTop: "18px",
+          }}
+        >
+
+          <button
+            type="button"
+            onClick={() =>
+              setLanguage("en")
+            }
+            style={{
+              minHeight: "52px",
+              border:
+                language === "en"
+                  ? "2px solid #102a56"
+                  : "1px solid #dbe2ea",
+              borderRadius: "12px",
+              background:
+                language === "en"
+                  ? "#102a56"
+                  : "#ffffff",
+              color:
+                language === "en"
+                  ? "#ffffff"
+                  : "#102a56",
+              fontSize: "15px",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            English
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              setLanguage("hi")
+            }
+            style={{
+              minHeight: "52px",
+              border:
+                language === "hi"
+                  ? "2px solid #102a56"
+                  : "1px solid #dbe2ea",
+              borderRadius: "12px",
+              background:
+                language === "hi"
+                  ? "#102a56"
+                  : "#ffffff",
+              color:
+                language === "hi"
+                  ? "#ffffff"
+                  : "#102a56",
+              fontSize: "15px",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            हिन्दी
+          </button>
+
+        </div>
 
       </section>
 
