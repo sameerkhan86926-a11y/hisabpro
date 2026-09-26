@@ -298,10 +298,23 @@ _Thank you for your business!_`;
    * =====================================
    */
   function handlePrint() {
-    window.print();
+    try {
+      // 1. Android Native Print Bridge check (Direct hardware spooler)
+      const androidPrint = typeof window !== "undefined" && (window as any).AndroidPrint;
+      if (androidPrint && typeof androidPrint.print === "function") {
+        androidPrint.print();
+      } else if (typeof window !== "undefined" && window.print) {
+        // 2. Browser standard printing
+        window.print();
+      }
+    } catch (err) {
+      console.error("Print action failed:", err);
+    }
+
+    // Modal ko smooth delay ke baad layein taaki print prompt interfere na kare
     setTimeout(() => {
       setShowDoneDialog(true);
-    }, 1000);
+    }, 1500);
   }
 
   function handleWhatsAppShare() {
