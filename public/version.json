@@ -1,6 +1,6 @@
 {
-  "versionCode": 6,
-  "versionName": "1.0.5",
+  "versionCode": 7,
+  "versionName": "1.0.6",
   "apkUrl": "https://github.com/sameerkhan86926-a11y/hisabpro/releases/download/latest/app-release.apk",
-  "releaseNotes": "Added 58mm POS thermal receipt slip layout and paper mode selector"
+  "releaseNotes": "Fixed native printing blocking issue and improved thermal slip layout"
 }
