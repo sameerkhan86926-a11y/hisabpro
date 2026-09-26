@@ -80,6 +80,7 @@ const defaultBusiness: Business = {
 export default function InvoicePage() {
   const [sale, setSale] = useState<Sale | null>(null);
   const [business, setBusiness] = useState<Business>(defaultBusiness);
+  const [showDoneDialog, setShowDoneDialog] = useState(false);
 
   /*
    * =====================================
@@ -241,14 +242,12 @@ export default function InvoicePage() {
   const payeeName = business.businessName || business.ownerName || "HisabPro";
   const formattedAmount = Number(sale.total || 0).toFixed(2);
 
-  // NPCI Standard UPI Intent Link
   const upiDeepLink = `upi://pay?pa=${encodeURIComponent(
     upiId
   )}&pn=${encodeURIComponent(payeeName)}&am=${formattedAmount}&cu=INR&tn=${encodeURIComponent(
     `Invoice #${sale.id}`
   )}`;
 
-  // QR Code Image Generator URL
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
     upiDeepLink
   )}`;
@@ -290,9 +289,16 @@ _Thank you for your business!_`;
 
   /*
    * =====================================
-   * UNIVERSAL SHARE HANDLER
+   * ACTIONS HANDLERS (PRINT & SHARE)
    * =====================================
    */
+  function handlePrint() {
+    window.print();
+    setTimeout(() => {
+      setShowDoneDialog(true);
+    }, 1000);
+  }
+
   async function handleUniversalShare() {
     if (navigator.share) {
       try {
@@ -304,7 +310,6 @@ _Thank you for your business!_`;
         console.log("Share dismissed", err);
       }
     } else {
-      // Fallback: Clipboard copy agar direct share supported na ho
       try {
         await navigator.clipboard.writeText(shareText);
         alert("Invoice details copied to clipboard!");
@@ -315,6 +320,7 @@ _Thank you for your business!_`;
         );
       }
     }
+    setShowDoneDialog(true);
   }
 
   return (
@@ -331,7 +337,7 @@ _Thank you for your business!_`;
         <h1>Invoice</h1>
         <button
           type="button"
-          onClick={() => window.print()}
+          onClick={handlePrint}
           className="print-button"
         >
           🖨 Print
@@ -522,7 +528,7 @@ _Thank you for your business!_`;
 
       {/* ACTIONS */}
       <div className="invoice-actions">
-        <button type="button" onClick={() => window.print()}>
+        <button type="button" onClick={handlePrint}>
           🖨 Print / Save PDF
         </button>
 
@@ -530,6 +536,117 @@ _Thank you for your business!_`;
           📤 Share
         </button>
       </div>
+
+      {/* =====================================
+          ACTION COMPLETE POPUP / REDIRECT MODAL
+          ===================================== */}
+      {showDoneDialog && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+            padding: "20px",
+            backdropFilter: "blur(4px)",
+          }}
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: "18px",
+              padding: "24px 20px",
+              maxWidth: "340px",
+              width: "100%",
+              textAlign: "center",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.2)",
+            }}
+          >
+            <div style={{ fontSize: "42px", marginBottom: "12px" }}>✅</div>
+            <h3
+              style={{
+                margin: "0 0 6px 0",
+                fontSize: "18px",
+                fontWeight: 800,
+                color: "#0f172a",
+              }}
+            >
+              Invoice Processed!
+            </h3>
+            <p
+              style={{
+                margin: "0 0 20px 0",
+                fontSize: "13px",
+                color: "#64748b",
+              }}
+            >
+              Bill details have been printed / shared. Choose what to do next:
+            </p>
+
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => (window.location.href = "/hisabpro/sales/")}
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  borderRadius: "10px",
+                  backgroundColor: "#102a56",
+                  color: "#ffffff",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                ➕ Create New Sale
+              </button>
+
+              <button
+                type="button"
+                onClick={() => (window.location.href = "/hisabpro/")}
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  borderRadius: "10px",
+                  backgroundColor: "#f1f5f9",
+                  color: "#1e293b",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  border: "1px solid #e2e8f0",
+                  cursor: "pointer",
+                }}
+              >
+                🏠 Back to Home / Dashboard
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowDoneDialog(false)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#94a3b8",
+                  fontSize: "13px",
+                  padding: "6px",
+                  cursor: "pointer",
+                }}
+              >
+                Stay on this invoice
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
