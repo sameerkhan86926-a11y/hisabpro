@@ -2,6 +2,9 @@ name: Build HisabPro APK
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -80,7 +83,7 @@ jobs:
           EOF
 
       # ============================================
-      # 8. GENERATE FIXED SIGNING KEYSTORE
+      # 8. RESTORE OR GENERATE FIXED SIGNING KEYSTORE
       # ============================================
       - name: Generate Fixed Keystore
         run: |
@@ -335,11 +338,9 @@ jobs:
                   settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
                   settings.setAllowUniversalAccessFromFileURLs(true);
 
-                  // 1. Bridges: Print aur Backup File Saver
                   webView.addJavascriptInterface(new PrintInterface(), "AndroidPrint");
                   webView.addJavascriptInterface(new FileSaverInterface(), "AndroidFileSaver");
 
-                  // 2. File Chooser Handler (<input type="file">)
                   webView.setWebChromeClient(new WebChromeClient() {
                       @Override
                       public boolean onShowFileChooser(
@@ -364,7 +365,6 @@ jobs:
                       }
                   });
 
-                  // 3. File Download Handler
                   webView.setDownloadListener(new DownloadListener() {
                       @Override
                       public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimeType, long contentLength) {
@@ -395,7 +395,6 @@ jobs:
                       }
                   });
 
-                  // 4. Asset Routing
                   assetLoader = new WebViewAssetLoader.Builder()
                           .setDomain(APP_HOST)
                           .addPathHandler("/hisabpro/", new HisabProPathHandler())
@@ -477,8 +476,8 @@ jobs:
                               JSONObject json = new JSONObject(sb.toString());
                               int serverVersion = json.optInt("versionCode", 1);
                               String versionName = json.optString("versionName", "1.0");
-                              String downloadUrl = json.optString("downloadUrl", "");
-                              String message = json.optString("message", "Naya update uplabdh hai!");
+                              String downloadUrl = json.optString("apkUrl", json.optString("downloadUrl", ""));
+                              String message = json.optString("releaseNotes", json.optString("message", "Naya update uplabdh hai!"));
 
                               int installedVersion = 1;
                               try {
@@ -687,15 +686,17 @@ jobs:
           EOF
 
       # ============================================
-      # 13. COMPILE APK VIA GRADLE
+      # 13. COMPILE RELEASE APK VIA GRADLE
       # ============================================
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build Debug APK
+      - name: Build Release APK
         working-directory: android
         run: |
-          gradle assembleDebug --stacktrace
+          gradle assembleRelease --stacktrace
+          # Renaming to ensure exact filename matching release URL
+          cp app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/HisabPro.apk
 
       # ============================================
       # 14. UPLOAD APK ARTIFACT
@@ -704,7 +705,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: HisabPro-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
 
       # ============================================
       # 15. PUBLISH TO GITHUB RELEASES
@@ -713,9 +714,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "latest"
-          name: "HisabPro Latest Release"
+          name: "HisabPro v${{ env.APP_VERSION_NAME }}"
           draft: false
           prerelease: false
-          files: android/app/build/outputs/apk/debug/app-debug.apk
+          files: |
+            android/app/build/outputs/apk/release/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
