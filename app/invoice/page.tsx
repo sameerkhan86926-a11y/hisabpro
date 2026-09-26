@@ -56,7 +56,7 @@ type Business = {
   address: string;
   gstin: string;
   email: string;
-  upiId?: string; // Dukaandar ki UPI ID
+  upiId?: string;
 };
 
 type InvoiceLine = {
@@ -234,36 +234,40 @@ export default function InvoicePage() {
 
   /*
    * =====================================
-   * DYNAMIC UPI LINK & QR GENERATOR
+   * DYNAMIC UPI VARIABLES (DECLARED ONCE)
    * =====================================
    */
   const upiId = business.upiId || (business.phone ? `${business.phone}@upi` : "");
-  const payeeName = business.businessName || business.ownerName || "HisabPro Merchant";
-  const invoiceTotal = sale.total || 0;
+  const payeeName = business.businessName || business.ownerName || "HisabPro";
+  const formattedAmount = Number(sale.total || 0).toFixed(2);
 
-  // NPCI Standard UPI Intent String
-  const upiIntentString = `upi://pay?pa=${encodeURIComponent(
+  // NPCI Standard UPI Intent Link
+  const upiDeepLink = `upi://pay?pa=${encodeURIComponent(
     upiId
-  )}&pn=${encodeURIComponent(payeeName)}&am=${invoiceTotal}&cu=INR&tn=${encodeURIComponent(
+  )}&pn=${encodeURIComponent(payeeName)}&am=${formattedAmount}&cu=INR&tn=${encodeURIComponent(
     `Invoice #${sale.id}`
   )}`;
 
   // QR Code Image Generator URL
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-    upiIntentString
+    upiDeepLink
   )}`;
 
-    /*
+  /*
    * =====================================
-   * WHATSAPP MESSAGE WITH DIRECT AMOUNT LINK
+   * WHATSAPP MESSAGE
    * =====================================
    */
-  const upiId = business.upiId || (business.phone ? `${business.phone}@upi` : "");
-  const payeeName = business.businessName || business.ownerName || "HisabPro";
-  const invoiceTotal = Number(sale.total || 0).toFixed(2);
-
-  // Intent Link: Direct UPI (GPay/PhonePe intent)
-  const upiDeepLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${invoiceTotal}&cu=INR&tn=${encodeURIComponent(`Bill #${sale.id}`)}`;
+  const whatsappItems = invoiceLines
+    .map(
+      (item) =>
+        `${item.product} × ${item.quantity} @ ₹${Number(
+          item.price || 0
+        ).toLocaleString("en-IN")} = ₹${Number(
+          item.amount || 0
+        ).toLocaleString("en-IN")}`
+    )
+    .join("\n");
 
   const whatsappText = `🧾 *Invoice #${sale.id}*
 *${business.businessName || "HisabPro"}*
@@ -275,10 +279,9 @@ ${whatsappItems}
 *Discount:* ₹${Number(sale.discount || 0).toLocaleString("en-IN")}
 *Grand Total:* ₹${Number(sale.total || 0).toLocaleString("en-IN")}
 *Payment Status:* ${paymentLabel}
-
 ${
   upiId
-    ? `💳 *Pay Exact Bill Amount (₹${Number(invoiceTotal).toLocaleString("en-IN")}) via UPI:*
+    ? `\n💳 *Pay Exact Bill Amount (₹${Number(formattedAmount).toLocaleString("en-IN")}) via UPI:*
 👉 ${upiDeepLink}
 
 _(Click the link above to open PhonePe / Google Pay / Paytm with pre-filled amount)_`
@@ -287,7 +290,6 @@ _(Click the link above to open PhonePe / Google Pay / Paytm with pre-filled amou
 
 _Thank you for your business!_`;
 
-   
   return (
     <main className="invoice-page">
       {/* HEADER */}
@@ -479,7 +481,7 @@ _Thank you for your business!_`;
                 marginTop: "2px",
               }}
             >
-              Exact Amount: ₹{Number(invoiceTotal).toLocaleString("en-IN")}
+              Exact Amount: ₹{Number(formattedAmount).toLocaleString("en-IN")}
             </span>
           </div>
         )}
