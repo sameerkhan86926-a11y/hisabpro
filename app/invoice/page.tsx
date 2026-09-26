@@ -234,7 +234,7 @@ export default function InvoicePage() {
 
   /*
    * =====================================
-   * DYNAMIC UPI VARIABLES (DECLARED ONCE)
+   * DYNAMIC UPI VARIABLES
    * =====================================
    */
   const upiId = business.upiId || (business.phone ? `${business.phone}@upi` : "");
@@ -255,10 +255,10 @@ export default function InvoicePage() {
 
   /*
    * =====================================
-   * WHATSAPP MESSAGE
+   * SHARE TEXT BUILDER
    * =====================================
    */
-  const whatsappItems = invoiceLines
+  const shareItems = invoiceLines
     .map(
       (item) =>
         `${item.product} × ${item.quantity} @ ₹${Number(
@@ -269,10 +269,10 @@ export default function InvoicePage() {
     )
     .join("\n");
 
-  const whatsappText = `🧾 *Invoice #${sale.id}*
+  const shareText = `🧾 *Invoice #${sale.id}*
 *${business.businessName || "HisabPro"}*
 ${business.ownerName ? `Owner: ${business.ownerName}\n` : ""}${business.phone ? `Phone: ${business.phone}\n` : ""}${business.address ? `Address: ${business.address}\n` : ""}
-${whatsappItems}
+${shareItems}
 
 -----------------------------
 *Subtotal:* ₹${Number(sale.subtotal || 0).toLocaleString("en-IN")}
@@ -282,13 +282,40 @@ ${whatsappItems}
 ${
   upiId
     ? `\n💳 *Pay Exact Bill Amount (₹${Number(formattedAmount).toLocaleString("en-IN")}) via UPI:*
-👉 ${upiDeepLink}
-
-_(Click the link above to open PhonePe / Google Pay / Paytm with pre-filled amount)_`
+👉 ${upiDeepLink}`
     : ""
 }
 
 _Thank you for your business!_`;
+
+  /*
+   * =====================================
+   * UNIVERSAL SHARE HANDLER
+   * =====================================
+   */
+  async function handleUniversalShare() {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Invoice #${sale?.id} - ${business.businessName || "HisabPro"}`,
+          text: shareText,
+        });
+      } catch (err) {
+        console.log("Share dismissed", err);
+      }
+    } else {
+      // Fallback: Clipboard copy agar direct share supported na ho
+      try {
+        await navigator.clipboard.writeText(shareText);
+        alert("Invoice details copied to clipboard!");
+      } catch {
+        window.open(
+          `https://wa.me/?text=${encodeURIComponent(shareText)}`,
+          "_blank"
+        );
+      }
+    }
+  }
 
   return (
     <main className="invoice-page">
@@ -499,16 +526,8 @@ _Thank you for your business!_`;
           🖨 Print / Save PDF
         </button>
 
-        <button
-          type="button"
-          onClick={() => {
-            window.open(
-              `https://wa.me/?text=${encodeURIComponent(whatsappText)}`,
-              "_blank"
-            );
-          }}
-        >
-          💬 Share on WhatsApp
+        <button type="button" onClick={handleUniversalShare}>
+          📤 Share
         </button>
       </div>
     </main>
