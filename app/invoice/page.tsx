@@ -81,6 +81,7 @@ export default function InvoicePage() {
   const [sale, setSale] = useState<Sale | null>(null);
   const [business, setBusiness] = useState<Business>(defaultBusiness);
   const [showDoneDialog, setShowDoneDialog] = useState(false);
+  const [paperMode, setPaperMode] = useState<"thermal" | "a4">("thermal");
 
   /*
    * =====================================
@@ -335,6 +336,87 @@ _Thank you for your business!_`;
 
   return (
     <main className="invoice-page">
+      {/* THERMAL & PRINT DYNAMIC STYLES */}
+      <style jsx global>{`
+        @media print {
+          @page {
+            margin: 0;
+            size: auto;
+          }
+          body {
+            background: #ffffff !important;
+            color: #000000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          .invoice-header,
+          .invoice-actions,
+          .print-format-bar,
+          .back-button {
+            display: none !important;
+          }
+
+          /* 58mm POS Slip Mode Styles */
+          .thermal-mode {
+            width: 58mm !important;
+            max-width: 58mm !important;
+            margin: 0 auto !important;
+            padding: 8px 6px !important;
+            font-size: 11px !important;
+            line-height: 1.25 !important;
+            font-family: monospace, Courier, sans-serif !important;
+            box-shadow: none !important;
+            border: none !important;
+          }
+          .thermal-mode h2 {
+            font-size: 14px !important;
+            text-align: center !important;
+            margin: 0 0 2px 0 !important;
+          }
+          .thermal-mode p,
+          .thermal-mode span,
+          .thermal-mode strong {
+            font-size: 10px !important;
+          }
+          .thermal-mode .invoice-business {
+            text-align: center !important;
+            border-bottom: 1px dashed #000 !important;
+            padding-bottom: 6px !important;
+            margin-bottom: 6px !important;
+          }
+          .thermal-mode .invoice-meta {
+            border-bottom: 1px dashed #000 !important;
+            padding-bottom: 4px !important;
+            margin-bottom: 6px !important;
+          }
+          .thermal-mode .invoice-table-head {
+            border-bottom: 1px solid #000 !important;
+            font-weight: bold !important;
+          }
+          .thermal-mode .invoice-row {
+            padding: 2px 0 !important;
+          }
+          .thermal-mode .invoice-total {
+            border-top: 1px dashed #000 !important;
+            margin-top: 6px !important;
+            padding-top: 4px !important;
+          }
+          .thermal-mode .grand-total strong {
+            font-size: 13px !important;
+          }
+          .thermal-mode .thermal-qr {
+            width: 110px !important;
+            height: 110px !important;
+          }
+          .thermal-mode .invoice-footer {
+            border-top: 1px dashed #000 !important;
+            margin-top: 6px !important;
+            padding-top: 6px !important;
+            text-align: center !important;
+          }
+        }
+      `}</style>
+
       {/* HEADER */}
       <header className="invoice-header">
         <button
@@ -354,8 +436,58 @@ _Thank you for your business!_`;
         </button>
       </header>
 
+      {/* PRINT FORMAT SELECTOR (58mm Slip vs A4) */}
+      <div
+        className="print-format-bar"
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: "8px",
+          margin: "12px auto 4px auto",
+          maxWidth: "480px",
+          padding: "0 12px",
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setPaperMode("thermal")}
+          style={{
+            flex: 1,
+            padding: "8px 12px",
+            borderRadius: "8px",
+            fontSize: "12px",
+            fontWeight: 700,
+            border: paperMode === "thermal" ? "1.5px solid #102a56" : "1px solid #cbd5e1",
+            background: paperMode === "thermal" ? "#102a56" : "#ffffff",
+            color: paperMode === "thermal" ? "#ffffff" : "#475569",
+            cursor: "pointer",
+            transition: "all 0.15s ease",
+          }}
+        >
+          🧾 58mm Slip (POS)
+        </button>
+        <button
+          type="button"
+          onClick={() => setPaperMode("a4")}
+          style={{
+            flex: 1,
+            padding: "8px 12px",
+            borderRadius: "8px",
+            fontSize: "12px",
+            fontWeight: 700,
+            border: paperMode === "a4" ? "1.5px solid #102a56" : "1px solid #cbd5e1",
+            background: paperMode === "a4" ? "#102a56" : "#ffffff",
+            color: paperMode === "a4" ? "#ffffff" : "#475569",
+            cursor: "pointer",
+            transition: "all 0.15s ease",
+          }}
+        >
+          📄 Standard A4
+        </button>
+      </div>
+
       {/* INVOICE CARD */}
-      <section className="invoice-card">
+      <section className={`invoice-card ${paperMode === "thermal" ? "thermal-mode" : ""}`}>
         {/* BUSINESS INFO */}
         <div className="invoice-business">
           <div>
@@ -462,8 +594,8 @@ _Thank you for your business!_`;
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              margin: "24px 0 16px 0",
-              padding: "16px",
+              margin: "20px 0 14px 0",
+              padding: "14px",
               background: "#f8fafc",
               border: "1px dashed #cbd5e1",
               borderRadius: "12px",
@@ -472,7 +604,7 @@ _Thank you for your business!_`;
           >
             <span
               style={{
-                fontSize: "13px",
+                fontSize: "12px",
                 fontWeight: 700,
                 color: "#1e293b",
                 marginBottom: "4px",
@@ -484,41 +616,42 @@ _Thank you for your business!_`;
             </span>
             <span
               style={{
-                fontSize: "11px",
+                fontSize: "10px",
                 color: "#64748b",
-                marginBottom: "12px",
+                marginBottom: "10px",
               }}
             >
-              Google Pay • PhonePe • Paytm • Any UPI App
+              Google Pay • PhonePe • Paytm • Any UPI
             </span>
 
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={qrCodeUrl}
               alt="UPI QR Code"
+              className="thermal-qr"
               style={{
-                width: "150px",
-                height: "150px",
+                width: "140px",
+                height: "140px",
                 borderRadius: "8px",
                 background: "#ffffff",
-                padding: "8px",
+                padding: "6px",
                 border: "1px solid #e2e8f0",
               }}
             />
 
             <span
               style={{
-                fontSize: "12px",
+                fontSize: "11px",
                 fontWeight: 600,
                 color: "#0f172a",
-                marginTop: "8px",
+                marginTop: "6px",
               }}
             >
               UPI ID: {upiId}
             </span>
             <span
               style={{
-                fontSize: "13px",
+                fontSize: "12px",
                 fontWeight: 800,
                 color: "#16a34a",
                 marginTop: "2px",
@@ -619,9 +752,7 @@ _Thank you for your business!_`;
         </button>
       </div>
 
-      {/* =====================================
-          ACTION COMPLETE POPUP / REDIRECT MODAL
-          ===================================== */}
+      {/* ACTION COMPLETE POPUP / REDIRECT MODAL */}
       {showDoneDialog && (
         <div
           style={{
