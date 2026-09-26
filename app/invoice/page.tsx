@@ -56,6 +56,7 @@ type Business = {
   address: string;
   gstin: string;
   email: string;
+  upiId?: string; // Dukaandar ki UPI ID
 };
 
 type InvoiceLine = {
@@ -73,95 +74,45 @@ const defaultBusiness: Business = {
   address: "",
   gstin: "",
   email: "",
+  upiId: "",
 };
 
 export default function InvoicePage() {
-  const [sale, setSale] =
-    useState<Sale | null>(null);
-
-  const [business, setBusiness] =
-    useState<Business>(
-      defaultBusiness
-    );
+  const [sale, setSale] = useState<Sale | null>(null);
+  const [business, setBusiness] = useState<Business>(defaultBusiness);
 
   /*
    * =====================================
    * LOAD DATA
    * =====================================
    */
-
   useEffect(() => {
-    /*
-     * LAST INVOICE
-     */
-
-    const savedSale =
-      localStorage.getItem(
-        "hisabpro_last_invoice"
-      );
-
+    const savedSale = localStorage.getItem("hisabpro_last_invoice");
     if (savedSale) {
       try {
-        setSale(
-          JSON.parse(savedSale)
-        );
+        setSale(JSON.parse(savedSale));
       } catch {
-        console.log(
-          "Invoice data could not be loaded."
-        );
+        console.log("Invoice data could not be loaded.");
       }
     }
 
-    /*
-     * BUSINESS PROFILES
-     */
-
-    const savedBusinesses =
-      localStorage.getItem(
-        "hisabpro_businesses"
-      );
-
-    const savedActiveId =
-      localStorage.getItem(
-        "hisabpro_active_business"
-      );
+    const savedBusinesses = localStorage.getItem("hisabpro_businesses");
+    const savedActiveId = localStorage.getItem("hisabpro_active_business");
 
     if (savedBusinesses) {
       try {
-        const businesses =
-          JSON.parse(
-            savedBusinesses
-          );
-
-        if (
-          Array.isArray(
-            businesses
-          ) &&
-          businesses.length > 0
-        ) {
-          let activeBusiness:
-            | Business
-            | undefined;
-
+        const businesses = JSON.parse(savedBusinesses);
+        if (Array.isArray(businesses) && businesses.length > 0) {
+          let activeBusiness: Business | undefined;
           if (savedActiveId) {
-            const activeId =
-              Number(
-                savedActiveId
-              );
-
-            activeBusiness =
-              businesses.find(
-                (item: Business) =>
-                  Number(item.id) ===
-                  activeId
-              );
+            const activeId = Number(savedActiveId);
+            activeBusiness = businesses.find(
+              (item: Business) => Number(item.id) === activeId
+            );
           }
-
           if (!activeBusiness) {
-            activeBusiness =
-              businesses[0];
+            activeBusiness = businesses[0];
           }
-
           if (activeBusiness) {
             setBusiness({
               ...defaultBusiness,
@@ -170,610 +121,378 @@ export default function InvoicePage() {
           }
         }
       } catch {
-        console.log(
-          "Business profiles could not be loaded."
-        );
+        console.log("Business profiles could not be loaded.");
       }
     } else {
-      /*
-       * OLD BUSINESS FALLBACK
-       */
-
-      const savedBusiness =
-        localStorage.getItem(
-          "hisabpro_business"
-        );
-
+      const savedBusiness = localStorage.getItem("hisabpro_business");
       if (savedBusiness) {
         try {
           setBusiness({
             ...defaultBusiness,
-            ...JSON.parse(
-              savedBusiness
-            ),
+            ...JSON.parse(savedBusiness),
           });
         } catch {
-          console.log(
-            "Business details could not be loaded."
-          );
+          console.log("Business details could not be loaded.");
         }
       }
     }
   }, []);
 
-  /*
-   * =====================================
-   * PAYMENT LABEL
-   * =====================================
-   */
-
   function getPaymentModeLabel(
     paymentType?: PaymentType,
     paymentMode?: PaymentMode
   ) {
-    if (
-      paymentType === "credit"
-    ) {
+    if (paymentType === "credit") {
       return "Credit / Udhaar";
     }
 
-    switch (
-      paymentMode || "cash"
-    ) {
+    switch (paymentMode || "cash") {
       case "cash":
         return "Cash";
-
       case "upi":
         return "UPI";
-
       case "card":
         return "Card";
-
       case "bank":
         return "Bank Transfer";
-
       case "online":
         return "Online";
-
       default:
         return "Cash";
     }
   }
 
-  /*
-   * =====================================
-   * NO INVOICE
-   * =====================================
-   */
-
   if (!sale) {
     return (
       <main className="invoice-page">
-
         <header className="invoice-header">
-
           <button
             type="button"
-            onClick={() =>
-              window.location.href =
-                "/hisabpro/"
-            }
+            onClick={() => (window.location.href = "/hisabpro/")}
             className="back-button"
           >
             ← Back
           </button>
-
-          <h1>
-            Invoice
-          </h1>
-
+          <h1>Invoice</h1>
           <span></span>
-
         </header>
 
         <div className="invoice-empty">
-
-          <div>
-            🧾
-          </div>
-
-          <h2>
-            No Invoice Found
-          </h2>
-
-          <p>
-            Create a sale first to
-            generate an invoice.
-          </p>
-
-          <a href="/hisabpro/sales/">
-            Create New Sale
-          </a>
-
+          <div>🧾</div>
+          <h2>No Invoice Found</h2>
+          <p>Create a sale first to generate an invoice.</p>
+          <a href="/hisabpro/sales/">Create New Sale</a>
         </div>
-
       </main>
     );
   }
 
-  /*
-   * =====================================
-   * SALE ITEMS
-   * =====================================
-   */
-
   const items: SaleItem[] =
-    sale.items &&
-    sale.items.length > 0
+    sale.items && sale.items.length > 0
       ? sale.items
       : sale.product
-        ? [
-            {
-              productId: 0,
+      ? [
+          {
+            productId: 0,
+            product: sale.product,
+            price: sale.price || 0,
+            purchasePrice: sale.purchasePrice || 0,
+            quantity: sale.quantity || 1,
+            amount: (sale.price || 0) * (sale.quantity || 1),
+          },
+        ]
+      : [];
 
-              product:
-                sale.product,
+  const invoiceLines: InvoiceLine[] = [];
 
-              price:
-                sale.price || 0,
-
-              purchasePrice:
-                sale.purchasePrice ||
-                0,
-
-              quantity:
-                sale.quantity || 1,
-
-              amount:
-                (sale.price || 0) *
-                (sale.quantity || 1),
-            },
-          ]
-        : [];
-
-  /*
-   * =====================================
-   * INVOICE LINES
-   * =====================================
-   */
-
-  const invoiceLines:
-    InvoiceLine[] = [];
-
-  items.forEach(
-    (
-      item,
-      itemIndex
-    ) => {
-
-      if (
-        item.batchDetails &&
-        item.batchDetails.length >
-          0
-      ) {
-        item.batchDetails.forEach(
-          (
-            batch,
-            batchIndex
-          ) => {
-
-            invoiceLines.push({
-              key:
-                `${item.productId}-${itemIndex}-${batch.batchId}-${batchIndex}`,
-
-              product:
-                item.product,
-
-              quantity:
-                batch.quantity,
-
-              price:
-                batch.sellingPrice,
-
-              amount:
-                batch.sellingPrice *
-                batch.quantity,
-            });
-
-          }
-        );
-      } else {
+  items.forEach((item, itemIndex) => {
+    if (item.batchDetails && item.batchDetails.length > 0) {
+      item.batchDetails.forEach((batch, batchIndex) => {
         invoiceLines.push({
-          key:
-            `${item.productId}-${itemIndex}`,
-
-          product:
-            item.product,
-
-          quantity:
-            item.quantity,
-
-          price:
-            item.price,
-
-          amount:
-            item.amount,
+          key: `${item.productId}-${itemIndex}-${batch.batchId}-${batchIndex}`,
+          product: item.product,
+          quantity: batch.quantity,
+          price: batch.sellingPrice,
+          amount: batch.sellingPrice * batch.quantity,
         });
-      }
+      });
+    } else {
+      invoiceLines.push({
+        key: `${item.productId}-${itemIndex}`,
+        product: item.product,
+        quantity: item.quantity,
+        price: item.price,
+        amount: item.amount,
+      });
     }
+  });
+
+  const paymentLabel = getPaymentModeLabel(
+    sale.paymentType,
+    sale.paymentMode
   );
 
   /*
    * =====================================
-   * PAYMENT LABEL
+   * DYNAMIC UPI LINK & QR GENERATOR
    * =====================================
    */
+  const upiId = business.upiId || (business.phone ? `${business.phone}@upi` : "");
+  const payeeName = business.businessName || business.ownerName || "HisabPro Merchant";
+  const invoiceTotal = sale.total || 0;
 
-  const paymentLabel =
-    getPaymentModeLabel(
-      sale.paymentType,
-      sale.paymentMode
-    );
+  // NPCI Standard UPI Intent String
+  const upiIntentString = `upi://pay?pa=${encodeURIComponent(
+    upiId
+  )}&pn=${encodeURIComponent(payeeName)}&am=${invoiceTotal}&cu=INR&tn=${encodeURIComponent(
+    `Invoice #${sale.id}`
+  )}`;
+
+  // QR Code Image Generator URL
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
+    upiIntentString
+  )}`;
 
   /*
    * =====================================
    * WHATSAPP MESSAGE
    * =====================================
    */
+  const whatsappItems = invoiceLines
+    .map(
+      (item) =>
+        `${item.product} × ${item.quantity} @ ₹${Number(
+          item.price || 0
+        ).toLocaleString("en-IN")} = ₹${Number(
+          item.amount || 0
+        ).toLocaleString("en-IN")}`
+    )
+    .join("\n");
 
-  const whatsappItems =
-    invoiceLines
-      .map(
-        (item) =>
-          `${item.product} × ${item.quantity} @ ₹${Number(
-            item.price || 0
-          ).toLocaleString(
-            "en-IN"
-          )} = ₹${Number(
-            item.amount || 0
-          ).toLocaleString(
-            "en-IN"
-          )}`
-      )
-      .join("\n");
-
-  const whatsappText =
-    `Invoice #${sale.id}
-${business.businessName || "HisabPro"}
-${
-  business.ownerName
-    ? `Owner: ${business.ownerName}`
-    : ""
-}
-${
-  business.phone
-    ? `Phone: ${business.phone}`
-    : ""
-}
-${
-  business.address
-    ? `Address: ${business.address}`
-    : ""
-}
-
+  const whatsappText = `🧾 *Invoice #${sale.id}*
+*${business.businessName || "HisabPro"}*
+${business.ownerName ? `Owner: ${business.ownerName}\n` : ""}${business.phone ? `Phone: ${business.phone}\n` : ""}${business.address ? `Address: ${business.address}\n` : ""}
 ${whatsappItems}
 
-Subtotal: ₹${Number(
-      sale.subtotal || 0
-    ).toLocaleString("en-IN")}
+-----------------------------
+*Subtotal:* ₹${Number(sale.subtotal || 0).toLocaleString("en-IN")}
+*Discount:* ₹${Number(sale.discount || 0).toLocaleString("en-IN")}
+*Grand Total:* ₹${Number(sale.total || 0).toLocaleString("en-IN")}
+*Payment Status:* ${paymentLabel}
+${
+  upiId
+    ? `\n📲 *Pay via UPI:* ${upiIntentString}`
+    : ""
+}
 
-Discount: ₹${Number(
-      sale.discount || 0
-    ).toLocaleString("en-IN")}
-
-Total: ₹${Number(
-      sale.total || 0
-    ).toLocaleString("en-IN")}
-
-Payment: ${paymentLabel}`;
-
-  /*
-   * =====================================
-   * INVOICE UI
-   * =====================================
-   */
+_Thank you for your business!_`;
 
   return (
     <main className="invoice-page">
-
       {/* HEADER */}
-
       <header className="invoice-header">
-
         <button
           type="button"
-          onClick={() =>
-            window.location.href =
-              "/hisabpro/"
-          }
+          onClick={() => (window.location.href = "/hisabpro/")}
           className="back-button"
         >
           ← Back
         </button>
-
-        <h1>
-          Invoice
-        </h1>
-
+        <h1>Invoice</h1>
         <button
           type="button"
-          onClick={() =>
-            window.print()
-          }
+          onClick={() => window.print()}
           className="print-button"
         >
           🖨 Print
         </button>
-
       </header>
 
-      {/* INVOICE */}
-
+      {/* INVOICE CARD */}
       <section className="invoice-card">
-
-        {/* BUSINESS */}
-
+        {/* BUSINESS INFO */}
         <div className="invoice-business">
-
           <div>
-
-            <h2>
-              {
-                business.businessName ||
-                "HisabPro"
-              }
-            </h2>
-
-            <p>
-              Sales • Stock • Khata • Profit
-            </p>
-
+            <h2>{business.businessName || "HisabPro"}</h2>
+            <p>Sales • Stock • Khata • Profit</p>
             {business.ownerName && (
-              <p className="business-detail">
-                Owner:{" "}
-                {business.ownerName}
-              </p>
+              <p className="business-detail">Owner: {business.ownerName}</p>
             )}
-
             {business.phone && (
-              <p className="business-detail">
-                Phone:{" "}
-                {business.phone}
-              </p>
+              <p className="business-detail">Phone: {business.phone}</p>
             )}
-
             {business.address && (
-              <p className="business-detail">
-                {business.address}
-              </p>
+              <p className="business-detail">{business.address}</p>
             )}
-
             {business.email && (
-              <p className="business-detail">
-                Email:{" "}
-                {business.email}
-              </p>
+              <p className="business-detail">Email: {business.email}</p>
             )}
-
             {business.gstin && (
-              <p className="business-detail">
-                GSTIN:{" "}
-                {business.gstin}
-              </p>
+              <p className="business-detail">GSTIN: {business.gstin}</p>
             )}
-
           </div>
 
           <div className="invoice-number">
-
-            <span>
-              Invoice No.
-            </span>
-
-            <strong>
-              #{sale.id}
-            </strong>
-
+            <span>Invoice No.</span>
+            <strong>#{sale.id}</strong>
           </div>
-
         </div>
 
-        {/* DATE / PAYMENT */}
-
+        {/* DATE & PAYMENT */}
         <div className="invoice-meta">
-
           <div>
-
-            <span>
-              Date
-            </span>
-
+            <span>Date</span>
             <strong>
-              {new Date(
-                sale.date
-              ).toLocaleString(
-                "en-IN"
-              )}
+              {new Date(sale.date).toLocaleString("en-IN")}
             </strong>
-
           </div>
 
           <div>
-
-            <span>
-              Payment
-            </span>
-
-            <strong>
-              {paymentLabel}
-            </strong>
-
+            <span>Payment</span>
+            <strong>{paymentLabel}</strong>
           </div>
-
         </div>
 
         {/* CUSTOMER */}
-
         {sale.customerName && (
           <div className="invoice-customer">
-
-            <span>
-              Customer
-            </span>
-
-            <strong>
-              {sale.customerName}
-            </strong>
-
+            <span>Customer</span>
+            <strong>{sale.customerName}</strong>
           </div>
         )}
 
-        {/* ITEMS */}
-
+        {/* ITEMS TABLE */}
         <div className="invoice-table">
-
           <div className="invoice-row invoice-table-head">
-
-            <span>
-              Item
-            </span>
-
-            <span>
-              Qty
-            </span>
-
-            <span>
-              Rate
-            </span>
-
-            <span>
-              Amount
-            </span>
-
+            <span>Item</span>
+            <span>Qty</span>
+            <span>Rate</span>
+            <span>Amount</span>
           </div>
 
-          {invoiceLines.map(
-            (item) => (
-              <div
-                className="invoice-row"
-                key={item.key}
-              >
-
-                <span>
-                  {item.product}
-                </span>
-
-                <span>
-                  {item.quantity}
-                </span>
-
-                <span>
-                  ₹
-                  {Number(
-                    item.price || 0
-                  ).toLocaleString(
-                    "en-IN"
-                  )}
-                </span>
-
-                <span>
-                  ₹
-                  {Number(
-                    item.amount || 0
-                  ).toLocaleString(
-                    "en-IN"
-                  )}
-                </span>
-
-              </div>
-            )
-          )}
-
+          {invoiceLines.map((item) => (
+            <div className="invoice-row" key={item.key}>
+              <span>{item.product}</span>
+              <span>{item.quantity}</span>
+              <span>
+                ₹{Number(item.price || 0).toLocaleString("en-IN")}
+              </span>
+              <span>
+                ₹{Number(item.amount || 0).toLocaleString("en-IN")}
+              </span>
+            </div>
+          ))}
         </div>
 
-        {/* TOTAL */}
-
+        {/* TOTAL CALCULATION */}
         <div className="invoice-total">
-
           <div>
-
-            <span>
-              Subtotal
-            </span>
-
+            <span>Subtotal</span>
             <strong>
-              ₹
-              {Number(
-                sale.subtotal || 0
-              ).toLocaleString(
-                "en-IN"
-              )}
+              ₹{Number(sale.subtotal || 0).toLocaleString("en-IN")}
             </strong>
-
           </div>
 
           <div>
-
-            <span>
-              Discount
-            </span>
-
+            <span>Discount</span>
             <strong>
-              ₹
-              {Number(
-                sale.discount || 0
-              ).toLocaleString(
-                "en-IN"
-              )}
+              ₹{Number(sale.discount || 0).toLocaleString("en-IN")}
             </strong>
-
           </div>
 
           <div className="grand-total">
+            <span>Total</span>
+            <strong>
+              ₹{Number(sale.total || 0).toLocaleString("en-IN")}
+            </strong>
+          </div>
+        </div>
 
-            <span>
-              Total
+        {/* DYNAMIC UPI QR CODE SECTION */}
+        {upiId && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "24px 0 16px 0",
+              padding: "16px",
+              background: "#f8fafc",
+              border: "1px dashed #cbd5e1",
+              borderRadius: "12px",
+              textAlign: "center",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "13px",
+                fontWeight: 700,
+                color: "#1e293b",
+                marginBottom: "4px",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+              }}
+            >
+              Scan & Pay via UPI
+            </span>
+            <span
+              style={{
+                fontSize: "11px",
+                color: "#64748b",
+                marginBottom: "12px",
+              }}
+            >
+              Google Pay • PhonePe • Paytm • Any UPI App
             </span>
 
-            <strong>
-              ₹
-              {Number(
-                sale.total || 0
-              ).toLocaleString(
-                "en-IN"
-              )}
-            </strong>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={qrCodeUrl}
+              alt="UPI QR Code"
+              style={{
+                width: "150px",
+                height: "150px",
+                borderRadius: "8px",
+                background: "#ffffff",
+                padding: "8px",
+                border: "1px solid #e2e8f0",
+              }}
+            />
 
+            <span
+              style={{
+                fontSize: "12px",
+                fontWeight: 600,
+                color: "#0f172a",
+                marginTop: "8px",
+              }}
+            >
+              UPI ID: {upiId}
+            </span>
+            <span
+              style={{
+                fontSize: "13px",
+                fontWeight: 800,
+                color: "#16a34a",
+                marginTop: "2px",
+              }}
+            >
+              Exact Amount: ₹{Number(invoiceTotal).toLocaleString("en-IN")}
+            </span>
           </div>
-
-        </div>
+        )}
 
         {/* FOOTER */}
-
         <div className="invoice-footer">
-
-          <strong>
-            Thank you for your business!
-          </strong>
-
-          <span>
-            Powered by HisabPro
-          </span>
-
+          <strong>Thank you for your business!</strong>
+          <span>Powered by HisabPro</span>
         </div>
-
       </section>
 
       {/* ACTIONS */}
-
       <div className="invoice-actions">
-
-        <button
-          type="button"
-          onClick={() =>
-            window.print()
-          }
-        >
+        <button type="button" onClick={() => window.print()}>
           🖨 Print / Save PDF
         </button>
 
@@ -781,18 +500,14 @@ Payment: ${paymentLabel}`;
           type="button"
           onClick={() => {
             window.open(
-              `https://wa.me/?text=${encodeURIComponent(
-                whatsappText
-              )}`,
+              `https://wa.me/?text=${encodeURIComponent(whatsappText)}`,
               "_blank"
             );
           }}
         >
           💬 Share on WhatsApp
         </button>
-
       </div>
-
     </main>
   );
 }
