@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "./globals.css";
 import AppLock from "../components/AppLock";
 import { LanguageProvider } from "../components/LanguageProvider";
@@ -54,11 +55,70 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/* Google Translate ke ugly banners aur tooltips ko hide karne ke liye CSS */}
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              .goog-te-banner-frame.skiptranslate, 
+              .goog-te-gadget-simple, 
+              .goog-te-gadget-icon,
+              #goog-gt-tt,
+              .goog-te-balloon-frame { 
+                display: none !important; 
+              }
+              body { 
+                top: 0px !important; 
+                position: static !important;
+              }
+              .goog-tooltip { 
+                display: none !important; 
+              }
+              .goog-tooltip:hover { 
+                display: none !important; 
+              }
+              .goog-text-highlight { 
+                background-color: transparent !important; 
+                border: none !important; 
+                box-shadow: none !important; 
+              }
+              #google_translate_element { 
+                display: none !important; 
+              }
+              .skiptranslate iframe {
+                display: none !important;
+              }
+            `,
+          }}
+        />
+      </head>
       <body>
+        {/* Hidden Container for Google Translate Element */}
+        <div id="google_translate_element"></div>
+
+        {/* Google Translate Init Script */}
+        <Script
+          id="google-translate-init"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              function googleTranslateElementInit() {
+                new google.translate.TranslateElement({
+                  pageLanguage: 'en',
+                  includedLanguages: 'en,hi',
+                  autoDisplay: false
+                }, 'google_translate_element');
+              }
+            `,
+          }}
+        />
+        <Script
+          strategy="afterInteractive"
+          src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"
+        />
+
         <LanguageProvider>
-          <AppLock>
-            {children}
-          </AppLock>
+          <AppLock>{children}</AppLock>
         </LanguageProvider>
       </body>
     </html>
