@@ -1,6 +1,6 @@
 {
-  "versionCode": 5,
-  "versionName": "1.0.4",
+  "versionCode": 6,
+  "versionName": "1.0.5",
   "apkUrl": "https://github.com/sameerkhan86926-a11y/hisabpro/releases/download/latest/app-release.apk",
-  "releaseNotes": "UPI QR on invoices, clean universal share, post-bill workflow, and auto-translation"
+  "releaseNotes": "Added 58mm POS thermal receipt slip layout and paper mode selector"
 }
