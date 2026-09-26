@@ -242,19 +242,21 @@ export default function InvoicePage() {
   const payeeName = business.businessName || business.ownerName || "HisabPro";
   const formattedAmount = Number(sale.total || 0).toFixed(2);
 
+  // Intent Link for QR Code
   const upiDeepLink = `upi://pay?pa=${encodeURIComponent(
     upiId
   )}&pn=${encodeURIComponent(payeeName)}&am=${formattedAmount}&cu=INR&tn=${encodeURIComponent(
     `Invoice #${sale.id}`
   )}`;
 
+  // QR Code Image URL
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
     upiDeepLink
   )}`;
 
   /*
    * =====================================
-   * SHARE TEXT BUILDER
+   * SHARE TEXT BUILDER (Clean UPI Info)
    * =====================================
    */
   const shareItems = invoiceLines
@@ -280,8 +282,10 @@ ${shareItems}
 *Payment Status:* ${paymentLabel}
 ${
   upiId
-    ? `\n💳 *Pay Exact Bill Amount (₹${Number(formattedAmount).toLocaleString("en-IN")}) via UPI:*
-👉 ${upiDeepLink}`
+    ? `\n📲 *UPI Payment Details:*
+• *UPI ID:* \`${upiId}\`
+• *Amount to Pay:* ₹${Number(formattedAmount).toLocaleString("en-IN")}
+_(Pay using Google Pay, PhonePe, or Paytm)_`
     : ""
 }
 
@@ -289,7 +293,7 @@ _Thank you for your business!_`;
 
   /*
    * =====================================
-   * ACTIONS HANDLERS (PRINT & SHARE)
+   * ACTIONS HANDLERS
    * =====================================
    */
   function handlePrint() {
@@ -297,6 +301,14 @@ _Thank you for your business!_`;
     setTimeout(() => {
       setShowDoneDialog(true);
     }, 1000);
+  }
+
+  function handleWhatsAppShare() {
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(shareText)}`,
+      "_blank"
+    );
+    setShowDoneDialog(true);
   }
 
   async function handleUniversalShare() {
@@ -314,10 +326,8 @@ _Thank you for your business!_`;
         await navigator.clipboard.writeText(shareText);
         alert("Invoice details copied to clipboard!");
       } catch {
-        window.open(
-          `https://wa.me/?text=${encodeURIComponent(shareText)}`,
-          "_blank"
-        );
+        handleWhatsAppShare();
+        return;
       }
     }
     setShowDoneDialog(true);
@@ -527,13 +537,85 @@ _Thank you for your business!_`;
       </section>
 
       {/* ACTIONS */}
-      <div className="invoice-actions">
-        <button type="button" onClick={handlePrint}>
-          🖨 Print / Save PDF
+      <div
+        className="invoice-actions"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: "8px",
+          marginTop: "16px",
+        }}
+      >
+        <button
+          type="button"
+          onClick={handlePrint}
+          style={{
+            padding: "12px 6px",
+            fontSize: "13px",
+            fontWeight: 700,
+            borderRadius: "10px",
+            border: "1px solid #cbd5e1",
+            background: "#ffffff",
+            color: "#1e293b",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "5px",
+            cursor: "pointer",
+          }}
+        >
+          🖨️ <span>Print</span>
         </button>
 
-        <button type="button" onClick={handleUniversalShare}>
-          📤 Share
+        <button
+          type="button"
+          onClick={handleWhatsAppShare}
+          style={{
+            padding: "12px 6px",
+            fontSize: "13px",
+            fontWeight: 700,
+            borderRadius: "10px",
+            border: "none",
+            background: "#25D366",
+            color: "#ffffff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "6px",
+            cursor: "pointer",
+          }}
+        >
+          <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            style={{ minWidth: "17px" }}
+          >
+            <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.668-.699c.969.54 1.761.82 2.79.82 3.18 0 5.767-2.586 5.768-5.766 0-3.18-2.587-5.766-5.766-5.766zm9.969 5.766c0 5.503-4.478 9.97-9.97 9.97-1.748 0-3.381-.453-4.81-1.246l-5.22 1.368 1.393-5.086c-.901-1.503-1.423-3.262-1.423-5.006 0-5.502 4.478-9.97 9.97-9.97s10.06 4.468 10.06 9.97z" />
+          </svg>
+          <span>WhatsApp</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleUniversalShare}
+          style={{
+            padding: "12px 6px",
+            fontSize: "13px",
+            fontWeight: 700,
+            borderRadius: "10px",
+            border: "1px solid #102a56",
+            background: "#102a56",
+            color: "#ffffff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "5px",
+            cursor: "pointer",
+          }}
+        >
+          📤 <span>Share</span>
         </button>
       </div>
 
