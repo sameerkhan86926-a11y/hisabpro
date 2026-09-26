@@ -17,7 +17,7 @@ type LanguageContextType = {
 };
 
 const LanguageContext =
-  createContext<LanguageContextType | null>(null);
+  createContext<LanguageContextType | undefined>(undefined);
 
 const STORAGE_KEY = "hisabpro_language";
 
@@ -26,51 +26,39 @@ export function LanguageProvider({
 }: {
   children: ReactNode;
 }) {
-  const [language, setLanguageState] =
-    useState<Language>("en");
+  const [language, setLanguageState] = useState<Language>("en");
 
   useEffect(() => {
     try {
-      const saved =
-        localStorage.getItem(STORAGE_KEY);
+      const savedLanguage = localStorage.getItem(STORAGE_KEY);
 
-      if (saved === "hi" || saved === "en") {
-        setLanguageState(saved);
+      if (savedLanguage === "hi" || savedLanguage === "en") {
+        setLanguageState(savedLanguage);
       }
     } catch {
-      // Ignore storage errors.
+      // Ignore localStorage errors.
     }
   }, []);
 
-  function setLanguage(nextLanguage: Language) {
-    setLanguageState(nextLanguage);
+  const setLanguage = (newLanguage: Language) => {
+    setLanguageState(newLanguage);
 
     try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        nextLanguage
-      );
+      localStorage.setItem(STORAGE_KEY, newLanguage);
 
       window.dispatchEvent(
-        new CustomEvent(
-          "hisabpro-language-changed",
-          {
-            detail: nextLanguage,
-          }
-        )
+        new CustomEvent("hisabpro-language-changed", {
+          detail: newLanguage,
+        })
       );
     } catch {
-      // Ignore storage errors.
+      // Ignore localStorage errors.
     }
-  }
+  };
 
-  function toggleLanguage() {
-    setLanguage(
-      language === "en"
-        ? "hi"
-        : "en"
-    );
-  }
+  const toggleLanguage = () => {
+    setLanguage(language === "en" ? "hi" : "en");
+  };
 
   return (
     <LanguageContext.Provider
@@ -86,8 +74,7 @@ export function LanguageProvider({
 }
 
 export function useLanguage() {
-  const context =
-    useContext(LanguageContext);
+  const context = useContext(LanguageContext);
 
   if (!context) {
     throw new Error(
