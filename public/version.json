@@ -1,6 +1,6 @@
 {
-  "versionCode": 8,
-  "versionName": "1.0.7",
+  "versionCode": 9,
+  "versionName": "1.0.8",
   "apkUrl": "https://github.com/sameerkhan86926-a11y/hisabpro/releases/download/latest/app-release.apk",
-  "releaseNotes": "Fixed native printing blocking issue and improved thermal slip layout"
+  "releaseNotes": "camera permission problem fixed update"
 }
