@@ -1,8 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useLanguage } from "../../components/LanguageProvider";
+
+type Business = {
+  id: number;
+  businessName: string;
+  ownerName: string;
+  phone: string;
+};
 
 export default function MorePage() {
+  const { language, setLanguage } = useLanguage();
+
+  // Support State
   const [showSupport, setShowSupport] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -10,25 +21,141 @@ export default function MorePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Shop details auto-fill agar pehle se save ho
-  useEffect(() => {
-    try {
-      const savedBusinesses = localStorage.getItem("hisabpro_businesses");
-      const savedBusiness = localStorage.getItem("hisabpro_business");
+  // Quick Business State
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [activeBusinessId, setActiveBusinessId] = useState<number | null>(null);
 
-      if (savedBusinesses) {
-        const list = JSON.parse(savedBusinesses);
-        if (Array.isArray(list) && list.length > 0) {
-          if (list[0].businessName) setName(list[0].businessName);
-          if (list[0].phone) setPhone(list[0].phone);
-        }
-      } else if (savedBusiness) {
-        const single = JSON.parse(savedBusiness);
-        if (single.businessName) setName(single.businessName);
-        if (single.phone) setPhone(single.phone);
-      }
-    } catch (e) {}
+  // Security / App Lock Modal State
+  const [showSecurityModal, setShowSecurityModal] = useState(false);
+  const [appLockEnabled, setAppLockEnabled] = useState(false);
+  const [appPin, setAppPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [pinLength, setPinLength] = useState("4");
+  const [autoLock, setAutoLock] = useState("immediately");
+  const [securityMessage, setSecurityMessage] = useState("");
+
+  useEffect(() => {
+    loadSettingsData();
   }, []);
+
+  function loadSettingsData() {
+    try {
+      // 1. Business profiles load
+      const saved = localStorage.getItem("hisabpro_businesses");
+      const activeId = localStorage.getItem("hisabpro_active_business");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setBusinesses(parsed);
+          if (activeId) {
+            setActiveBusinessId(Number(activeId));
+            const current = parsed.find((b) => b.id === Number(activeId));
+            if (current) {
+              if (current.businessName) setName(current.businessName);
+              if (current.phone) setPhone(current.phone);
+            }
+          } else if (parsed.length > 0) {
+            setActiveBusinessId(parsed[0].id);
+            if (parsed[0].businessName) setName(parsed[0].businessName);
+            if (parsed[0].phone) setPhone(parsed[0].phone);
+          }
+        }
+      }
+
+      // 2. Security settings load
+      const savedLock = localStorage.getItem("hisabpro_app_lock") === "true";
+      const savedPin = localStorage.getItem("hisabpro_app_lock_pin_hash");
+      const savedPinLen = localStorage.getItem("hisabpro_app_lock_pin_length") || "4";
+      const savedAuto = localStorage.getItem("hisabpro_app_lock_auto") || "immediately";
+
+      setAppLockEnabled(savedLock);
+      setAppPin(savedPin ? "******" : "");
+      setPinLength(savedPinLen);
+      setAutoLock(savedAuto);
+    } catch (e) {}
+  }
+
+  function handleLanguageSwitch(lang: "en" | "hi") {
+    setLanguage(lang);
+    document.cookie = `googtrans=/en/${lang}; path=/;`;
+    if (typeof window !== "undefined" && window.location.hostname) {
+      document.cookie = `googtrans=/en/${lang}; domain=.${window.location.hostname}; path=/;`;
+      window.location.reload();
+    }
+  }
+
+  function switchActiveBusiness(id: number) {
+    const selected = businesses.find((b) => b.id === id);
+    if (!selected) return;
+
+    setActiveBusinessId(id);
+    localStorage.setItem("hisabpro_active_business", String(id));
+    localStorage.setItem("hisabpro_business", JSON.stringify(selected));
+    if (selected.businessName) setName(selected.businessName);
+    if (selected.phone) setPhone(selected.phone);
+  }
+
+  async function hashPin(value: string) {
+    const data = new TextEncoder().encode(value);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    return Array.from(new Uint8Array(hashBuffer))
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+  }
+
+  async function handleSaveSecurity() {
+    setSecurityMessage("");
+
+    if (!appLockEnabled) {
+      localStorage.setItem("hisabpro_app_lock", "false");
+      localStorage.removeItem("hisabpro_app_lock_pin_hash");
+      localStorage.removeItem("hisabpro_app_lock_pin_length");
+      localStorage.removeItem("hisabpro_app_lock_auto");
+      window.dispatchEvent(new CustomEvent("hisabpro-app-lock-changed"));
+      setAppPin("");
+      setConfirmPin("");
+      setSecurityMessage("App Lock band ho gaya.");
+      setTimeout(() => setShowSecurityModal(false), 1200);
+      return;
+    }
+
+    if (appPin === "******") {
+      localStorage.setItem("hisabpro_app_lock", "true");
+      localStorage.setItem("hisabpro_app_lock_pin_length", pinLength);
+      localStorage.setItem("hisabpro_app_lock_auto", autoLock);
+      window.dispatchEvent(new CustomEvent("hisabpro-app-lock-changed"));
+      setSecurityMessage("Security settings update ho gayi.");
+      setTimeout(() => setShowSecurityModal(false), 1200);
+      return;
+    }
+
+    if (!/^\d+$/.test(appPin)) {
+      setSecurityMessage("PIN sirf numbers me hona chahiye.");
+      return;
+    }
+
+    if (appPin.length !== Number(pinLength)) {
+      setSecurityMessage(`PIN exact ${pinLength} digit ka hona chahiye.`);
+      return;
+    }
+
+    if (appPin !== confirmPin) {
+      setSecurityMessage("PIN aur Confirm PIN match nahi hue.");
+      return;
+    }
+
+    const hashedPin = await hashPin(appPin);
+    localStorage.setItem("hisabpro_app_lock_pin_hash", hashedPin);
+    localStorage.setItem("hisabpro_app_lock", "true");
+    localStorage.setItem("hisabpro_app_lock_pin_length", pinLength);
+    localStorage.setItem("hisabpro_app_lock_auto", autoLock);
+
+    window.dispatchEvent(new CustomEvent("hisabpro-app-lock-changed"));
+    setAppPin("******");
+    setConfirmPin("");
+    setSecurityMessage("App Lock activate ho gaya!");
+    setTimeout(() => setShowSecurityModal(false), 1200);
+  }
 
   const handleSupportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +165,6 @@ export default function MorePage() {
     }
 
     setIsSubmitting(true);
-
     const formUrl = `https://docs.google.com/forms/d/e/1FAIpQLSeEfgh1laeARcWSzZExLZijSHb4n1nrRCvy9PIWRJCla4-idg/formResponse?entry.1227657136=${encodeURIComponent(
       name
     )}&entry.1740240324=${encodeURIComponent(
@@ -46,39 +172,131 @@ export default function MorePage() {
     )}&entry.1595797954=${encodeURIComponent(problem)}&submit=Submit`;
 
     try {
-      await fetch(formUrl, {
-        method: "POST",
-        mode: "no-cors",
-      });
-
+      await fetch(formUrl, { method: "POST", mode: "no-cors" });
       setIsSubmitting(false);
       setIsSuccess(true);
       setProblem("");
-
       setTimeout(() => {
         setIsSuccess(false);
         setShowSupport(false);
       }, 2000);
-    } catch (err) {
+    } catch {
       setIsSubmitting(false);
-      alert("Request bhejte waqt dikkat aayi. Kripya dobara try karein.");
+      alert("Request bhejte waqt problem aayi. Try again.");
     }
   };
 
   return (
     <main className="more-page">
-
       <header className="more-header">
         <a href="/hisabpro/">← Dashboard</a>
         <h1>More</h1>
         <span></span>
       </header>
 
-      {/* HELP & SUPPORT (NATIVE APP STYLE) */}
+      {/* QUICK PREFERENCES (LANGUAGE & ACTIVE STORE SWITCHER) */}
       <section className="more-section">
-        <h2>Help & Support</h2>
+        <h2>App Preferences</h2>
 
+        <div style={{ background: "#fff", borderRadius: "14px", padding: "14px", border: "1px solid #e2e8f0", marginBottom: "14px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+            <span style={{ fontSize: "13px", fontWeight: "600", color: "#475569" }}>App Language</span>
+            <span style={{ fontSize: "12px", color: "#94a3b8" }}>{language === "hi" ? "हिन्दी" : "English"}</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+            <button
+              type="button"
+              onClick={() => handleLanguageSwitch("en")}
+              style={{
+                padding: "8px 12px",
+                borderRadius: "8px",
+                border: language === "en" ? "2px solid #102a56" : "1px solid #cbd5e1",
+                background: language === "en" ? "#102a56" : "#ffffff",
+                color: language === "en" ? "#ffffff" : "#102a56",
+                fontWeight: "700",
+                fontSize: "13px",
+                cursor: "pointer",
+              }}
+            >
+              English
+            </button>
+            <button
+              type="button"
+              onClick={() => handleLanguageSwitch("hi")}
+              style={{
+                padding: "8px 12px",
+                borderRadius: "8px",
+                border: language === "hi" ? "2px solid #102a56" : "1px solid #cbd5e1",
+                background: language === "hi" ? "#102a56" : "#ffffff",
+                color: language === "hi" ? "#ffffff" : "#102a56",
+                fontWeight: "700",
+                fontSize: "13px",
+                cursor: "pointer",
+              }}
+            >
+              हिन्दी
+            </button>
+          </div>
+
+          {/* Quick Business Switcher (Agar multiple shops hain) */}
+          {businesses.length > 1 && (
+            <div style={{ marginTop: "14px", paddingTop: "12px", borderTop: "1px dashed #e2e8f0" }}>
+              <span style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#475569", marginBottom: "6px" }}>
+                Active Dukan Select Karein
+              </span>
+              <select
+                value={activeBusinessId ?? ""}
+                onChange={(e) => switchActiveBusiness(Number(e.target.value))}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: "8px",
+                  border: "1px solid #cbd5e1",
+                  fontSize: "13px",
+                  background: "#f8fafc",
+                  color: "#1e293b",
+                  fontWeight: "600",
+                }}
+              >
+                {businesses.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    🏪 {b.businessName || "Unnamed Business"}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
+        {/* Security & Support Quick Cards */}
         <div className="more-grid">
+          {/* App Lock Settings Trigger */}
+          <button
+            type="button"
+            onClick={() => setShowSecurityModal(true)}
+            className="more-card"
+            style={{
+              textAlign: "left",
+              background: "#fff",
+              border: "none",
+              cursor: "pointer",
+              width: "100%",
+              fontFamily: "inherit",
+            }}
+          >
+            <div className="more-icon" style={{ display: "flex", alignItems: "center", justifyContent: "center", color: "#102a56" }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </div>
+            <div>
+              <strong>App Lock & Security</strong>
+              <span>Status: <strong style={{ color: appLockEnabled ? "#16a34a" : "#dc2626" }}>{appLockEnabled ? "ON (Protected)" : "OFF"}</strong></span>
+            </div>
+          </button>
+
+          {/* Help & Support Trigger */}
           <button
             type="button"
             onClick={() => setShowSupport(true)}
@@ -92,25 +310,8 @@ export default function MorePage() {
               fontFamily: "inherit",
             }}
           >
-            <div
-              className="more-icon"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#102a56",
-              }}
-            >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+            <div className="more-icon" style={{ display: "flex", alignItems: "center", justifyContent: "center", color: "#102a56" }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
                 <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
               </svg>
@@ -126,9 +327,7 @@ export default function MorePage() {
       {/* BUSINESS */}
       <section className="more-section">
         <h2>Business</h2>
-
         <div className="more-grid">
-
           <a href="/hisabpro/reports/" className="more-card">
             <div className="more-icon">📊</div>
             <div>
@@ -136,7 +335,6 @@ export default function MorePage() {
               <span>Sales, profit & business reports</span>
             </div>
           </a>
-
           <a href="/hisabpro/expenses/" className="more-card">
             <div className="more-icon">💰</div>
             <div>
@@ -144,7 +342,6 @@ export default function MorePage() {
               <span>Manage business expenses</span>
             </div>
           </a>
-
           <a href="/hisabpro/stock/" className="more-card">
             <div className="more-icon">📦</div>
             <div>
@@ -152,7 +349,6 @@ export default function MorePage() {
               <span>Products & inventory</span>
             </div>
           </a>
-
           <a href="/hisabpro/khata/" className="more-card">
             <div className="more-icon">👤</div>
             <div>
@@ -160,15 +356,13 @@ export default function MorePage() {
               <span>Customers & outstanding dues</span>
             </div>
           </a>
-
           <a href="/hisabpro/settings/" className="more-card">
             <div className="more-icon">🏪</div>
             <div>
               <strong>Business Settings</strong>
-              <span>Shop name, phone, address & GSTIN</span>
+              <span>Edit profile, UPI QR & GSTIN</span>
             </div>
           </a>
-
           <a href="/hisabpro/cashbook/" className="more-card">
             <div className="more-icon">💵</div>
             <div>
@@ -176,16 +370,13 @@ export default function MorePage() {
               <span>Cash balance, cash in & cash out</span>
             </div>
           </a>
-
         </div>
       </section>
 
       {/* SALES */}
       <section className="more-section">
         <h2>Sales</h2>
-
         <div className="more-grid">
-
           <a href="/hisabpro/sales/" className="more-card">
             <div className="more-icon">🧾</div>
             <div>
@@ -193,7 +384,6 @@ export default function MorePage() {
               <span>Create a new bill</span>
             </div>
           </a>
-
           <a href="/hisabpro/sales/history/" className="more-card">
             <div className="more-icon">📋</div>
             <div>
@@ -201,7 +391,6 @@ export default function MorePage() {
               <span>View previous sales</span>
             </div>
           </a>
-
           <a href="/hisabpro/returns/sales/" className="more-card">
             <div className="more-icon">↩️</div>
             <div>
@@ -209,16 +398,13 @@ export default function MorePage() {
               <span>Return products from customers</span>
             </div>
           </a>
-
         </div>
       </section>
 
       {/* PURCHASE */}
       <section className="more-section">
         <h2>Purchase</h2>
-
         <div className="more-grid">
-
           <a href="/hisabpro/purchase/" className="more-card">
             <div className="more-icon">🛒</div>
             <div>
@@ -226,7 +412,6 @@ export default function MorePage() {
               <span>Add stock from suppliers</span>
             </div>
           </a>
-
           <a href="/hisabpro/purchase/history/" className="more-card">
             <div className="more-icon">📋</div>
             <div>
@@ -234,7 +419,6 @@ export default function MorePage() {
               <span>View previous purchases</span>
             </div>
           </a>
-
           <a href="/hisabpro/returns/purchase/" className="more-card">
             <div className="more-icon">↪️</div>
             <div>
@@ -242,16 +426,13 @@ export default function MorePage() {
               <span>Return products to suppliers</span>
             </div>
           </a>
-
         </div>
       </section>
 
       {/* SUPPLIERS */}
       <section className="more-section">
         <h2>Suppliers</h2>
-
         <div className="more-grid">
-
           <a href="/hisabpro/suppliers/" className="more-card">
             <div className="more-icon">🏭</div>
             <div>
@@ -259,7 +440,6 @@ export default function MorePage() {
               <span>Manage suppliers & payable</span>
             </div>
           </a>
-
           <a href="/hisabpro/suppliers/payments/" className="more-card">
             <div className="more-icon">💳</div>
             <div>
@@ -267,7 +447,6 @@ export default function MorePage() {
               <span>Record supplier payments</span>
             </div>
           </a>
-
           <a href="/hisabpro/suppliers/ledger/" className="more-card">
             <div className="more-icon">📒</div>
             <div>
@@ -275,16 +454,13 @@ export default function MorePage() {
               <span>Purchases, payments & payable</span>
             </div>
           </a>
-
         </div>
       </section>
 
       {/* RETURNS */}
       <section className="more-section">
         <h2>Returns</h2>
-
         <div className="more-grid">
-
           <a href="/hisabpro/returns/" className="more-card">
             <div className="more-icon">🔄</div>
             <div>
@@ -292,7 +468,6 @@ export default function MorePage() {
               <span>Sales & purchase returns</span>
             </div>
           </a>
-
           <a href="/hisabpro/returns/history/" className="more-card">
             <div className="more-icon">📑</div>
             <div>
@@ -300,16 +475,13 @@ export default function MorePage() {
               <span>View all return transactions</span>
             </div>
           </a>
-
         </div>
       </section>
 
       {/* CASHBOOK */}
       <section className="more-section">
         <h2>Cashbook</h2>
-
         <div className="more-grid">
-
           <a href="/hisabpro/cashbook/" className="more-card">
             <div className="more-icon">💰</div>
             <div>
@@ -317,7 +489,6 @@ export default function MorePage() {
               <span>Current cash balance</span>
             </div>
           </a>
-
           <a href="/hisabpro/cashbook/in/" className="more-card">
             <div className="more-icon">⬇️</div>
             <div>
@@ -325,7 +496,6 @@ export default function MorePage() {
               <span>Record received cash</span>
             </div>
           </a>
-
           <a href="/hisabpro/cashbook/out/" className="more-card">
             <div className="more-icon">⬆️</div>
             <div>
@@ -333,7 +503,6 @@ export default function MorePage() {
               <span>Record paid cash</span>
             </div>
           </a>
-
           <a href="/hisabpro/cashbook/history/" className="more-card">
             <div className="more-icon">📜</div>
             <div>
@@ -341,16 +510,13 @@ export default function MorePage() {
               <span>View all cash transactions</span>
             </div>
           </a>
-
         </div>
       </section>
 
       {/* BACKUP & RESTORE */}
       <section className="more-section">
         <h2>Backup & Restore</h2>
-
         <div className="more-grid">
-
           <a href="/hisabpro/backup/" className="more-card">
             <div className="more-icon">💾</div>
             <div>
@@ -358,64 +524,213 @@ export default function MorePage() {
               <span>Save and restore your business data</span>
             </div>
           </a>
-
         </div>
       </section>
 
       {/* QUICK LINKS */}
       <section className="more-section">
         <h2>Quick Links</h2>
-
         <div className="more-links">
-
-          <a href="/hisabpro/">
-            🏠 Dashboard
-          </a>
-
-          <a href="/hisabpro/sales/">
-            🧾 New Sale
-          </a>
-
-          <a href="/hisabpro/stock/">
-            📦 Stock
-          </a>
-
-          <a href="/hisabpro/khata/">
-            📒 Khata
-          </a>
-
-          <a href="/hisabpro/purchase/">
-            🛒 Purchase
-          </a>
-
-          <a href="/hisabpro/suppliers/">
-            🏭 Suppliers
-          </a>
-
-          <a href="/hisabpro/cashbook/">
-            💰 Cashbook
-          </a>
-
-          <a href="/hisabpro/returns/">
-            🔄 Returns
-          </a>
-
-          <a href="/hisabpro/reports/">
-            📊 Reports
-          </a>
-
-          <a href="/hisabpro/settings/">
-            🏪 Business Settings
-          </a>
-
-          <a href="/hisabpro/backup/">
-            💾 Backup & Restore
-          </a>
-
+          <a href="/hisabpro/">🏠 Dashboard</a>
+          <a href="/hisabpro/sales/">🧾 New Sale</a>
+          <a href="/hisabpro/stock/">📦 Stock</a>
+          <a href="/hisabpro/khata/">📒 Khata</a>
+          <a href="/hisabpro/purchase/">🛒 Purchase</a>
+          <a href="/hisabpro/suppliers/">🏭 Suppliers</a>
+          <a href="/hisabpro/cashbook/">💰 Cashbook</a>
+          <a href="/hisabpro/returns/">🔄 Returns</a>
+          <a href="/hisabpro/reports/">📊 Reports</a>
+          <a href="/hisabpro/settings/">🏪 Business Settings</a>
+          <a href="/hisabpro/backup/">💾 Backup & Restore</a>
         </div>
       </section>
 
-      {/* CUSTOM NATIVE SUPPORT MODAL */}
+      {/* SECURITY / APP LOCK MODAL */}
+      {showSecurityModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
+            backdropFilter: "blur(3px)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "16px",
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "#ffffff",
+              width: "100%",
+              maxWidth: "420px",
+              borderRadius: "16px",
+              overflow: "hidden",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.2)",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "16px 20px",
+                borderBottom: "1px solid #e2e8f0",
+                backgroundColor: "#102a56",
+                color: "#ffffff",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "600", fontSize: "16px" }}>
+                <span>🔐</span>
+                <span>App Lock Security</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSecurityModal(false);
+                  setSecurityMessage("");
+                }}
+                style={{
+                  border: "none",
+                  backgroundColor: "rgba(255, 255, 255, 0.2)",
+                  borderRadius: "50%",
+                  width: "28px",
+                  height: "28px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#ffffff",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ padding: "20px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+                <div>
+                  <strong style={{ display: "block", fontSize: "14px", color: "#1e293b" }}>App Lock Protection</strong>
+                  <small style={{ color: "#64748b", fontSize: "12px" }}>App open hone par PIN maangega</small>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAppLockEnabled(!appLockEnabled)}
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: "20px",
+                    border: "none",
+                    fontWeight: "700",
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    backgroundColor: appLockEnabled ? "#16a34a" : "#cbd5e1",
+                    color: appLockEnabled ? "#ffffff" : "#475569",
+                  }}
+                >
+                  {appLockEnabled ? "ON" : "OFF"}
+                </button>
+              </div>
+
+              {appLockEnabled && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#475569", marginBottom: "4px" }}>
+                      PIN Length
+                    </label>
+                    <select
+                      value={pinLength}
+                      onChange={(e) => {
+                        setPinLength(e.target.value);
+                        setAppPin("");
+                        setConfirmPin("");
+                      }}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px" }}
+                    >
+                      <option value="4">4 Digit PIN</option>
+                      <option value="6">6 Digit PIN</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#475569", marginBottom: "4px" }}>
+                      {appPin === "******" ? "Change PIN" : "New PIN"}
+                    </label>
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      maxLength={Number(pinLength)}
+                      placeholder={`Enter ${pinLength} digit PIN`}
+                      value={appPin === "******" ? "" : appPin}
+                      onChange={(e) => setAppPin(e.target.value.replace(/\D/g, ""))}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", boxSizing: "border-box" }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#475569", marginBottom: "4px" }}>
+                      Confirm PIN
+                    </label>
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      maxLength={Number(pinLength)}
+                      placeholder="Confirm PIN"
+                      value={confirmPin}
+                      onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ""))}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", boxSizing: "border-box" }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#475569", marginBottom: "4px" }}>
+                      Auto Lock
+                    </label>
+                    <select
+                      value={autoLock}
+                      onChange={(e) => setAutoLock(e.target.value)}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px" }}
+                    >
+                      <option value="immediately">Immediately</option>
+                      <option value="1">After 1 minute</option>
+                      <option value="5">After 5 minutes</option>
+                      <option value="15">After 15 minutes</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {securityMessage && (
+                <p style={{ fontSize: "12px", color: securityMessage.includes("nahi") || securityMessage.includes("must") ? "#dc2626" : "#16a34a", marginBottom: "12px" }}>
+                  {securityMessage}
+                </p>
+              )}
+
+              <button
+                type="button"
+                onClick={handleSaveSecurity}
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  borderRadius: "8px",
+                  backgroundColor: "#102a56",
+                  color: "#ffffff",
+                  fontWeight: "600",
+                  fontSize: "13px",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Save Security Settings
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CUSTOM SUPPORT MODAL */}
       {showSupport && (
         <div
           style={{
@@ -442,7 +757,6 @@ export default function MorePage() {
               flexDirection: "column",
             }}
           >
-            {/* Header */}
             <div
               style={{
                 display: "flex",
@@ -455,19 +769,7 @@ export default function MorePage() {
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "600", fontSize: "16px" }}>
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#ffffff"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
-                  <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
-                </svg>
+                <span>🎧</span>
                 <span>Help & Support</span>
               </div>
               <button
@@ -493,7 +795,6 @@ export default function MorePage() {
               </button>
             </div>
 
-            {/* Content Body */}
             <div style={{ padding: "20px" }}>
               {isSuccess ? (
                 <div style={{ textAlign: "center", padding: "24px 0" }}>
@@ -510,16 +811,7 @@ export default function MorePage() {
                       margin: "0 auto 16px auto",
                     }}
                   >
-                    <svg
-                      width="32"
-                      height="32"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   </div>
@@ -542,15 +834,7 @@ export default function MorePage() {
                       placeholder="e.g. Sunil General Store"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      style={{
-                        width: "100%",
-                        padding: "10px 12px",
-                        borderRadius: "8px",
-                        border: "1px solid #cbd5e1",
-                        fontSize: "14px",
-                        outline: "none",
-                        boxSizing: "border-box",
-                      }}
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "14px", outline: "none", boxSizing: "border-box" }}
                     />
                   </div>
 
@@ -564,15 +848,7 @@ export default function MorePage() {
                       placeholder="e.g. 9876543210"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      style={{
-                        width: "100%",
-                        padding: "10px 12px",
-                        borderRadius: "8px",
-                        border: "1px solid #cbd5e1",
-                        fontSize: "14px",
-                        outline: "none",
-                        boxSizing: "border-box",
-                      }}
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "14px", outline: "none", boxSizing: "border-box" }}
                     />
                   </div>
 
@@ -586,16 +862,7 @@ export default function MorePage() {
                       placeholder="Apni problem ya suggestion likhein..."
                       value={problem}
                       onChange={(e) => setProblem(e.target.value)}
-                      style={{
-                        width: "100%",
-                        padding: "10px 12px",
-                        borderRadius: "8px",
-                        border: "1px solid #cbd5e1",
-                        fontSize: "14px",
-                        outline: "none",
-                        resize: "none",
-                        boxSizing: "border-box",
-                      }}
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "14px", outline: "none", resize: "none", boxSizing: "border-box" }}
                     />
                   </div>
 
@@ -613,7 +880,6 @@ export default function MorePage() {
                       border: "none",
                       cursor: isSubmitting ? "not-allowed" : "pointer",
                       opacity: isSubmitting ? 0.7 : 1,
-                      transition: "0.2s",
                     }}
                   >
                     {isSubmitting ? "Bheja ja raha hai..." : "Submit Request"}
@@ -627,7 +893,6 @@ export default function MorePage() {
 
       {/* BOTTOM NAV */}
       <nav className="bottom-nav">
-
         <a href="/hisabpro/">
           <svg viewBox="0 0 24 24">
             <path d="M3 10.5L12 3l9 7.5" />
@@ -635,7 +900,6 @@ export default function MorePage() {
           </svg>
           <span>Home</span>
         </a>
-
         <a href="/hisabpro/sales/">
           <svg viewBox="0 0 24 24">
             <path d="M6 2h12v20H6z" />
@@ -645,7 +909,6 @@ export default function MorePage() {
           </svg>
           <span>Sales</span>
         </a>
-
         <a href="/hisabpro/stock/">
           <svg viewBox="0 0 24 24">
             <path d="M3 9l9-5 9 5-9 5-9-5z" />
@@ -653,7 +916,6 @@ export default function MorePage() {
           </svg>
           <span>Stock</span>
         </a>
-
         <a href="/hisabpro/khata/">
           <svg viewBox="0 0 24 24">
             <circle cx="9" cy="8" r="4" />
@@ -662,11 +924,7 @@ export default function MorePage() {
           </svg>
           <span>Khata</span>
         </a>
-
-        <a
-          href="/hisabpro/more/"
-          className="active"
-        >
+        <a href="/hisabpro/more/" className="active">
           <svg viewBox="0 0 24 24">
             <circle cx="5" cy="12" r="1.5" />
             <circle cx="12" cy="12" r="1.5" />
@@ -674,9 +932,7 @@ export default function MorePage() {
           </svg>
           <span>More</span>
         </a>
-
       </nav>
-
     </main>
   );
 }
