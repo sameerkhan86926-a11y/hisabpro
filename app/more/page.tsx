@@ -1,6 +1,10 @@
 "use client";
 
+import { useState } from "react";
+
 export default function MorePage() {
+  const [showSupport, setShowSupport] = useState(false);
+
   return (
     <main className="more-page">
 
@@ -9,6 +13,47 @@ export default function MorePage() {
         <h1>More</h1>
         <span></span>
       </header>
+
+      {/* HELP & SUPPORT (NEW SECTION) */}
+      <section className="more-section">
+        <h2>Help & Support</h2>
+
+        <div className="more-grid">
+          <button
+            type="button"
+            onClick={() => setShowSupport(true)}
+            className="more-card"
+            style={{
+              textAlign: "left",
+              background: "#fff",
+              border: "none",
+              cursor: "pointer",
+              width: "100%",
+              fontFamily: "inherit"
+            }}
+          >
+            <div className="more-icon" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+                <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
+              </svg>
+            </div>
+            <div>
+              <strong>Help & Support</strong>
+              <span>Problem report karein ya contact karein</span>
+            </div>
+          </button>
+        </div>
+      </section>
 
       {/* BUSINESS */}
       <section className="more-section">
@@ -301,6 +346,111 @@ export default function MorePage() {
 
         </div>
       </section>
+
+      {/* SUPPORT MODAL POPUP */}
+      {showSupport && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.65)",
+            backdropFilter: "blur(4px)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "16px"
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "#ffffff",
+              width: "100%",
+              maxWidth: "520px",
+              borderRadius: "16px",
+              overflow: "hidden",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.3)",
+              display: "flex",
+              flexDirection: "column",
+              maxHeight: "90vh"
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "14px 18px",
+                borderBottom: "1px solid #e2e8f0",
+                backgroundColor: "#f8fafc"
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "bold", color: "#1e293b", fontSize: "15px" }}>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#2563eb"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+                  <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
+                </svg>
+                <span>HisabPro Help & Support</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSupport(false)}
+                style={{
+                  border: "none",
+                  backgroundColor: "#e2e8f0",
+                  borderRadius: "50%",
+                  width: "30px",
+                  height: "30px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#475569"
+                }}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Google Form Embed */}
+            <div style={{ flex: 1, overflowY: "auto" }}>
+              <iframe
+                src="https://docs.google.com/forms/d/e/1FAIpQLSeEfgh1laeARcWSzZExLZijSHb4n1nrRCvy9PIWRJCla4-idg/viewform?embedded=true"
+                width="100%"
+                height="650"
+                frameBorder="0"
+                marginHeight={0}
+                marginWidth={0}
+                style={{ border: "none", display: "block" }}
+              >
+                Loading…
+              </iframe>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* BOTTOM NAV */}
       <nav className="bottom-nav">
