@@ -25,51 +25,60 @@ export default function LanguageProvider({
 }) {
   const [language, setLanguageState] = useState<Language>("en");
 
-  // Helper function to clear all Google Translate cookies & DOM mutations
+  // SSR Safe Cleanup Helper
   const cleanGoogleTranslate = () => {
-    // 1. Delete all possible googtrans cookies across domains/paths
-    const hostname = window.location.hostname;
-    const paths = ["/", "/hisabpro", "/hisabpro/"];
-    const domains = ["", hostname, `.${hostname}`];
+    if (typeof window === "undefined" || typeof document === "undefined") return;
 
-    paths.forEach((p) => {
-      domains.forEach((d) => {
-        document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${p}; ${
-          d ? `domain=${d};` : ""
-        }`;
+    try {
+      const hostname = window.location.hostname;
+      const paths = ["/", "/hisabpro", "/hisabpro/"];
+      const domains = ["", hostname, `.${hostname}`];
+
+      paths.forEach((p) => {
+        domains.forEach((d) => {
+          document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${p}; ${
+            d ? `domain=${d};` : ""
+          }`;
+        });
       });
-    });
 
-    // 2. Remove Google Translate classes and attributes from <html> and <body>
-    const html = document.documentElement;
-    html.classList.remove("translated-ltr", "translated-rtl");
-    if (html.getAttribute("lang") === "hi") {
-      html.setAttribute("lang", "en");
-    }
+      const html = document.documentElement;
+      if (html) {
+        html.classList.remove("translated-ltr", "translated-rtl");
+        if (html.getAttribute("lang") === "hi") {
+          html.setAttribute("lang", "en");
+        }
+      }
 
-    // 3. Remove Google Translate top banner if present
-    const banner = document.querySelector(".goog-te-banner-frame");
-    if (banner) {
-      banner.remove();
+      const banner = document.querySelector(".goog-te-banner-frame");
+      if (banner) {
+        banner.remove();
+      }
+    } catch (e) {
+      console.error("Clean translator error:", e);
     }
   };
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
-    localStorage.setItem("hisabpro_language", lang);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("hisabpro_language", lang);
 
-    if (lang === "en") {
-      cleanGoogleTranslate();
-      // Set empty/english cookie
-      document.cookie = "googtrans=/auto/en; path=/;";
-      document.cookie = "googtrans=/en/en; path=/;";
-    } else {
-      document.cookie = "googtrans=/auto/hi; path=/;";
-      document.cookie = "googtrans=/en/hi; path=/;";
+        if (lang === "en") {
+          cleanGoogleTranslate();
+          document.cookie = "googtrans=/auto/en; path=/;";
+          document.cookie = "googtrans=/en/en; path=/;";
+        } else {
+          document.cookie = "googtrans=/auto/hi; path=/;";
+          document.cookie = "googtrans=/en/hi; path=/;";
+        }
+
+        window.location.reload();
+      } catch (e) {
+        console.error("Set language error:", e);
+      }
     }
-
-    // Force hard reload so Google Translate resets completely
-    window.location.reload();
   };
 
   const toggleLanguage = () => {
@@ -77,41 +86,51 @@ export default function LanguageProvider({
   };
 
   useEffect(() => {
-    const saved = (localStorage.getItem("hisabpro_language") as Language) || "en";
+    if (typeof window === "undefined") return;
+
+    let saved: Language = "en";
+    try {
+      saved = (localStorage.getItem("hisabpro_language") as Language) || "en";
+    } catch {}
+
     setLanguageState(saved);
 
-    // If English, clear leftover translation cookies immediately
     if (saved === "en") {
       cleanGoogleTranslate();
       return;
     }
 
-    // Load Google Translate script only when Hindi is active
     if (saved === "hi") {
-      document.cookie = "googtrans=/auto/hi; path=/;";
-      document.cookie = "googtrans=/en/hi; path=/;";
+      try {
+        document.cookie = "googtrans=/auto/hi; path=/;";
+        document.cookie = "googtrans=/en/hi; path=/;";
 
-      if (!(window as any).googleTranslateElementInit) {
-        (window as any).googleTranslateElementInit = () => {
-          new (window as any).google.translate.TranslateElement(
-            {
-              pageLanguage: "en",
-              includedLanguages: "en,hi",
-              autoDisplay: false,
-            },
-            "google_translate_element"
-          );
-        };
+        if (!(window as any).googleTranslateElementInit) {
+          (window as any).googleTranslateElementInit = () => {
+            if ((window as any).google && (window as any).google.translate) {
+              new (window as any).google.translate.TranslateElement(
+                {
+                  pageLanguage: "en",
+                  includedLanguages: "en,hi",
+                  autoDisplay: false,
+                },
+                "google_translate_element"
+              );
+            }
+          };
 
-        const existingScript = document.getElementById("google-translate-script");
-        if (!existingScript) {
-          const script = document.createElement("script");
-          script.id = "google-translate-script";
-          script.src =
-            "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
-          script.async = true;
-          document.body.appendChild(script);
+          const existingScript = document.getElementById("google-translate-script");
+          if (!existingScript) {
+            const script = document.createElement("script");
+            script.id = "google-translate-script";
+            script.src =
+              "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
+            script.async = true;
+            document.body.appendChild(script);
+          }
         }
+      } catch (e) {
+        console.error("Translate init error:", e);
       }
     }
   }, []);
