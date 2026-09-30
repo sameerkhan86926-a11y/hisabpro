@@ -269,7 +269,6 @@ export default function SalesPage() {
     addSpecificProductToCart(product, quantity);
   }
 
-  // Barcode scanned callback handler
   function handleBarcodeScanned(decodedBarcode: string) {
     const cleanCode = decodedBarcode.trim().toLowerCase();
     
@@ -292,7 +291,6 @@ export default function SalesPage() {
       return;
     }
 
-    // User ne pehle se quantity dali ho toh utni add hogi, warna 1
     const qtyToAdd = quantity > 0 ? quantity : 1;
 
     if (qtyToAdd > available) {
@@ -326,7 +324,6 @@ export default function SalesPage() {
       }
       addSpecificProductToCart(targetProduct, diff);
     } else if (diff < 0) {
-      // Quantity kam karni ho
       const removeCount = Math.abs(diff);
       setCart((prev) =>
         prev.map((item) => {
@@ -586,7 +583,6 @@ export default function SalesPage() {
             </div>
           </div>
 
-          {/* SCAN BUTTON */}
           <button
             type="button"
             onClick={() => setIsScannerOpen(true)}
@@ -713,7 +709,6 @@ export default function SalesPage() {
                   <strong>{item.product}</strong>
                   <span>₹{item.price.toLocaleString("en-IN", { maximumFractionDigits: 2 })} / pc</span>
 
-                  {/* DIRECT IN-CART QUANTITY CONTROLS */}
                   <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "6px" }}>
                     <button
                       type="button"
