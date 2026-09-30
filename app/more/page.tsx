@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useLanguage } from "@/components/LanguageProvider";
+import { useLanguage } from "../../components/LanguageProvider";
 
 type Business = {
   id: number;
