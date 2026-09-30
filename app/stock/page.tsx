@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import BarcodeScannerModal from "../../components/BarcodeScannerModal";
 
 type StockBatch = {
   id: number;
@@ -14,6 +15,7 @@ type Product = {
   id: number;
   name: string;
   category: string;
+  barcode?: string;
   purchasePrice: number;
   sellingPrice: number;
   stock: number;
@@ -25,6 +27,7 @@ export default function StockPage() {
 
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
+  const [barcode, setBarcode] = useState("");
   const [purchasePrice, setPurchasePrice] = useState(0);
   const [sellingPrice, setSellingPrice] = useState(0);
   const [stock, setStock] = useState(0);
@@ -34,14 +37,13 @@ export default function StockPage() {
   const [addPurchasePrice, setAddPurchasePrice] = useState(0);
   const [addSellingPrice, setAddSellingPrice] = useState(0);
 
-  const [historyProductId, setHistoryProductId] = useState<number | null>(
-    null
-  );
+  const [historyProductId, setHistoryProductId] = useState<number | null>(null);
 
   const [editProductId, setEditProductId] = useState<number | null>(null);
   const [editSellingPrice, setEditSellingPrice] = useState(0);
 
   const [message, setMessage] = useState("");
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   useEffect(() => {
     loadProducts();
@@ -58,7 +60,7 @@ export default function StockPage() {
         return;
       }
 
-      // Existing old products ko automatically batch format me convert
+      // Existing products me batch & barcode verify
       const migrated: Product[] = saved.map((product: Product) => {
         if (product.batches && product.batches.length > 0) {
           return product;
@@ -66,6 +68,7 @@ export default function StockPage() {
 
         return {
           ...product,
+          barcode: product.barcode || "",
           batches:
             Number(product.stock || 0) > 0
               ? [
@@ -128,6 +131,7 @@ export default function StockPage() {
       id: Date.now(),
       name: name.trim(),
       category: category.trim() || "General",
+      barcode: barcode.trim(),
       purchasePrice,
       sellingPrice,
       stock: Math.max(0, stock),
@@ -151,6 +155,7 @@ export default function StockPage() {
 
     setName("");
     setCategory("");
+    setBarcode("");
     setPurchasePrice(0);
     setSellingPrice(0);
     setStock(0);
@@ -164,17 +169,9 @@ export default function StockPage() {
 
   function openAddStock(product: Product) {
     setStockProductId(product.id);
-
     setAddQuantity(0);
-
-    setAddPurchasePrice(
-      Number(product.purchasePrice || 0)
-    );
-
-    setAddSellingPrice(
-      Number(product.sellingPrice || 0)
-    );
-
+    setAddPurchasePrice(Number(product.purchasePrice || 0));
+    setAddSellingPrice(Number(product.sellingPrice || 0));
     setEditProductId(null);
     setHistoryProductId(null);
     setMessage("");
@@ -219,18 +216,10 @@ export default function StockPage() {
 
       return {
         ...product,
-
-        stock:
-          Number(product.stock || 0) + addQuantity,
-
-        // Latest rate for product display
+        stock: Number(product.stock || 0) + addQuantity,
         purchasePrice: addPurchasePrice,
         sellingPrice: addSellingPrice,
-
-        batches: [
-          ...existingBatches,
-          newBatch,
-        ],
+        batches: [...existingBatches, newBatch],
       };
     });
 
@@ -251,7 +240,6 @@ export default function StockPage() {
   function openEditPrice(product: Product) {
     setEditProductId(product.id);
     setEditSellingPrice(product.sellingPrice);
-
     setStockProductId(null);
     setHistoryProductId(null);
     setMessage("");
@@ -268,8 +256,6 @@ export default function StockPage() {
         return product;
       }
 
-      // Current/future display rate update.
-      // Existing batches remain unchanged.
       return {
         ...product,
         sellingPrice: editSellingPrice,
@@ -295,9 +281,7 @@ export default function StockPage() {
 
     if (!confirmed) return;
 
-    const updated = products.filter(
-      (product) => product.id !== id
-    );
+    const updated = products.filter((product) => product.id !== id);
 
     saveProducts(updated);
 
@@ -311,130 +295,143 @@ export default function StockPage() {
   const totalProducts = products.length;
 
   const totalStock = products.reduce(
-    (sum, product) =>
-      sum + Number(product.stock || 0),
+    (sum, product) => sum + Number(product.stock || 0),
     0
   );
 
   const lowStock = products.filter(
-    (product) =>
-      Number(product.stock || 0) <= 5
+    (product) => Number(product.stock || 0) <= 5
   ).length;
 
   return (
     <main className="stock-page">
 
       {/* HEADER */}
-
       <header className="stock-header">
-
         <button
           onClick={() => window.history.back()}
           className="back-button"
         >
           ← Back
         </button>
-
         <h1>Stock</h1>
-
         <span></span>
-
       </header>
 
       {/* STATS */}
-
       <section className="stock-stats">
-
         <div>
           <span>Total Products</span>
           <strong>{totalProducts}</strong>
         </div>
-
         <div>
           <span>Total Stock</span>
           <strong>{totalStock}</strong>
         </div>
-
         <div>
           <span>Low Stock</span>
           <strong>{lowStock}</strong>
         </div>
-
       </section>
 
       {/* ADD PRODUCT */}
-
       <section className="product-form">
-
         <h2>Add Product</h2>
 
         <label>Product Name</label>
-
         <input
           type="text"
-          placeholder="Example: T-Shirt"
+          placeholder="Example: T-Shirt, Dairy Milk, Maggie"
           value={name}
-          onChange={(e) =>
-            setName(e.target.value)
-          }
+          onChange={(e) => setName(e.target.value)}
         />
 
-        <label>Category</label>
+        {/* BARCODE INPUT WITH SCAN BUTTON */}
+        <label>Barcode / Item Code (Optional)</label>
+        <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+          <input
+            type="text"
+            placeholder="Scan karein ya type karein (e.g. 8901234567890)"
+            value={barcode}
+            onChange={(e) => setBarcode(e.target.value)}
+            style={{ flex: 1, margin: 0 }}
+          />
+          <button
+            type="button"
+            onClick={() => setIsScannerOpen(true)}
+            style={{
+              padding: "0 14px",
+              backgroundColor: "#102a56",
+              color: "#ffffff",
+              border: "none",
+              borderRadius: "8px",
+              fontWeight: 700,
+              fontSize: "13px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+              <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+              <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+              <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+              <line x1="7" y1="12" x2="17" y2="12" />
+            </svg>
+            <span>Scan</span>
+          </button>
+        </div>
 
+        <label>Category</label>
         <input
           type="text"
-          placeholder="Example: Clothing"
+          placeholder="Example: Grocery, Clothing, Bakery"
           value={category}
-          onChange={(e) =>
-            setCategory(e.target.value)
-          }
+          onChange={(e) => setCategory(e.target.value)}
         />
 
         <label>Purchase Price</label>
-
         <input
           type="number"
           min="0"
-          value={purchasePrice}
+          value={purchasePrice || ""}
+          placeholder="0"
           onChange={(e) =>
-            setPurchasePrice(
-              Math.max(
-                0,
-                Number(e.target.value)
-              )
-            )
+            setPurchasePrice(Math.max(0, Number(e.target.value)))
           }
         />
 
         <label>Selling Price</label>
-
         <input
           type="number"
           min="0"
-          value={sellingPrice}
+          value={sellingPrice || ""}
+          placeholder="0"
           onChange={(e) =>
-            setSellingPrice(
-              Math.max(
-                0,
-                Number(e.target.value)
-              )
-            )
+            setSellingPrice(Math.max(0, Number(e.target.value)))
           }
         />
 
         <label>Opening Stock</label>
-
         <input
           type="number"
           min="0"
-          value={stock}
+          value={stock || ""}
+          placeholder="0"
           onChange={(e) =>
-            setStock(
-              Math.max(
-                0,
-                Number(e.target.value)
-              )
-            )
+            setStock(Math.max(0, Number(e.target.value)))
           }
         />
 
@@ -447,78 +444,59 @@ export default function StockPage() {
             {message}
           </p>
         )}
-
       </section>
 
       {/* PRODUCT LIST */}
-
       <section className="product-list">
-
         <h2>Products</h2>
 
         {products.length === 0 ? (
-
           <div className="empty-products">
-
             <div>📦</div>
-
             <h3>No Products Yet</h3>
-
-            <p>
-              Add your first product above.
-            </p>
-
+            <p>Add your first product above.</p>
           </div>
-
         ) : (
-
           products.map((product) => {
-
-            const batches =
-              product.batches || [];
+            const batches = product.batches || [];
 
             return (
-              <div
-                className="product-item"
-                key={product.id}
-              >
-
-                <div className="product-icon">
-                  📦
-                </div>
+              <div className="product-item" key={product.id}>
+                <div className="product-icon">📦</div>
 
                 <div className="product-info">
+                  <strong>{product.name}</strong>
 
-                  <strong>
-                    {product.name}
-                  </strong>
+                  <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap", marginTop: "2px" }}>
+                    <span>{product.category}</span>
+                    {product.barcode && (
+                      <span
+                        style={{
+                          backgroundColor: "#f1f5f9",
+                          color: "#475569",
+                          fontSize: "11px",
+                          padding: "1px 6px",
+                          borderRadius: "4px",
+                          border: "1px solid #cbd5e1",
+                          fontFamily: "monospace",
+                        }}
+                      >
+                        🏷️ {product.barcode}
+                      </span>
+                    )}
+                  </div>
 
-                  <span>
-                    {product.category}
-                  </span>
-
-                  <small>
+                  <small style={{ marginTop: "4px", display: "block" }}>
                     Latest Buy ₹
-                    {Number(
-                      product.purchasePrice || 0
-                    ).toLocaleString("en-IN")}
-
+                    {Number(product.purchasePrice || 0).toLocaleString("en-IN")}
                     {" • "}
-
                     Latest Sell ₹
-                    {Number(
-                      product.sellingPrice || 0
-                    ).toLocaleString("en-IN")}
+                    {Number(product.sellingPrice || 0).toLocaleString("en-IN")}
                   </small>
-
                 </div>
 
                 <div className="product-stock">
-
-                  <strong>
-                    {product.stock}
-                  </strong>
-
+                  <strong>{product.stock}</strong>
                   <span>
                     {product.stock <= 0
                       ? "Out of Stock"
@@ -529,18 +507,14 @@ export default function StockPage() {
 
                   <button
                     className="add-stock-button"
-                    onClick={() =>
-                      openAddStock(product)
-                    }
+                    onClick={() => openAddStock(product)}
                   >
                     + Stock
                   </button>
 
                   <button
                     className="edit-price-button"
-                    onClick={() =>
-                      openEditPrice(product)
-                    }
+                    onClick={() => openEditPrice(product)}
                   >
                     Edit Sale
                   </button>
@@ -549,11 +523,8 @@ export default function StockPage() {
                     className="history-button"
                     onClick={() => {
                       setHistoryProductId(
-                        historyProductId === product.id
-                          ? null
-                          : product.id
+                        historyProductId === product.id ? null : product.id
                       );
-
                       setStockProductId(null);
                       setEditProductId(null);
                     }}
@@ -561,278 +532,130 @@ export default function StockPage() {
                     History
                   </button>
 
-                  <button
-                    onClick={() =>
-                      deleteProduct(product.id)
-                    }
-                  >
+                  <button onClick={() => deleteProduct(product.id)}>
                     Delete
                   </button>
-
                 </div>
 
                 {/* ADD STOCK */}
-
                 {stockProductId === product.id && (
-
                   <div className="add-stock-panel">
+                    <h3>Add New Stock</h3>
+                    <p>New purchase ko separate batch ke roop me save kiya jayega.</p>
 
-                    <h3>
-                      Add New Stock
-                    </h3>
+                    <label>Current Stock</label>
+                    <input type="number" value={product.stock} disabled />
 
-                    <p>
-                      New purchase ko separate batch
-                      ke roop me save kiya jayega.
-                    </p>
-
-                    <label>
-                      Current Stock
-                    </label>
-
-                    <input
-                      type="number"
-                      value={product.stock}
-                      disabled
-                    />
-
-                    <label>
-                      New Quantity
-                    </label>
-
+                    <label>New Quantity</label>
                     <input
                       type="number"
                       min="1"
                       placeholder="Example: 20"
-                      value={
-                        addQuantity || ""
-                      }
+                      value={addQuantity || ""}
                       onChange={(e) =>
-                        setAddQuantity(
-                          Math.max(
-                            0,
-                            Number(
-                              e.target.value
-                            )
-                          )
-                        )
+                        setAddQuantity(Math.max(0, Number(e.target.value)))
                       }
                     />
 
-                    <label>
-                      New Purchase Price
-                    </label>
-
+                    <label>New Purchase Price</label>
                     <input
                       type="number"
                       min="0"
-                      value={
-                        addPurchasePrice
-                      }
+                      value={addPurchasePrice || ""}
                       onChange={(e) =>
-                        setAddPurchasePrice(
-                          Math.max(
-                            0,
-                            Number(
-                              e.target.value
-                            )
-                          )
-                        )
+                        setAddPurchasePrice(Math.max(0, Number(e.target.value)))
                       }
                     />
 
-                    <label>
-                      New Selling Price
-                    </label>
-
+                    <label>New Selling Price</label>
                     <input
                       type="number"
                       min="0"
-                      value={
-                        addSellingPrice
-                      }
+                      value={addSellingPrice || ""}
                       onChange={(e) =>
-                        setAddSellingPrice(
-                          Math.max(
-                            0,
-                            Number(
-                              e.target.value
-                            )
-                          )
-                        )
+                        setAddSellingPrice(Math.max(0, Number(e.target.value)))
                       }
                     />
 
                     <div className="add-stock-actions">
-
-                      <button
-                        onClick={addStock}
-                      >
-                        Add Stock
-                      </button>
-
-                      <button
-                        onClick={() =>
-                          setStockProductId(null)
-                        }
-                      >
-                        Cancel
-                      </button>
-
+                      <button onClick={addStock}>Add Stock</button>
+                      <button onClick={() => setStockProductId(null)}>Cancel</button>
                     </div>
-
                   </div>
-
                 )}
 
                 {/* EDIT SELLING PRICE */}
-
                 {editProductId === product.id && (
-
                   <div className="add-stock-panel">
+                    <h3>Edit Selling Price</h3>
+                    <p>Existing batches ke rates change nahi honge.</p>
 
-                    <h3>
-                      Edit Selling Price
-                    </h3>
-
-                    <p>
-                      Existing batches ke rates
-                      change nahi honge.
-                    </p>
-
-                    <label>
-                      New Selling Price
-                    </label>
-
+                    <label>New Selling Price</label>
                     <input
                       type="number"
                       min="1"
-                      value={
-                        editSellingPrice
-                      }
+                      value={editSellingPrice || ""}
                       onChange={(e) =>
-                        setEditSellingPrice(
-                          Math.max(
-                            0,
-                            Number(
-                              e.target.value
-                            )
-                          )
-                        )
+                        setEditSellingPrice(Math.max(0, Number(e.target.value)))
                       }
                     />
 
                     <div className="add-stock-actions">
-
-                      <button
-                        onClick={() =>
-                          saveSellingPrice(
-                            product.id
-                          )
-                        }
-                      >
+                      <button onClick={() => saveSellingPrice(product.id)}>
                         Save Price
                       </button>
-
-                      <button
-                        onClick={() =>
-                          setEditProductId(null)
-                        }
-                      >
-                        Cancel
-                      </button>
-
+                      <button onClick={() => setEditProductId(null)}>Cancel</button>
                     </div>
-
                   </div>
-
                 )}
 
                 {/* BATCH HISTORY */}
-
                 {historyProductId === product.id && (
-
                   <div className="batch-history">
-
-                    <h3>
-                      Stock Purchase History
-                    </h3>
-
+                    <h3>Stock Purchase History</h3>
                     {batches.length === 0 ? (
-
-                      <p>
-                        No stock purchase history.
-                      </p>
-
+                      <p>No stock purchase history.</p>
                     ) : (
-
-                      [...batches]
-                        .reverse()
-                        .map((batch) => (
-
-                          <div
-                            className="batch-row"
-                            key={batch.id}
-                          >
-
-                            <div>
-                              <strong>
-                                {batch.quantity} pcs
-                              </strong>
-
-                              <span>
-                                {new Date(
-                                  batch.date
-                                ).toLocaleDateString(
-                                  "en-IN"
-                                )}
-                              </span>
-                            </div>
-
-                            <div>
-                              <span>
-                                Buy
-                              </span>
-
-                              <strong>
-                                ₹
-                                {batch.purchasePrice.toLocaleString(
-                                  "en-IN"
-                                )}
-                              </strong>
-                            </div>
-
-                            <div>
-                              <span>
-                                Sell
-                              </span>
-
-                              <strong>
-                                ₹
-                                {batch.sellingPrice.toLocaleString(
-                                  "en-IN"
-                                )}
-                              </strong>
-                            </div>
-
+                      [...batches].reverse().map((batch) => (
+                        <div className="batch-row" key={batch.id}>
+                          <div>
+                            <strong>{batch.quantity} pcs</strong>
+                            <span>
+                              {new Date(batch.date).toLocaleDateString("en-IN")}
+                            </span>
                           </div>
-
-                        ))
-
+                          <div>
+                            <span>Buy</span>
+                            <strong>
+                              ₹{batch.purchasePrice.toLocaleString("en-IN")}
+                            </strong>
+                          </div>
+                          <div>
+                            <span>Sell</span>
+                            <strong>
+                              ₹{batch.sellingPrice.toLocaleString("en-IN")}
+                            </strong>
+                          </div>
+                        </div>
+                      ))
                     )}
-
                   </div>
-
                 )}
-
               </div>
             );
           })
-
         )}
-
       </section>
 
+      {/* BARCODE SCANNER MODAL */}
+      <BarcodeScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScanSuccess={(code) => {
+          setBarcode(code.trim());
+          setMessage(`✓ Barcode scanned: ${code}`);
+        }}
+      />
     </main>
   );
 }
