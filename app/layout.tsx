@@ -117,6 +117,59 @@ export default function RootLayout({
           src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"
         />
 
+        {/* HisabPro Google Sheet Live App Tracker */}
+        <Script
+          id="hisabpro-app-tracker"
+          strategy="lazyOnload"
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                var CURRENT_APP_VERSION = "1.0.6";
+                var deviceId = localStorage.getItem("hisabpro_tracker_device_id");
+                if (!deviceId) {
+                  deviceId = "DEV_" + Math.random().toString(36).substring(2, 9).toUpperCase();
+                  localStorage.setItem("hisabpro_tracker_device_id", deviceId);
+                }
+
+                var businessName = "Not Set";
+                var savedBusinesses = localStorage.getItem("hisabpro_businesses");
+                var savedBusiness = localStorage.getItem("hisabpro_business");
+
+                if (savedBusinesses) {
+                  try {
+                    var list = JSON.parse(savedBusinesses);
+                    if (Array.isArray(list) && list.length > 0 && list[0].businessName) {
+                      businessName = list[0].businessName;
+                    }
+                  } catch(e) {}
+                } else if (savedBusiness) {
+                  try {
+                    var single = JSON.parse(savedBusiness);
+                    if (single.businessName) businessName = single.businessName;
+                  } catch(e) {}
+                }
+
+                var lastPing = localStorage.getItem("hisabpro_last_ping_time");
+                var now = Date.now();
+                // Har 4 ghante me ek baar ping karega taaki sheet me bematlab duplicate rows na bhare
+                if (!lastPing || (now - Number(lastPing) > 4 * 60 * 60 * 1000)) {
+                  var formUrl = "https://docs.google.com/forms/d/e/1FAIpQLSeX8cBddMUfla4KnUFrT8OLWQPLfVwmWDTOY3jL3EoPHVRIbA/formResponse?entry.1388543195=" 
+                    + encodeURIComponent(deviceId) 
+                    + "&entry.2095568272=" + encodeURIComponent(CURRENT_APP_VERSION) 
+                    + "&entry.1177986148=" + encodeURIComponent(businessName) 
+                    + "&submit=Submit";
+
+                  fetch(formUrl, { method: "POST", mode: "no-cors" })
+                    .then(function() {
+                      localStorage.setItem("hisabpro_last_ping_time", String(now));
+                    })
+                    .catch(function() {});
+                }
+              } catch (err) {}
+            `,
+          }}
+        />
+
         <LanguageProvider>
           <AppLock>{children}</AppLock>
         </LanguageProvider>
