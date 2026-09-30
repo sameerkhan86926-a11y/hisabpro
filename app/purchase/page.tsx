@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import BarcodeScannerModal from "../../components/BarcodeScannerModal";
 
 type StockBatch = {
   id: number;
@@ -14,6 +15,7 @@ type Product = {
   id: number;
   name: string;
   category: string;
+  barcode?: string;
   purchasePrice: number;
   sellingPrice: number;
   stock: number;
@@ -96,6 +98,9 @@ export default function PurchasePage() {
   const [cart, setCart] = useState<PurchaseItem[]>([]);
   const [message, setMessage] = useState("");
 
+  // Barcode Scanner Modal State
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -164,6 +169,30 @@ export default function PurchasePage() {
     setSellingPrice(
       String(product.sellingPrice || "")
     );
+  }
+
+  // Handle scanned barcode in Purchase
+  function handleBarcodeScanned(decodedBarcode: string) {
+    const cleanCode = decodedBarcode.trim().toLowerCase();
+
+    const matched = products.find(
+      (p) =>
+        (p.barcode && p.barcode.trim().toLowerCase() === cleanCode) ||
+        String(p.id) === cleanCode
+    );
+
+    if (!matched) {
+      setMessage(`Barcode "${decodedBarcode}" kisi product se match nahi hua.`);
+      return;
+    }
+
+    setProductId(String(matched.id));
+    setPurchasePrice(String(matched.purchasePrice || ""));
+    setSellingPrice(String(matched.sellingPrice || ""));
+    if (!quantity || Number(quantity) <= 0) {
+      setQuantity("1");
+    }
+    setMessage(`✓ ${matched.name} barcode se select ho gaya.`);
   }
 
   function selectPaymentType(
@@ -441,12 +470,6 @@ export default function PurchasePage() {
        * --------------------------------
        * UPDATE SUPPLIER PAYABLE
        * --------------------------------
-       *
-       * Only CREDIT purchase increases
-       * supplier payable.
-       *
-       * Cash / UPI / Card / Bank / Online
-       * do NOT increase supplier due.
        */
 
       const updatedSuppliers =
@@ -470,15 +493,6 @@ export default function PurchasePage() {
        * --------------------------------
        * CASHBOOK INTEGRATION
        * --------------------------------
-       *
-       * ONLY ACTUAL CASH affects Cashbook.
-       *
-       * Cash      → Cashbook Out
-       * UPI       → No Cashbook
-       * Card      → No Cashbook
-       * Bank      → No Cashbook
-       * Online    → No Cashbook
-       * Credit    → No Cashbook
        */
 
       let updatedCashbook =
@@ -670,11 +684,48 @@ export default function PurchasePage() {
 
         </div>
 
-        {/* PRODUCT */}
+        {/* PRODUCT WITH SCAN BUTTON */}
 
         <div className="purchase-field">
 
-          <label>Product</label>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+            <label style={{ margin: 0 }}>Product</label>
+            <button
+              type="button"
+              onClick={() => setIsScannerOpen(true)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "5px",
+                padding: "3px 10px",
+                backgroundColor: "#102a56",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: "6px",
+                fontSize: "11px",
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+                <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+                <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+                <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+                <line x1="7" y1="12" x2="17" y2="12" />
+              </svg>
+              <span>Scan Barcode</span>
+            </button>
+          </div>
 
           <select
             value={productId}
@@ -1085,6 +1136,13 @@ export default function PurchasePage() {
           {message}
         </div>
       )}
+
+      {/* BARCODE SCANNER MODAL */}
+      <BarcodeScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScanSuccess={handleBarcodeScanned}
+      />
 
     </main>
   );
