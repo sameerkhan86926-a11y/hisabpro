@@ -40,7 +40,6 @@ export default function MorePage() {
 
   function loadSettingsData() {
     try {
-      // 1. Business profiles load
       const saved = localStorage.getItem("hisabpro_businesses");
       const activeId = localStorage.getItem("hisabpro_active_business");
       if (saved) {
@@ -62,7 +61,6 @@ export default function MorePage() {
         }
       }
 
-      // 2. Security settings load
       const savedLock = localStorage.getItem("hisabpro_app_lock") === "true";
       const savedPin = localStorage.getItem("hisabpro_app_lock_pin_hash");
       const savedPinLen = localStorage.getItem("hisabpro_app_lock_pin_length") || "4";
@@ -75,13 +73,25 @@ export default function MorePage() {
     } catch (e) {}
   }
 
+  // FIXED TRANSLATOR SWITCH HANDLER
   function handleLanguageSwitch(lang: "en" | "hi") {
     setLanguage(lang);
-    document.cookie = `googtrans=/en/${lang}; path=/;`;
-    if (typeof window !== "undefined" && window.location.hostname) {
-      document.cookie = `googtrans=/en/${lang}; domain=.${window.location.hostname}; path=/;`;
-      window.location.reload();
+    localStorage.setItem("hisabpro_language", lang);
+
+    if (lang === "en") {
+      // Clear cookie completely
+      const host = window.location.hostname;
+      document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; domain=.${host}; path=/;`;
+      document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; domain=${host}; path=/;`;
+      document.cookie = "googtrans=/auto/en; path=/;";
+    } else {
+      const host = window.location.hostname;
+      document.cookie = "googtrans=/auto/hi; path=/;";
+      document.cookie = `googtrans=/auto/hi; domain=.${host}; path=/;`;
     }
+
+    window.location.reload();
   }
 
   function switchActiveBusiness(id: number) {
@@ -238,7 +248,6 @@ export default function MorePage() {
             </button>
           </div>
 
-          {/* Quick Business Switcher (Agar multiple shops hain) */}
           {businesses.length > 1 && (
             <div style={{ marginTop: "14px", paddingTop: "12px", borderTop: "1px dashed #e2e8f0" }}>
               <span style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#475569", marginBottom: "6px" }}>
@@ -268,9 +277,7 @@ export default function MorePage() {
           )}
         </div>
 
-        {/* Security & Support Quick Cards */}
         <div className="more-grid">
-          {/* App Lock Settings Trigger */}
           <button
             type="button"
             onClick={() => setShowSecurityModal(true)}
@@ -296,7 +303,6 @@ export default function MorePage() {
             </div>
           </button>
 
-          {/* Help & Support Trigger */}
           <button
             type="button"
             onClick={() => setShowSupport(true)}
