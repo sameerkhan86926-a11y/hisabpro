@@ -209,7 +209,7 @@ jobs:
           }
           EOF
 
-            # ============================================
+      # ============================================
       # 11. ANDROID MANIFEST WITH QUERIES & PERMISSIONS
       # ============================================
       - name: Create AndroidManifest.xml
@@ -255,8 +255,19 @@ jobs:
           </manifest>
           EOF
 
+      - name: Create styles.xml
+        run: |
+          cat > android/app/src/main/res/values/styles.xml <<'EOF'
+          <resources>
+              <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+                  <item name="android:statusBarColor">#102A56</item>
+                  <item name="android:navigationBarColor">#FFFFFF</item>
+                  <item name="android:windowLightStatusBar">false</item>
+              </style>
+          </resources>
+          EOF
 
-             # ============================================
+      # ============================================
       # 12. MAIN ACTIVITY
       # ============================================
       - name: Create MainActivity.java
@@ -321,7 +332,6 @@ jobs:
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
 
-                  // Native Android Camera Permission prompt maangein
                   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                       if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
                           requestPermissions(new String[]{Manifest.permission.CAMERA}, CAMERA_PERMISSION_REQUEST_CODE);
@@ -347,7 +357,6 @@ jobs:
                   webView.addJavascriptInterface(new FileSaverInterface(), "AndroidFileSaver");
 
                   webView.setWebChromeClient(new WebChromeClient() {
-                      // WEBVIEW KE ANDAR CAMERA PERMISSION ALLOW KARNA
                       @Override
                       public void onPermissionRequest(final PermissionRequest request) {
                           runOnUiThread(() -> {
@@ -708,7 +717,6 @@ jobs:
         working-directory: android
         run: |
           gradle assembleRelease --stacktrace
-          # Renaming to ensure exact filename matching release URL
           cp app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/HisabPro.apk
 
       # ============================================
