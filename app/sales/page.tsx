@@ -93,7 +93,6 @@ export default function SalesPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [message, setMessage] = useState("");
 
-  // Barcode Scanner Modal State
   const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   useEffect(() => {
@@ -126,22 +125,13 @@ export default function SalesPage() {
     }
   }
 
-  function getProductBatches(
-    product: Product
-  ): StockBatch[] {
-    if (
-      product.batches &&
-      product.batches.length > 0
-    ) {
+  function getProductBatches(product: Product): StockBatch[] {
+    if (product.batches && product.batches.length > 0) {
       return [...product.batches]
-        .filter(
-          (batch) =>
-            Number(batch.quantity) > 0
-        )
+        .filter((batch) => Number(batch.quantity) > 0)
         .sort(
           (a, b) =>
-            new Date(a.date).getTime() -
-            new Date(b.date).getTime()
+            new Date(a.date).getTime() - new Date(b.date).getTime()
         );
     }
 
@@ -150,12 +140,8 @@ export default function SalesPage() {
         {
           id: product.id,
           quantity: Number(product.stock),
-          purchasePrice: Number(
-            product.purchasePrice || 0
-          ),
-          sellingPrice: Number(
-            product.sellingPrice || 0
-          ),
+          purchasePrice: Number(product.purchasePrice || 0),
+          sellingPrice: Number(product.sellingPrice || 0),
           date: new Date().toISOString(),
         },
       ];
@@ -164,28 +150,14 @@ export default function SalesPage() {
     return [];
   }
 
-  function getAvailableQuantity(
-    product: Product
-  ) {
+  function getAvailableQuantity(product: Product) {
     const alreadyInCart = cart
-      .filter(
-        (item) =>
-          item.productId === product.id
-      )
-      .reduce(
-        (sum, item) =>
-          sum + item.quantity,
-        0
-      );
+      .filter((item) => item.productId === product.id)
+      .reduce((sum, item) => sum + item.quantity, 0);
 
-    return Math.max(
-      0,
-      Number(product.stock || 0) -
-        alreadyInCart
-    );
+    return Math.max(0, Number(product.stock || 0) - alreadyInCart);
   }
 
-  // Core Cart Adder
   function addSpecificProductToCart(targetProduct: Product, addQty: number) {
     setMessage("");
 
@@ -301,7 +273,6 @@ export default function SalesPage() {
   function handleBarcodeScanned(decodedBarcode: string) {
     const cleanCode = decodedBarcode.trim().toLowerCase();
     
-    // Barcode field ya ID dono se check karega
     const matched = products.find(
       (p) =>
         (p.barcode && p.barcode.trim().toLowerCase() === cleanCode) ||
@@ -313,30 +284,70 @@ export default function SalesPage() {
       return;
     }
 
+    setProductId(String(matched.id));
+
     const available = getAvailableQuantity(matched);
     if (available <= 0) {
       setMessage(`${matched.name} out of stock hai.`);
       return;
     }
 
-    addSpecificProductToCart(matched, 1);
-    setMessage(`✓ ${matched.name} bill me add ho gaya!`);
+    // User ne pehle se quantity dali ho toh utni add hogi, warna 1
+    const qtyToAdd = quantity > 0 ? quantity : 1;
+
+    if (qtyToAdd > available) {
+      setMessage(`Available stock sirf ${available} hai.`);
+      return;
+    }
+
+    addSpecificProductToCart(matched, qtyToAdd);
+    setMessage(`✓ ${matched.name} (${qtyToAdd} pcs) bill me add hua!`);
+    setQuantity(1);
   }
 
-  function removeFromBill(
-    productId: number
-  ) {
-    setCart(
-      cart.filter(
-        (item) =>
-          item.productId !== productId
-      )
-    );
+  function updateCartQuantity(productId: number, newQty: number) {
+    const targetProduct = products.find((p) => p.id === productId);
+    if (!targetProduct) return;
+
+    if (newQty <= 0) {
+      removeFromBill(productId);
+      return;
+    }
+
+    const currentItem = cart.find((i) => i.productId === productId);
+    const currentQty = currentItem ? currentItem.quantity : 0;
+    const diff = newQty - currentQty;
+
+    if (diff > 0) {
+      const available = getAvailableQuantity(targetProduct);
+      if (diff > available) {
+        setMessage(`Stock me sirf ${available} aur available hai.`);
+        return;
+      }
+      addSpecificProductToCart(targetProduct, diff);
+    } else if (diff < 0) {
+      // Quantity kam karni ho
+      const removeCount = Math.abs(diff);
+      setCart((prev) =>
+        prev.map((item) => {
+          if (item.productId !== productId) return item;
+          const updatedQty = item.quantity - removeCount;
+          return {
+            ...item,
+            quantity: updatedQty,
+            amount: updatedQty * item.price,
+          };
+        })
+      );
+    }
+  }
+
+  function removeFromBill(productId: number) {
+    setCart(cart.filter((item) => item.productId !== productId));
   }
 
   const subtotal = cart.reduce(
-    (sum, item) =>
-      sum + Number(item.amount),
+    (sum, item) => sum + Number(item.amount),
     0
   );
 
@@ -345,29 +356,20 @@ export default function SalesPage() {
     subtotal
   );
 
-  const total =
-    subtotal - safeDiscount;
+  const total = subtotal - safeDiscount;
 
-  const selectedCustomer =
-    customers.find(
-      (customer) =>
-        customer.id ===
-        Number(customerId)
-    );
+  const selectedCustomer = customers.find(
+    (customer) => customer.id === Number(customerId)
+  );
 
-  function selectPaymentType(
-    type: PaymentType
-  ) {
+  function selectPaymentType(type: PaymentType) {
     setPaymentType(type);
-
     if (type === "credit") {
       setPaymentMode("cash");
     }
   }
 
-  function selectPaymentMode(
-    mode: PaymentMode
-  ) {
+  function selectPaymentMode(mode: PaymentMode) {
     setPaymentType("cash");
     setPaymentMode(mode);
     setCustomerId("");
@@ -377,32 +379,22 @@ export default function SalesPage() {
     setMessage("");
 
     if (cart.length === 0) {
-      setMessage(
-        "Bill me kam se kam ek product add karein."
-      );
+      setMessage("Bill me kam se kam ek product add karein.");
       return;
     }
 
-    if (
-      paymentType === "credit" &&
-      !selectedCustomer
-    ) {
-      setMessage(
-        "Credit sale ke liye customer select karein."
-      );
+    if (paymentType === "credit" && !selectedCustomer) {
+      setMessage("Credit sale ke liye customer select karein.");
       return;
     }
 
     if (total <= 0) {
-      setMessage(
-        "Sale total ₹0 se greater hona chahiye."
-      );
+      setMessage("Sale total ₹0 se greater hona chahiye.");
       return;
     }
 
     const saleId = Date.now();
-    const saleDate =
-      new Date().toISOString();
+    const saleDate = new Date().toISOString();
 
     const sale = {
       id: saleId,
@@ -410,182 +402,101 @@ export default function SalesPage() {
       subtotal,
       discount: safeDiscount,
       total,
-
       paymentType,
-
-      paymentMode:
-        paymentType === "credit"
-          ? undefined
-          : paymentMode,
-
-      customerId:
-        paymentType === "credit"
-          ? selectedCustomer?.id
-          : null,
-
-      customerName:
-        paymentType === "credit"
-          ? selectedCustomer?.name
-          : "",
-
+      paymentMode: paymentType === "credit" ? undefined : paymentMode,
+      customerId: paymentType === "credit" ? selectedCustomer?.id : null,
+      customerName: paymentType === "credit" ? selectedCustomer?.name : "",
       date: saleDate,
     };
 
     const oldSales = JSON.parse(
-      localStorage.getItem(
-        "hisabpro_sales"
-      ) || "[]"
+      localStorage.getItem("hisabpro_sales") || "[]"
     );
 
     localStorage.setItem(
       "hisabpro_sales",
-      JSON.stringify([
-        ...oldSales,
-        sale,
-      ])
+      JSON.stringify([...oldSales, sale])
     );
 
-    const updatedProducts =
-      products.map((product) => {
-        const cartItem =
-          cart.find(
-            (item) =>
-              item.productId ===
-              product.id
-          );
+    const updatedProducts = products.map((product) => {
+      const cartItem = cart.find(
+        (item) => item.productId === product.id
+      );
 
-        if (!cartItem) {
-          return product;
+      if (!cartItem) {
+        return product;
+      }
+
+      let batches = getProductBatches(product);
+
+      for (const soldBatch of cartItem.batchDetails) {
+        let remaining = soldBatch.quantity;
+
+        batches = batches.map((batch) => {
+          if (batch.id !== soldBatch.batchId || remaining <= 0) {
+            return batch;
+          }
+
+          const deduction = Math.min(remaining, Number(batch.quantity));
+          remaining -= deduction;
+
+          return {
+            ...batch,
+            quantity: Number(batch.quantity) - deduction,
+          };
+        });
+      }
+
+      batches = batches.filter((batch) => Number(batch.quantity) > 0);
+
+      const newStock = batches.reduce(
+        (sum, batch) => sum + Number(batch.quantity),
+        0
+      );
+
+      const latestBatch =
+        batches.length > 0 ? batches[batches.length - 1] : null;
+
+      return {
+        ...product,
+        stock: newStock,
+        purchasePrice: latestBatch
+          ? latestBatch.purchasePrice
+          : product.purchasePrice,
+        sellingPrice: latestBatch
+          ? latestBatch.sellingPrice
+          : product.sellingPrice,
+        batches,
+      };
+    });
+
+    setProducts(updatedProducts);
+    localStorage.setItem(
+      "hisabpro_products",
+      JSON.stringify(updatedProducts)
+    );
+
+    if (paymentType === "credit" && selectedCustomer) {
+      const updatedCustomers = customers.map((customer) => {
+        if (customer.id !== selectedCustomer.id) {
+          return customer;
         }
-
-        let batches =
-          getProductBatches(product);
-
-        for (const soldBatch of
-          cartItem.batchDetails) {
-          let remaining =
-            soldBatch.quantity;
-
-          batches = batches.map(
-            (batch) => {
-              if (
-                batch.id !==
-                  soldBatch.batchId ||
-                remaining <= 0
-              ) {
-                return batch;
-              }
-
-              const deduction =
-                Math.min(
-                  remaining,
-                  Number(batch.quantity)
-                );
-
-              remaining -= deduction;
-
-              return {
-                ...batch,
-                quantity:
-                  Number(
-                    batch.quantity
-                  ) - deduction,
-              };
-            }
-          );
-        }
-
-        batches =
-          batches.filter(
-            (batch) =>
-              Number(batch.quantity) >
-              0
-          );
-
-        const newStock =
-          batches.reduce(
-            (sum, batch) =>
-              sum +
-              Number(batch.quantity),
-            0
-          );
-
-        const latestBatch =
-          batches.length > 0
-            ? batches[
-                batches.length - 1
-              ]
-            : null;
 
         return {
-          ...product,
-
-          stock: newStock,
-
-          purchasePrice:
-            latestBatch
-              ? latestBatch.purchasePrice
-              : product.purchasePrice,
-
-          sellingPrice:
-            latestBatch
-              ? latestBatch.sellingPrice
-              : product.sellingPrice,
-
-          batches,
+          ...customer,
+          due: Number(customer.due) + total,
         };
       });
 
-    setProducts(updatedProducts);
-
-    localStorage.setItem(
-      "hisabpro_products",
-      JSON.stringify(
-        updatedProducts
-      )
-    );
-
-    if (
-      paymentType === "credit" &&
-      selectedCustomer
-    ) {
-      const updatedCustomers =
-        customers.map(
-          (customer) => {
-            if (
-              customer.id !==
-              selectedCustomer.id
-            ) {
-              return customer;
-            }
-
-            return {
-              ...customer,
-              due:
-                Number(customer.due) +
-                total,
-            };
-          }
-        );
-
-      setCustomers(
-        updatedCustomers
-      );
-
+      setCustomers(updatedCustomers);
       localStorage.setItem(
         "hisabpro_customers",
-        JSON.stringify(
-          updatedCustomers
-        )
+        JSON.stringify(updatedCustomers)
       );
 
-      const oldTransactions:
-        CustomerTransaction[] =
-        JSON.parse(
-          localStorage.getItem(
-            "hisabpro_transactions"
-          ) || "[]"
-        );
+      const oldTransactions: CustomerTransaction[] = JSON.parse(
+        localStorage.getItem("hisabpro_transactions") || "[]"
+      );
 
       localStorage.setItem(
         "hisabpro_transactions",
@@ -593,41 +504,23 @@ export default function SalesPage() {
           ...oldTransactions,
           {
             id: Date.now() + 1,
-
-            customerId:
-              selectedCustomer.id,
-
+            customerId: selectedCustomer.id,
             type: "credit",
-
             amount: total,
-
-            note:
-              `Credit Sale - ${cart
-                .map(
-                  (item) =>
-                    `${item.product} (${item.quantity})`
-                )
-                .join(", ")}`,
-
+            note: `Credit Sale - ${cart
+              .map((item) => `${item.product} (${item.quantity})`)
+              .join(", ")}`,
             date: saleDate,
-
             saleId: saleId,
           },
         ])
       );
     }
 
-    if (
-      paymentType === "cash" &&
-      paymentMode === "cash"
-    ) {
-      const oldCashbook:
-        CashTransaction[] =
-        JSON.parse(
-          localStorage.getItem(
-            "hisabpro_cashbook"
-          ) || "[]"
-        );
+    if (paymentType === "cash" && paymentMode === "cash") {
+      const oldCashbook: CashTransaction[] = JSON.parse(
+        localStorage.getItem("hisabpro_cashbook") || "[]"
+      );
 
       localStorage.setItem(
         "hisabpro_cashbook",
@@ -635,35 +528,21 @@ export default function SalesPage() {
           ...oldCashbook,
           {
             id: Date.now() + 2,
-
             type: "in",
-
             amount: total,
-
             category: "Sale",
-
-            note:
-              `Cash Sale - ${cart
-                .map(
-                  (item) =>
-                    `${item.product} (${item.quantity})`
-                )
-                .join(", ")}`,
-
+            note: `Cash Sale - ${cart
+              .map((item) => `${item.product} (${item.quantity})`)
+              .join(", ")}`,
             date: saleDate,
-
             referenceType: "sale",
-
             referenceId: saleId,
           },
         ])
       );
     }
 
-    localStorage.setItem(
-      "hisabpro_last_invoice",
-      JSON.stringify(sale)
-    );
+    localStorage.setItem("hisabpro_last_invoice", JSON.stringify(sale));
 
     setCart([]);
     setCustomerId("");
@@ -671,15 +550,12 @@ export default function SalesPage() {
     setPaymentType("cash");
     setPaymentMode("cash");
 
-    window.location.href =
-      "/hisabpro/invoice/";
+    window.location.href = "/hisabpro/invoice/";
   }
 
   return (
     <main className="sales-page">
-
       <header className="sales-header">
-
         <button
           onClick={() => {
             window.location.href = "/hisabpro/";
@@ -688,27 +564,15 @@ export default function SalesPage() {
         >
           ← Back
         </button>
-
         <h1>New Sale</h1>
-
         <span></span>
-
       </header>
 
       <section className="sale-form">
-
         <div className="sale-section-heading" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <div className="sale-heading-icon">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M4 7h16" />
                 <path d="M6 7V5h12v2" />
                 <path d="M5 7l1 13h12l1-13" />
@@ -716,14 +580,13 @@ export default function SalesPage() {
                 <path d="M15 11v5" />
               </svg>
             </div>
-
             <div>
               <h2>Add Product</h2>
               <p>Select product or scan barcode</p>
             </div>
           </div>
 
-          {/* SCANNER BUTTON */}
+          {/* SCAN BUTTON */}
           <button
             type="button"
             onClick={() => setIsScannerOpen(true)}
@@ -741,16 +604,7 @@ export default function SalesPage() {
               cursor: "pointer",
             }}
           >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 7V5a2 2 0 0 1 2-2h2" />
               <path d="M17 3h2a2 2 0 0 1 2 2v2" />
               <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
@@ -759,744 +613,287 @@ export default function SalesPage() {
             </svg>
             <span>Scan</span>
           </button>
-
         </div>
 
         <div className="product-input-row">
-
           <div className="sale-field">
-
-            <label>
-              Product
-            </label>
-
+            <label>Product</label>
             <select
               value={productId}
-              onChange={(e) =>
-                setProductId(
-                  e.target.value
-                )
-              }
+              onChange={(e) => setProductId(e.target.value)}
             >
-
-              <option value="">
-                Select Product
-              </option>
-
-              {products.map(
-                (product) => (
-                  <option
-                    key={product.id}
-                    value={product.id}
-                    disabled={
-                      getAvailableQuantity(
-                        product
-                      ) <= 0
-                    }
-                  >
-                    {product.name}
-                    {" — Stock: "}
-                    {getAvailableQuantity(
-                      product
-                    )}
-                  </option>
-                )
-              )}
-
+              <option value="">Select Product</option>
+              {products.map((product) => (
+                <option
+                  key={product.id}
+                  value={product.id}
+                  disabled={getAvailableQuantity(product) <= 0}
+                >
+                  {product.name} — Stock: {getAvailableQuantity(product)}
+                </option>
+              ))}
             </select>
-
           </div>
 
           <div className="sale-field">
-
-            <label>
-              Quantity
-            </label>
-
+            <label>Quantity</label>
             <input
               type="number"
               min="1"
               value={quantity}
               onChange={(e) =>
-                setQuantity(
-                  Math.max(
-                    1,
-                    Number(
-                      e.target.value
-                    )
-                  )
-                )
+                setQuantity(Math.max(1, Number(e.target.value)))
               }
             />
-
           </div>
-
         </div>
 
         {productId && (
           <div className="selected-product-info">
-
             {(() => {
-
-              const product =
-                products.find(
-                  (item) =>
-                    item.id ===
-                    Number(productId)
-                );
-
-              if (!product) {
-                return null;
-              }
-
-              const batches =
-                getProductBatches(
-                  product
-                );
+              const product = products.find((item) => item.id === Number(productId));
+              if (!product) return null;
+              const batches = getProductBatches(product);
 
               return (
                 <>
-
                   <div className="selected-product-header">
-
-                    <strong>
-                      {product.name}
-                    </strong>
-
-                    <span>
-                      {getAvailableQuantity(
-                        product
-                      )}{" "}
-                      pcs available
-                    </span>
-
+                    <strong>{product.name}</strong>
+                    <span>{getAvailableQuantity(product)} pcs available</span>
                   </div>
-
                   <div className="batch-list">
-
-                    {batches.map(
-                      (batch) => (
-                        <div
-                          className="batch-price-row"
-                          key={batch.id}
-                        >
-
-                          <span>
-                            {batch.quantity} pcs
-                          </span>
-
-                          <span>
-                            Buy ₹
-                            {Number(
-                              batch.purchasePrice
-                            ).toLocaleString(
-                              "en-IN"
-                            )}
-                          </span>
-
-                          <span>
-                            Sell ₹
-                            {Number(
-                              batch.sellingPrice
-                            ).toLocaleString(
-                              "en-IN"
-                            )}
-                          </span>
-
-                        </div>
-                      )
-                    )}
-
+                    {batches.map((batch) => (
+                      <div className="batch-price-row" key={batch.id}>
+                        <span>{batch.quantity} pcs</span>
+                        <span>Buy ₹{Number(batch.purchasePrice).toLocaleString("en-IN")}</span>
+                        <span>Sell ₹{Number(batch.sellingPrice).toLocaleString("en-IN")}</span>
+                      </div>
+                    ))}
                   </div>
-
                 </>
               );
             })()}
-
           </div>
         )}
 
-        <button
-          className="add-to-bill"
-          onClick={addToBill}
-        >
-
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-          >
+        <button className="add-to-bill" onClick={addToBill}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M12 5v14" />
             <path d="M5 12h14" />
           </svg>
-
           Add to Bill
-
         </button>
-
       </section>
 
       <section className="bill-section">
-
         <div className="bill-section-header">
-
           <div>
-
-            <h2>
-              Bill
-            </h2>
-
-            <p>
-              {cart.length} item
-              {cart.length !== 1
-                ? "s"
-                : ""} added
-            </p>
-
+            <h2>Bill</h2>
+            <p>{cart.length} item{cart.length !== 1 ? "s" : ""} added</p>
           </div>
-
-          <div className="bill-count">
-            {cart.length}
-          </div>
-
+          <div className="bill-count">{cart.length}</div>
         </div>
 
         {cart.length === 0 ? (
-
           <div className="empty-bill">
-
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M6 3h12v18l-2-1-2 1-2-1-2 1-2-1-2 1V3z" />
               <path d="M9 7h6" />
               <path d="M9 11h6" />
               <path d="M9 15h4" />
             </svg>
-
-            <strong>
-              No products added yet
-            </strong>
-
-            <p>
-              Add products above to create the bill.
-            </p>
-
+            <strong>No products added yet</strong>
+            <p>Add products above to create the bill.</p>
           </div>
-
         ) : (
-
           <div className="bill-items">
+            {cart.map((item) => (
+              <div className="bill-item" key={item.productId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div className="bill-item-info">
+                  <strong>{item.product}</strong>
+                  <span>₹{item.price.toLocaleString("en-IN", { maximumFractionDigits: 2 })} / pc</span>
 
-            {cart.map(
-              (item) => (
-                <div
-                  className="bill-item"
-                  key={
-                    item.productId
-                  }
-                >
-
-                  <div className="bill-item-info">
-
-                    <strong>
-                      {item.product}
-                    </strong>
-
-                    <span>
-                      Qty {item.quantity}
-                      {" × "}
-                      ₹
-                      {item.price.toLocaleString(
-                        "en-IN",
-                        {
-                          maximumFractionDigits: 2,
-                        }
-                      )}
-                    </span>
-
-                  </div>
-
-                  <div className="bill-item-right">
-
-                    <strong>
-                      ₹
-                      {item.amount.toLocaleString(
-                        "en-IN",
-                        {
-                          maximumFractionDigits: 2,
-                        }
-                      )}
-                    </strong>
-
+                  {/* DIRECT IN-CART QUANTITY CONTROLS */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "6px" }}>
                     <button
-                      onClick={() =>
-                        removeFromBill(
-                          item.productId
-                        )
-                      }
-                      aria-label="Remove"
+                      type="button"
+                      onClick={() => updateCartQuantity(item.productId, item.quantity - 1)}
+                      style={{
+                        width: "28px",
+                        height: "28px",
+                        borderRadius: "6px",
+                        border: "1px solid #cbd5e1",
+                        background: "#f1f5f9",
+                        fontWeight: "bold",
+                        cursor: "pointer",
+                      }}
                     >
-
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M3 6h18" />
-                        <path d="M8 6V4h8v2" />
-                        <path d="M19 6l-1 15H6L5 6" />
-                        <path d="M10 11v6" />
-                        <path d="M14 11v6" />
-                      </svg>
-
+                      -
                     </button>
-
+                    <input
+                      type="number"
+                      min="1"
+                      value={item.quantity}
+                      onChange={(e) => updateCartQuantity(item.productId, Math.max(1, Number(e.target.value)))}
+                      style={{
+                        width: "50px",
+                        textAlign: "center",
+                        padding: "4px",
+                        borderRadius: "6px",
+                        border: "1px solid #cbd5e1",
+                        fontSize: "13px",
+                        fontWeight: "bold",
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => updateCartQuantity(item.productId, item.quantity + 1)}
+                      style={{
+                        width: "28px",
+                        height: "28px",
+                        borderRadius: "6px",
+                        border: "1px solid #cbd5e1",
+                        background: "#f1f5f9",
+                        fontWeight: "bold",
+                        cursor: "pointer",
+                      }}
+                    >
+                      +
+                    </button>
                   </div>
-
                 </div>
-              )
-            )}
 
+                <div className="bill-item-right" style={{ textAlign: "right" }}>
+                  <strong>
+                    ₹{item.amount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                  </strong>
+                  <button
+                    onClick={() => removeFromBill(item.productId)}
+                    aria-label="Remove"
+                    style={{ marginTop: "6px", display: "inline-block" }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 6h18" />
+                      <path d="M8 6V4h8v2" />
+                      <path d="M19 6l-1 15H6L5 6" />
+                      <path d="M10 11v6" />
+                      <path d="M14 11v6" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-
         )}
-
       </section>
 
       <section className="sale-summary">
-
         <div className="summary-heading">
-
-          <h2>
-            Payment & Summary
-          </h2>
-
+          <h2>Payment & Summary</h2>
         </div>
 
-        <label>
-          Payment Type
-        </label>
-
+        <label>Payment Type</label>
         <div className="payment-buttons">
-
-          {/* CASH */}
-
           <button
-            className={
-              paymentType === "cash" &&
-              paymentMode === "cash"
-                ? "active"
-                : ""
-            }
-            onClick={() =>
-              selectPaymentMode("cash")
-            }
+            className={paymentType === "cash" && paymentMode === "cash" ? "active" : ""}
+            onClick={() => selectPaymentMode("cash")}
           >
-
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect
-                x="3"
-                y="6"
-                width="18"
-                height="12"
-                rx="2"
-              />
-
-              <circle
-                cx="12"
-                cy="12"
-                r="3"
-              />
-
-              <path d="M3 9h2" />
-              <path d="M19 9h2" />
-              <path d="M3 15h2" />
-              <path d="M19 15h2" />
-            </svg>
-
             Cash
-
           </button>
-
-          {/* UPI */}
-
           <button
-            className={
-              paymentType === "cash" &&
-              paymentMode === "upi"
-                ? "active"
-                : ""
-            }
-            onClick={() =>
-              selectPaymentMode("upi")
-            }
+            className={paymentType === "cash" && paymentMode === "upi" ? "active" : ""}
+            onClick={() => selectPaymentMode("upi")}
           >
-
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect
-                x="6"
-                y="2"
-                width="12"
-                height="20"
-                rx="2"
-              />
-
-              <path d="M10 18h4" />
-
-              <path d="M9 7h6" />
-              <path d="M9 11h3" />
-            </svg>
-
             UPI
-
           </button>
-
-          {/* CARD */}
-
           <button
-            className={
-              paymentType === "cash" &&
-              paymentMode === "card"
-                ? "active"
-                : ""
-            }
-            onClick={() =>
-              selectPaymentMode("card")
-            }
+            className={paymentType === "cash" && paymentMode === "card" ? "active" : ""}
+            onClick={() => selectPaymentMode("card")}
           >
-
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect
-                x="2.5"
-                y="5"
-                width="19"
-                height="14"
-                rx="2"
-              />
-
-              <path d="M2.5 10h19" />
-
-              <path d="M6 15h4" />
-            </svg>
-
             Card
-
           </button>
-
-          {/* BANK */}
-
           <button
-            className={
-              paymentType === "cash" &&
-              paymentMode === "bank"
-                ? "active"
-                : ""
-            }
-            onClick={() =>
-              selectPaymentMode("bank")
-            }
+            className={paymentType === "cash" && paymentMode === "bank" ? "active" : ""}
+            onClick={() => selectPaymentMode("bank")}
           >
-
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M3 9h18" />
-
-              <path d="M4 9l8-5 8 5" />
-
-              <path d="M5 9v9" />
-              <path d="M9 9v9" />
-              <path d="M15 9v9" />
-              <path d="M19 9v9" />
-
-              <path d="M3 18h18" />
-              <path d="M2 21h20" />
-            </svg>
-
             Bank
-
           </button>
-
-          {/* ONLINE */}
-
           <button
-            className={
-              paymentType === "cash" &&
-              paymentMode === "online"
-                ? "active"
-                : ""
-            }
-            onClick={() =>
-              selectPaymentMode("online")
-            }
+            className={paymentType === "cash" && paymentMode === "online" ? "active" : ""}
+            onClick={() => selectPaymentMode("online")}
           >
-
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle
-                cx="12"
-                cy="12"
-                r="9"
-              />
-
-              <path d="M3 12h18" />
-
-              <path d="M12 3c3 3 4 6 4 9s-1 6-4 9" />
-              <path d="M12 3c-3 3-4 6-4 9s1 6 4 9" />
-            </svg>
-
             Online
-
           </button>
-
-          {/* CREDIT */}
-
           <button
-            className={
-              paymentType === "credit"
-                ? "active"
-                : ""
-            }
-            onClick={() =>
-              selectPaymentType("credit")
-            }
+            className={paymentType === "credit" ? "active" : ""}
+            onClick={() => selectPaymentType("credit")}
           >
-
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M4 5h16v14H4z" />
-
-              <path d="M8 9h8" />
-              <path d="M8 13h5" />
-              <path d="M8 17h3" />
-            </svg>
-
             Credit
-
           </button>
-
         </div>
 
         {paymentType === "credit" && (
           <div className="customer-field">
-
-            <label>
-              Customer
-            </label>
-
+            <label>Customer</label>
             <select
               value={customerId}
-              onChange={(e) =>
-                setCustomerId(
-                  e.target.value
-                )
-              }
+              onChange={(e) => setCustomerId(e.target.value)}
             >
-
-              <option value="">
-                Select Customer
-              </option>
-
-              {customers.map(
-                (customer) => (
-                  <option
-                    key={customer.id}
-                    value={
-                      customer.id
-                    }
-                  >
-                    {customer.name}
-                    {" — Due ₹"}
-                    {Number(
-                      customer.due
-                    ).toLocaleString(
-                      "en-IN"
-                    )}
-                  </option>
-                )
-              )}
-
+              <option value="">Select Customer</option>
+              {customers.map((customer) => (
+                <option key={customer.id} value={customer.id}>
+                  {customer.name} — Due ₹{Number(customer.due).toLocaleString("en-IN")}
+                </option>
+              ))}
             </select>
-
           </div>
         )}
 
         <div className="discount-field">
-
-          <label>
-            Discount
-          </label>
-
+          <label>Discount</label>
           <div className="discount-input">
-
-            <span>
-              ₹
-            </span>
-
+            <span>₹</span>
             <input
               type="number"
               min="0"
               value={discount}
-              onChange={(e) =>
-                setDiscount(
-                  Math.max(
-                    0,
-                    Number(
-                      e.target.value
-                    )
-                  )
-                )
-              }
+              onChange={(e) => setDiscount(Math.max(0, Number(e.target.value)))}
             />
-
           </div>
-
         </div>
 
         <div className="sale-totals">
-
           <div className="total-row">
-
-            <span>
-              Subtotal:
-            </span>
-
-            <strong>
-              ₹
-              {subtotal.toLocaleString(
-                "en-IN",
-                {
-                  maximumFractionDigits: 2,
-                }
-              )}
-            </strong>
-
+            <span>Subtotal:</span>
+            <strong>₹{subtotal.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</strong>
           </div>
-
           <div className="total-row">
-
-            <span>
-              Discount:
-            </span>
-
-            <strong>
-              ₹
-              {safeDiscount.toLocaleString(
-                "en-IN",
-                {
-                  maximumFractionDigits: 2,
-                }
-              )}
-            </strong>
-
+            <span>Discount:</span>
+            <strong>₹{safeDiscount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</strong>
           </div>
-
           <div className="total-row grand-total">
-
-            <span>
-              Total:
-            </span>
-
-            <strong>
-              ₹
-              {total.toLocaleString(
-                "en-IN",
-                {
-                  maximumFractionDigits: 2,
-                }
-              )}
-            </strong>
-
+            <span>Total:</span>
+            <strong>₹{total.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</strong>
           </div>
-
         </div>
 
-        <button
-          className="save-sale"
-          onClick={saveSale}
-        >
-
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
+        <button className="save-sale" onClick={saveSale}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M5 3h11l3 3v15H5z" />
             <path d="M8 3v6h8V3" />
             <path d="M8 15h8v6H8z" />
           </svg>
-
           Save Sale & Generate Invoice
-
         </button>
 
-        {message && (
-          <p className="sale-message">
-            {message}
-          </p>
-        )}
-
+        {message && <p className="sale-message">{message}</p>}
       </section>
 
-      {/* BARCODE SCANNER MODAL */}
       <BarcodeScannerModal
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
         onScanSuccess={handleBarcodeScanned}
       />
-
     </main>
   );
 }
