@@ -1,4 +1,4 @@
-"use client";
+""use client";
 
 import { useEffect, useState } from "react";
 import BarcodeScannerModal from "../../components/BarcodeScannerModal";
@@ -60,7 +60,6 @@ export default function StockPage() {
         return;
       }
 
-      // Existing products me batch & barcode verify
       const migrated: Product[] = saved.map((product: Product) => {
         if (product.batches && product.batches.length > 0) {
           return product;
@@ -104,10 +103,6 @@ export default function StockPage() {
       JSON.stringify(updated)
     );
   }
-
-  // --------------------------------
-  // ADD NEW PRODUCT
-  // --------------------------------
 
   function addProduct() {
     setMessage("");
@@ -163,10 +158,6 @@ export default function StockPage() {
     setMessage("Product added successfully ✅");
   }
 
-  // --------------------------------
-  // OPEN ADD STOCK
-  // --------------------------------
-
   function openAddStock(product: Product) {
     setStockProductId(product.id);
     setAddQuantity(0);
@@ -176,10 +167,6 @@ export default function StockPage() {
     setHistoryProductId(null);
     setMessage("");
   }
-
-  // --------------------------------
-  // ADD NEW STOCK BATCH
-  // --------------------------------
 
   function addStock() {
     if (stockProductId === null) return;
@@ -233,10 +220,6 @@ export default function StockPage() {
     setMessage("New stock batch added successfully ✅");
   }
 
-  // --------------------------------
-  // EDIT SELLING PRICE
-  // --------------------------------
-
   function openEditPrice(product: Product) {
     setEditProductId(product.id);
     setEditSellingPrice(product.sellingPrice);
@@ -270,10 +253,6 @@ export default function StockPage() {
     setMessage("Selling price updated ✅");
   }
 
-  // --------------------------------
-  // DELETE PRODUCT
-  // --------------------------------
-
   function deleteProduct(id: number) {
     const confirmed = window.confirm(
       "Kya aap is product ko delete karna chahte hain?"
@@ -288,10 +267,6 @@ export default function StockPage() {
     setMessage("Product deleted.");
   }
 
-  // --------------------------------
-  // CALCULATIONS
-  // --------------------------------
-
   const totalProducts = products.length;
 
   const totalStock = products.reduce(
@@ -305,7 +280,6 @@ export default function StockPage() {
 
   return (
     <main className="stock-page">
-
       {/* HEADER */}
       <header className="stock-header">
         <button
@@ -351,7 +325,7 @@ export default function StockPage() {
         <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
           <input
             type="text"
-            placeholder="Scan karein ya type karein (e.g. 8901234567890)"
+            placeholder="Scan karein ya code likhein"
             value={barcode}
             onChange={(e) => setBarcode(e.target.value)}
             style={{ flex: 1, margin: 0 }}
