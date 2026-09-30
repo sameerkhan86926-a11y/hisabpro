@@ -132,13 +132,11 @@ export default function PurchasePage() {
   }
 
   const selectedSupplier = suppliers.find(
-    (supplier) =>
-      String(supplier.id) === supplierId
+    (supplier) => String(supplier.id) === supplierId
   );
 
   const selectedProduct = products.find(
-    (product) =>
-      String(product.id) === productId
+    (product) => String(product.id) === productId
   );
 
   const cartTotal = useMemo(() => {
@@ -161,16 +159,11 @@ export default function PurchasePage() {
       return;
     }
 
-    setPurchasePrice(
-      String(product.purchasePrice || "")
-    );
-
-    setSellingPrice(
-      String(product.sellingPrice || "")
-    );
+    setPurchasePrice(String(product.purchasePrice || ""));
+    setSellingPrice(String(product.sellingPrice || ""));
   }
 
-  // Scan hone par direct Cart me add / quantity increment
+  // Scan hone par: Pehle se dali hui quantity ya 1 packet add hoga
   function handleBarcodeScanned(decodedBarcode: string) {
     const cleanCode = decodedBarcode.trim().toLowerCase();
 
@@ -185,8 +178,14 @@ export default function PurchasePage() {
       return;
     }
 
+    // Dropdown me bhi select kar lo
+    setProductId(String(matched.id));
+    setPurchasePrice(String(matched.purchasePrice || ""));
+    setSellingPrice(String(matched.sellingPrice || ""));
+
     const buyPrice = Number(matched.purchasePrice || 0);
     const sellPrice = Number(matched.sellingPrice || 0);
+    const qtyToAdd = Number(quantity) > 0 ? Number(quantity) : 1;
 
     setCart((prevCart) => {
       const existingIndex = prevCart.findIndex(
@@ -195,7 +194,7 @@ export default function PurchasePage() {
 
       if (existingIndex !== -1) {
         const updated = [...prevCart];
-        const newQty = updated[existingIndex].quantity + 1;
+        const newQty = updated[existingIndex].quantity + qtyToAdd;
         updated[existingIndex] = {
           ...updated[existingIndex],
           quantity: newQty,
@@ -209,19 +208,20 @@ export default function PurchasePage() {
             id: Date.now(),
             productId: matched.id,
             productName: matched.name,
-            quantity: 1,
+            quantity: qtyToAdd,
             purchasePrice: buyPrice,
             sellingPrice: sellPrice,
-            amount: 1 * buyPrice,
+            amount: qtyToAdd * buyPrice,
           },
         ];
       }
     });
 
-    setMessage(`✓ ${matched.name} purchase cart me add hua (+1)`);
+    setMessage(`✓ ${matched.name} (${qtyToAdd} pcs) purchase cart me add hua!`);
+    setQuantity("");
   }
 
-  // Cart me hi direct quantity update karne ka option
+  // Cart me directly quantity badhane/ghatane ke liye
   function updateCartItemQuantity(id: number, newQty: number) {
     if (newQty <= 0) {
       removeItem(id);
@@ -236,40 +236,16 @@ export default function PurchasePage() {
     );
   }
 
-  function selectPaymentType(
-    type: PaymentType
-  ) {
+  function selectPaymentType(type: PaymentType) {
     setPaymentType(type);
-
     if (type === "credit") {
       setPaymentMode("cash");
     }
   }
 
-  function selectPaymentMode(
-    mode: PaymentMode
-  ) {
+  function selectPaymentMode(mode: PaymentMode) {
     setPaymentType("cash");
     setPaymentMode(mode);
-  }
-
-  function getPaymentModeLabel(
-    mode?: PaymentMode
-  ) {
-    switch (mode) {
-      case "cash":
-        return "Cash";
-      case "upi":
-        return "UPI";
-      case "card":
-        return "Card";
-      case "bank":
-        return "Bank Transfer";
-      case "online":
-        return "Online";
-      default:
-        return "Cash";
-    }
   }
 
   function addToPurchase() {
@@ -345,9 +321,7 @@ export default function PurchasePage() {
   }
 
   function removeItem(id: number) {
-    setCart(
-      cart.filter((item) => item.id !== id)
-    );
+    setCart(cart.filter((item) => item.id !== id));
   }
 
   function savePurchase() {
@@ -371,9 +345,7 @@ export default function PurchasePage() {
     }
 
     if (cartTotal <= 0) {
-      setMessage(
-        "Purchase total must be greater than ₹0."
-      );
+      setMessage("Purchase total must be greater than ₹0.");
       return;
     }
 
@@ -382,20 +354,17 @@ export default function PurchasePage() {
         localStorage.getItem(PRODUCT_KEY) || "[]"
       );
 
-      const savedSuppliers: Supplier[] =
-        JSON.parse(
-          localStorage.getItem(SUPPLIER_KEY) || "[]"
-        );
+      const savedSuppliers: Supplier[] = JSON.parse(
+        localStorage.getItem(SUPPLIER_KEY) || "[]"
+      );
 
-      const savedPurchases: Purchase[] =
-        JSON.parse(
-          localStorage.getItem(PURCHASE_KEY) || "[]"
-        );
+      const savedPurchases: Purchase[] = JSON.parse(
+        localStorage.getItem(PURCHASE_KEY) || "[]"
+      );
 
-      const savedCashbook: CashTransaction[] =
-        JSON.parse(
-          localStorage.getItem(CASHBOOK_KEY) || "[]"
-        );
+      const savedCashbook: CashTransaction[] = JSON.parse(
+        localStorage.getItem(CASHBOOK_KEY) || "[]"
+      );
 
       const purchaseId = Date.now();
       const purchaseDate = new Date().toISOString();
@@ -538,12 +507,6 @@ export default function PurchasePage() {
             ))}
           </select>
 
-          {suppliers.length === 0 && (
-            <small className="purchase-help">
-              No suppliers found. Add a supplier first.
-            </small>
-          )}
-
           {selectedSupplier && (
             <small className="purchase-selected-info">
               {selectedSupplier.phone || "No mobile"}
@@ -551,8 +514,8 @@ export default function PurchasePage() {
           )}
         </div>
 
-        {/* SCANNER BAR */}
-        <div style={{ margin: "14px 0" }}>
+        {/* SCANNER TRIGGER BUTTON */}
+        <div style={{ margin: "10px 0" }}>
           <button
             type="button"
             onClick={() => setIsScannerOpen(true)}
@@ -562,38 +525,25 @@ export default function PurchasePage() {
               alignItems: "center",
               justifyContent: "center",
               gap: "8px",
-              padding: "12px",
+              padding: "10px",
               backgroundColor: "#102a56",
               color: "#ffffff",
               border: "none",
-              borderRadius: "10px",
-              fontSize: "14px",
+              borderRadius: "8px",
+              fontSize: "13px",
               fontWeight: 700,
               cursor: "pointer",
             }}
           >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 7V5a2 2 0 0 1 2-2h2" />
               <path d="M17 3h2a2 2 0 0 1 2 2v2" />
               <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
               <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
               <line x1="7" y1="12" x2="17" y2="12" />
             </svg>
-            <span>Scan Barcodes to Add in Purchase</span>
+            <span>Scan Product Barcode</span>
           </button>
-        </div>
-
-        <div style={{ textAlign: "center", color: "#94a3b8", fontSize: "12px", margin: "10px 0" }}>
-          — Ya Manual Item Select Karein —
         </div>
 
         {/* PRODUCT */}
@@ -620,7 +570,7 @@ export default function PurchasePage() {
             min="1"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
-            placeholder="Enter quantity"
+            placeholder="Scan se pehle yahan Qty daal sakte hain"
           />
         </div>
 
@@ -687,8 +637,8 @@ export default function PurchasePage() {
                     type="button"
                     onClick={() => updateCartItemQuantity(item.id, item.quantity - 1)}
                     style={{
-                      width: "26px",
-                      height: "26px",
+                      width: "28px",
+                      height: "28px",
                       borderRadius: "6px",
                       border: "1px solid #cbd5e1",
                       background: "#f1f5f9",
@@ -705,7 +655,7 @@ export default function PurchasePage() {
                     value={item.quantity}
                     onChange={(e) => updateCartItemQuantity(item.id, Math.max(1, Number(e.target.value)))}
                     style={{
-                      width: "48px",
+                      width: "50px",
                       textAlign: "center",
                       padding: "4px",
                       borderRadius: "6px",
@@ -719,8 +669,8 @@ export default function PurchasePage() {
                     type="button"
                     onClick={() => updateCartItemQuantity(item.id, item.quantity + 1)}
                     style={{
-                      width: "26px",
-                      height: "26px",
+                      width: "28px",
+                      height: "28px",
                       borderRadius: "6px",
                       border: "1px solid #cbd5e1",
                       background: "#f1f5f9",
@@ -764,53 +714,42 @@ export default function PurchasePage() {
                 className={paymentType === "cash" && paymentMode === "cash" ? "active" : ""}
                 onClick={() => selectPaymentMode("cash")}
               >
-                <span>💵</span>
-                <strong>Cash</strong>
+                Cash
               </button>
-
               <button
                 type="button"
                 className={paymentType === "cash" && paymentMode === "upi" ? "active" : ""}
                 onClick={() => selectPaymentMode("upi")}
               >
-                <span>📱</span>
-                <strong>UPI</strong>
+                UPI
               </button>
-
               <button
                 type="button"
                 className={paymentType === "cash" && paymentMode === "card" ? "active" : ""}
                 onClick={() => selectPaymentMode("card")}
               >
-                <span>💳</span>
-                <strong>Card</strong>
+                Card
               </button>
-
               <button
                 type="button"
                 className={paymentType === "cash" && paymentMode === "bank" ? "active" : ""}
                 onClick={() => selectPaymentMode("bank")}
               >
-                <span>🏦</span>
-                <strong>Bank</strong>
+                Bank
               </button>
-
               <button
                 type="button"
                 className={paymentType === "cash" && paymentMode === "online" ? "active" : ""}
                 onClick={() => selectPaymentMode("online")}
               >
-                <span>🌐</span>
-                <strong>Online</strong>
+                Online
               </button>
-
               <button
                 type="button"
                 className={paymentType === "credit" ? "active" : ""}
                 onClick={() => selectPaymentType("credit")}
               >
-                <span>📝</span>
-                <strong>Credit</strong>
+                Credit
               </button>
             </div>
           </div>
