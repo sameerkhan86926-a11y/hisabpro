@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useLanguage } from "../../components/LanguageProvider";
 
 type Business = {
   id: number;
@@ -25,28 +24,14 @@ const emptyBusiness: Omit<Business, "id"> = {
 };
 
 export default function SettingsPage() {
-  const { language, setLanguage } = useLanguage();
-
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [activeBusinessId, setActiveBusinessId] = useState<number | null>(null);
   const [business, setBusiness] = useState<Omit<Business, "id">>(emptyBusiness);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
 
-  /* =========================
-     SECURITY / APP LOCK
-  ========================= */
-
-  const [appLockEnabled, setAppLockEnabled] = useState(false);
-  const [appPin, setAppPin] = useState("");
-  const [confirmPin, setConfirmPin] = useState("");
-  const [pinLength, setPinLength] = useState("4");
-  const [autoLock, setAutoLock] = useState("immediately");
-  const [securityMessage, setSecurityMessage] = useState("");
-
   useEffect(() => {
     loadBusinesses();
-    loadSecuritySettings();
   }, []);
 
   function loadBusinesses() {
@@ -97,18 +82,6 @@ export default function SettingsPage() {
     if (savedActive) {
       setActiveBusinessId(Number(savedActive));
     }
-  }
-
-  function loadSecuritySettings() {
-    const savedLock = localStorage.getItem("hisabpro_app_lock") === "true";
-    const savedPin = localStorage.getItem("hisabpro_app_lock_pin_hash");
-    const savedPinLength = localStorage.getItem("hisabpro_app_lock_pin_length") || "4";
-    const savedAutoLock = localStorage.getItem("hisabpro_app_lock_auto") || "immediately";
-
-    setAppLockEnabled(savedLock);
-    setAppPin(savedPin ? "******" : "");
-    setPinLength(savedPinLength);
-    setAutoLock(savedAutoLock);
   }
 
   function handleChange(field: keyof Omit<Business, "id">, value: string) {
@@ -239,91 +212,6 @@ export default function SettingsPage() {
     setBusiness(emptyBusiness);
     setEditingId(null);
     setMessage("");
-  }
-
-  /* =========================
-     HASH PIN
-  ========================= */
-
-  async function hashPin(value: string) {
-    const data = new TextEncoder().encode(value);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    return Array.from(new Uint8Array(hashBuffer))
-      .map((byte) => byte.toString(16).padStart(2, "0"))
-      .join("");
-  }
-
-  /* =========================
-     SAVE SECURITY
-  ========================= */
-
-  async function saveSecuritySettings() {
-    setSecurityMessage("");
-
-    if (!appLockEnabled) {
-      localStorage.setItem("hisabpro_app_lock", "false");
-      localStorage.removeItem("hisabpro_app_lock_pin_hash");
-      localStorage.removeItem("hisabpro_app_lock_pin_length");
-      localStorage.removeItem("hisabpro_app_lock_auto");
-
-      window.dispatchEvent(new CustomEvent("hisabpro-app-lock-changed"));
-
-      setAppPin("");
-      setConfirmPin("");
-      setSecurityMessage("App Lock disabled successfully.");
-      return;
-    }
-
-    if (appPin === "******") {
-      localStorage.setItem("hisabpro_app_lock", "true");
-      localStorage.setItem("hisabpro_app_lock_pin_length", pinLength);
-      localStorage.setItem("hisabpro_app_lock_auto", autoLock);
-
-      window.dispatchEvent(new CustomEvent("hisabpro-app-lock-changed"));
-      setSecurityMessage("Security settings updated successfully");
-      return;
-    }
-
-    if (!/^\d+$/.test(appPin)) {
-      setSecurityMessage("PIN must contain numbers only.");
-      return;
-    }
-
-    if (appPin.length !== Number(pinLength)) {
-      setSecurityMessage(`Please enter exactly ${pinLength} digit PIN.`);
-      return;
-    }
-
-    if (appPin !== confirmPin) {
-      setSecurityMessage("PIN and Confirm PIN do not match.");
-      return;
-    }
-
-    const hashedPin = await hashPin(appPin);
-
-    localStorage.setItem("hisabpro_app_lock_pin_hash", hashedPin);
-    localStorage.setItem("hisabpro_app_lock", "true");
-    localStorage.setItem("hisabpro_app_lock_pin_length", pinLength);
-    localStorage.setItem("hisabpro_app_lock_auto", autoLock);
-
-    window.dispatchEvent(new CustomEvent("hisabpro-app-lock-changed"));
-
-    setAppPin("******");
-    setConfirmPin("");
-    setSecurityMessage("App Lock enabled successfully");
-  }
-
-  /* =========================
-     LANGUAGE SWITCH HANDLER
-  ========================= */
-
-  function handleLanguageSwitch(lang: "en" | "hi") {
-    setLanguage(lang);
-    document.cookie = `googtrans=/en/${lang}; path=/;`;
-    if (typeof window !== "undefined" && window.location.hostname) {
-      document.cookie = `googtrans=/en/${lang}; domain=.${window.location.hostname}; path=/;`;
-      window.location.reload();
-    }
   }
 
   return (
@@ -525,179 +413,6 @@ export default function SettingsPage() {
             })}
           </div>
         )}
-      </section>
-
-      {/* LANGUAGE */}
-      <section className="settings-box">
-        <div className="settings-title">
-          <div className="settings-icon">Aa</div>
-          <div>
-            <h2>Language</h2>
-            <p>Choose the language for the HisabPro interface.</p>
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-            gap: "10px",
-            marginTop: "18px",
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => handleLanguageSwitch("en")}
-            style={{
-              minHeight: "52px",
-              border:
-                language === "en"
-                  ? "2px solid #102a56"
-                  : "1px solid #dbe2ea",
-              borderRadius: "12px",
-              background: language === "en" ? "#102a56" : "#ffffff",
-              color: language === "en" ? "#ffffff" : "#102a56",
-              fontSize: "15px",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            English
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleLanguageSwitch("hi")}
-            style={{
-              minHeight: "52px",
-              border:
-                language === "hi"
-                  ? "2px solid #102a56"
-                  : "1px solid #dbe2ea",
-              borderRadius: "12px",
-              background: language === "hi" ? "#102a56" : "#ffffff",
-              color: language === "hi" ? "#ffffff" : "#102a56",
-              fontSize: "15px",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            हिन्दी
-          </button>
-        </div>
-      </section>
-
-      {/* SECURITY */}
-      <section className="settings-box security-settings-box">
-        <div className="settings-title">
-          <div className="settings-icon">🔐</div>
-          <div>
-            <h2>Security</h2>
-            <p>Protect your HisabPro app with an App Lock PIN.</p>
-          </div>
-        </div>
-
-        <div className="settings-note">
-          <strong>App Lock</strong>
-          <span>
-            Your PIN is stored as a SHA-256 hash instead of plain text.
-          </span>
-        </div>
-
-        <div className="security-row">
-          <div>
-            <strong>App Lock</strong>
-            <small>Require PIN to open HisabPro.</small>
-          </div>
-
-          <button
-            type="button"
-            className={
-              appLockEnabled ? "security-toggle active" : "security-toggle"
-            }
-            onClick={() => {
-              setAppLockEnabled(!appLockEnabled);
-              setSecurityMessage("");
-            }}
-          >
-            {appLockEnabled ? "ON" : "OFF"}
-          </button>
-        </div>
-
-        {appLockEnabled && (
-          <div className="security-form">
-            <div className="form-group">
-              <label>PIN Length</label>
-              <select
-                value={pinLength}
-                onChange={(e) => {
-                  setPinLength(e.target.value);
-                  setAppPin("");
-                  setConfirmPin("");
-                  setSecurityMessage("");
-                }}
-              >
-                <option value="4">4 Digit PIN</option>
-                <option value="6">6 Digit PIN</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>
-                {appPin === "******" ? "Change PIN" : "Create PIN"}
-              </label>
-              <input
-                type="password"
-                inputMode="numeric"
-                maxLength={Number(pinLength)}
-                value={appPin === "******" ? "" : appPin}
-                onChange={(e) =>
-                  setAppPin(e.target.value.replace(/\D/g, ""))
-                }
-                placeholder={`Enter ${pinLength} digit PIN`}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Confirm PIN</label>
-              <input
-                type="password"
-                inputMode="numeric"
-                maxLength={Number(pinLength)}
-                value={confirmPin}
-                onChange={(e) =>
-                  setConfirmPin(e.target.value.replace(/\D/g, ""))
-                }
-                placeholder="Confirm PIN"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Auto Lock</label>
-              <select
-                value={autoLock}
-                onChange={(e) => setAutoLock(e.target.value)}
-              >
-                <option value="immediately">Immediately</option>
-                <option value="1">After 1 minute</option>
-                <option value="5">After 5 minutes</option>
-                <option value="15">After 15 minutes</option>
-              </select>
-            </div>
-          </div>
-        )}
-
-        {securityMessage && (
-          <p className="security-message">{securityMessage}</p>
-        )}
-
-        <button
-          type="button"
-          className="save-business security-save-button"
-          onClick={saveSecuritySettings}
-        >
-          Save Security Settings
-        </button>
       </section>
     </main>
   );
