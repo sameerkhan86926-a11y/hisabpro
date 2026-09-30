@@ -25,7 +25,6 @@ export default function LanguageProvider({
 }) {
   const [language, setLanguageState] = useState<Language>("en");
 
-  // SSR Safe Cleanup Helper
   const cleanGoogleTranslate = () => {
     if (typeof window === "undefined" || typeof document === "undefined") return;
 
@@ -54,9 +53,7 @@ export default function LanguageProvider({
       if (banner) {
         banner.remove();
       }
-    } catch (e) {
-      console.error("Clean translator error:", e);
-    }
+    } catch {}
   };
 
   const setLanguage = (lang: Language) => {
@@ -75,9 +72,7 @@ export default function LanguageProvider({
         }
 
         window.location.reload();
-      } catch (e) {
-        console.error("Set language error:", e);
-      }
+      } catch {}
     }
   };
 
@@ -129,9 +124,7 @@ export default function LanguageProvider({
             document.body.appendChild(script);
           }
         }
-      } catch (e) {
-        console.error("Translate init error:", e);
-      }
+      } catch {}
     }
   }, []);
 
