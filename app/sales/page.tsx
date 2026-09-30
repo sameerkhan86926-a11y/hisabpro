@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import BarcodeScannerModal from "../../components/BarcodeScannerModal";
 
 type StockBatch = {
   id: number;
@@ -14,6 +15,7 @@ type Product = {
   id: number;
   name: string;
   category: string;
+  barcode?: string;
   purchasePrice: number;
   sellingPrice: number;
   stock: number;
@@ -90,6 +92,9 @@ export default function SalesPage() {
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [message, setMessage] = useState("");
+
+  // Barcode Scanner Modal State
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -180,6 +185,93 @@ export default function SalesPage() {
     );
   }
 
+  // Core Cart Adder
+  function addSpecificProductToCart(targetProduct: Product, addQty: number) {
+    setMessage("");
+
+    const available = getAvailableQuantity(targetProduct);
+
+    if (addQty > available) {
+      setMessage(`Available stock sirf ${available} hai.`);
+      return;
+    }
+
+    const batches = getProductBatches(targetProduct);
+    let remaining = addQty;
+    const batchDetails: CartItem["batchDetails"] = [];
+
+    for (const batch of batches) {
+      if (remaining <= 0) break;
+      const take = Math.min(remaining, Number(batch.quantity));
+      batchDetails.push({
+        batchId: batch.id,
+        quantity: take,
+        purchasePrice: Number(batch.purchasePrice),
+        sellingPrice: Number(batch.sellingPrice),
+      });
+      remaining -= take;
+    }
+
+    if (remaining > 0) {
+      setMessage("Stock batches me available quantity nahi mili.");
+      return;
+    }
+
+    const totalAmount = batchDetails.reduce(
+      (sum, batch) => sum + batch.quantity * batch.sellingPrice,
+      0
+    );
+
+    const totalPurchaseCost = batchDetails.reduce(
+      (sum, batch) => sum + batch.quantity * batch.purchasePrice,
+      0
+    );
+
+    const averageSellingPrice = addQty > 0 ? totalAmount / addQty : 0;
+    const averagePurchasePrice = addQty > 0 ? totalPurchaseCost / addQty : 0;
+
+    const existingIndex = cart.findIndex(
+      (item) => item.productId === targetProduct.id
+    );
+
+    if (existingIndex >= 0) {
+      const updatedCart = [...cart];
+      const existing = updatedCart[existingIndex];
+
+      updatedCart[existingIndex] = {
+        ...existing,
+        quantity: existing.quantity + addQty,
+        amount: existing.amount + totalAmount,
+        price:
+          (existing.amount + totalAmount) /
+          (existing.quantity + addQty),
+        purchasePrice:
+          (existing.purchasePrice * existing.quantity +
+            averagePurchasePrice * addQty) /
+          (existing.quantity + addQty),
+        batchDetails: [...existing.batchDetails, ...batchDetails],
+      };
+
+      setCart(updatedCart);
+    } else {
+      setCart([
+        ...cart,
+        {
+          productId: targetProduct.id,
+          product: targetProduct.name,
+          quantity: addQty,
+          price: averageSellingPrice,
+          purchasePrice: averagePurchasePrice,
+          amount: totalAmount,
+          batchDetails,
+        },
+      ]);
+    }
+
+    setProductId("");
+    setQuantity(1);
+  }
+
   function addToBill() {
     setMessage("");
 
@@ -194,8 +286,7 @@ export default function SalesPage() {
     }
 
     const product = products.find(
-      (item) =>
-        item.id === Number(productId)
+      (item) => item.id === Number(productId)
     );
 
     if (!product) {
@@ -203,144 +294,33 @@ export default function SalesPage() {
       return;
     }
 
-    const available =
-      getAvailableQuantity(product);
+    addSpecificProductToCart(product, quantity);
+  }
 
-    if (quantity > available) {
-      setMessage(
-        `Available stock sirf ${available} hai.`
-      );
+  // Barcode scanned callback handler
+  function handleBarcodeScanned(decodedBarcode: string) {
+    const cleanCode = decodedBarcode.trim().toLowerCase();
+    
+    // Barcode field ya ID dono se check karega
+    const matched = products.find(
+      (p) =>
+        (p.barcode && p.barcode.trim().toLowerCase() === cleanCode) ||
+        String(p.id) === cleanCode
+    );
+
+    if (!matched) {
+      setMessage(`Barcode "${decodedBarcode}" kisi product se match nahi hua.`);
       return;
     }
 
-    const batches =
-      getProductBatches(product);
-
-    let remaining = quantity;
-
-    const batchDetails: CartItem["batchDetails"] =
-      [];
-
-    for (const batch of batches) {
-      if (remaining <= 0) {
-        break;
-      }
-
-      const take = Math.min(
-        remaining,
-        Number(batch.quantity)
-      );
-
-      batchDetails.push({
-        batchId: batch.id,
-        quantity: take,
-        purchasePrice:
-          Number(batch.purchasePrice),
-        sellingPrice:
-          Number(batch.sellingPrice),
-      });
-
-      remaining -= take;
-    }
-
-    if (remaining > 0) {
-      setMessage(
-        "Stock batches me available quantity nahi mili."
-      );
+    const available = getAvailableQuantity(matched);
+    if (available <= 0) {
+      setMessage(`${matched.name} out of stock hai.`);
       return;
     }
 
-    const totalAmount =
-      batchDetails.reduce(
-        (sum, batch) =>
-          sum +
-          batch.quantity *
-            batch.sellingPrice,
-        0
-      );
-
-    const totalPurchaseCost =
-      batchDetails.reduce(
-        (sum, batch) =>
-          sum +
-          batch.quantity *
-            batch.purchasePrice,
-        0
-      );
-
-    const averageSellingPrice =
-      quantity > 0
-        ? totalAmount / quantity
-        : 0;
-
-    const averagePurchasePrice =
-      quantity > 0
-        ? totalPurchaseCost / quantity
-        : 0;
-
-    const existingIndex =
-      cart.findIndex(
-        (item) =>
-          item.productId ===
-          product.id
-      );
-
-    if (existingIndex >= 0) {
-      const updatedCart = [...cart];
-
-      const existing =
-        updatedCart[existingIndex];
-
-      updatedCart[existingIndex] = {
-        ...existing,
-
-        quantity:
-          existing.quantity + quantity,
-
-        amount:
-          existing.amount + totalAmount,
-
-        price:
-          (existing.amount +
-            totalAmount) /
-          (existing.quantity +
-            quantity),
-
-        purchasePrice:
-          (
-            existing.purchasePrice *
-              existing.quantity +
-            averagePurchasePrice *
-              quantity
-          ) /
-          (existing.quantity +
-            quantity),
-
-        batchDetails: [
-          ...existing.batchDetails,
-          ...batchDetails,
-        ],
-      };
-
-      setCart(updatedCart);
-    } else {
-      setCart([
-        ...cart,
-        {
-          productId: product.id,
-          product: product.name,
-          quantity,
-          price: averageSellingPrice,
-          purchasePrice:
-            averagePurchasePrice,
-          amount: totalAmount,
-          batchDetails,
-        },
-      ]);
-    }
-
-    setProductId("");
-    setQuantity(1);
+    addSpecificProductToCart(matched, 1);
+    setMessage(`✓ ${matched.name} bill me add ho gaya!`);
   }
 
   function removeFromBill(
@@ -451,12 +431,6 @@ export default function SalesPage() {
       date: saleDate,
     };
 
-    /*
-     * =====================================
-     * 1. SAVE SALE
-     * =====================================
-     */
-
     const oldSales = JSON.parse(
       localStorage.getItem(
         "hisabpro_sales"
@@ -470,12 +444,6 @@ export default function SalesPage() {
         sale,
       ])
     );
-
-    /*
-     * =====================================
-     * 2. REDUCE STOCK FIFO BATCH-WISE
-     * =====================================
-     */
 
     const updatedProducts =
       products.map((product) => {
@@ -577,12 +545,6 @@ export default function SalesPage() {
       )
     );
 
-    /*
-     * =====================================
-     * 3. CREDIT SALE → KHATA
-     * =====================================
-     */
-
     if (
       paymentType === "credit" &&
       selectedCustomer
@@ -655,12 +617,6 @@ export default function SalesPage() {
       );
     }
 
-    /*
-     * =====================================
-     * 4. ONLY CASH SALE → CASHBOOK
-     * =====================================
-     */
-
     if (
       paymentType === "cash" &&
       paymentMode === "cash"
@@ -704,22 +660,10 @@ export default function SalesPage() {
       );
     }
 
-    /*
-     * =====================================
-     * 5. SAVE LAST INVOICE
-     * =====================================
-     */
-
     localStorage.setItem(
       "hisabpro_last_invoice",
       JSON.stringify(sale)
     );
-
-    /*
-     * =====================================
-     * 6. RESET
-     * =====================================
-     */
 
     setCart([]);
     setCustomerId("");
@@ -737,13 +681,13 @@ export default function SalesPage() {
       <header className="sales-header">
 
         <button
-  onClick={() => {
-    window.location.href = "/hisabpro/";
-  }}
-  className="back-button"
->
-  ← Back
-</button>
+          onClick={() => {
+            window.location.href = "/hisabpro/";
+          }}
+          className="back-button"
+        >
+          ← Back
+        </button>
 
         <h1>New Sale</h1>
 
@@ -753,34 +697,68 @@ export default function SalesPage() {
 
       <section className="sale-form">
 
-        <div className="sale-section-heading">
+        <div className="sale-section-heading" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
 
-          <div className="sale-heading-icon">
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div className="sale-heading-icon">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M4 7h16" />
+                <path d="M6 7V5h12v2" />
+                <path d="M5 7l1 13h12l1-13" />
+                <path d="M9 11v5" />
+                <path d="M15 11v5" />
+              </svg>
+            </div>
 
+            <div>
+              <h2>Add Product</h2>
+              <p>Select product or scan barcode</p>
+            </div>
+          </div>
+
+          {/* SCANNER BUTTON */}
+          <button
+            type="button"
+            onClick={() => setIsScannerOpen(true)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "7px 12px",
+              backgroundColor: "#102a56",
+              color: "#ffffff",
+              border: "none",
+              borderRadius: "8px",
+              fontSize: "12px",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
             <svg
+              width="16"
+              height="16"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2"
+              strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
             >
-              <path d="M4 7h16" />
-              <path d="M6 7V5h12v2" />
-              <path d="M5 7l1 13h12l1-13" />
-              <path d="M9 11v5" />
-              <path d="M15 11v5" />
+              <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+              <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+              <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+              <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+              <line x1="7" y1="12" x2="17" y2="12" />
             </svg>
-
-          </div>
-
-          <div>
-            <h2>Add Product</h2>
-
-            <p>
-              Select product and quantity
-            </p>
-          </div>
+            <span>Scan</span>
+          </button>
 
         </div>
 
@@ -1511,6 +1489,13 @@ export default function SalesPage() {
         )}
 
       </section>
+
+      {/* BARCODE SCANNER MODAL */}
+      <BarcodeScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScanSuccess={handleBarcodeScanned}
+      />
 
     </main>
   );
