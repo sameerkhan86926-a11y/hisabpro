@@ -2,7 +2,8 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
 import AppLock from "../components/AppLock";
-import { LanguageProvider } from "../components/LanguageProvider";
+import LanguageProvider from "../components/LanguageProvider";
+
 
 export const viewport: Viewport = {
   themeColor: "#102a56",
