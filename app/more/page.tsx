@@ -1,9 +1,69 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function MorePage() {
   const [showSupport, setShowSupport] = useState(false);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [problem, setProblem] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  // Shop details auto-fill agar pehle se save ho
+  useEffect(() => {
+    try {
+      const savedBusinesses = localStorage.getItem("hisabpro_businesses");
+      const savedBusiness = localStorage.getItem("hisabpro_business");
+
+      if (savedBusinesses) {
+        const list = JSON.parse(savedBusinesses);
+        if (Array.isArray(list) && list.length > 0) {
+          if (list[0].businessName) setName(list[0].businessName);
+          if (list[0].phone) setPhone(list[0].phone);
+        }
+      } else if (savedBusiness) {
+        const single = JSON.parse(savedBusiness);
+        if (single.businessName) setName(single.businessName);
+        if (single.phone) setPhone(single.phone);
+      }
+    } catch (e) {}
+  }, []);
+
+  const handleSupportSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !phone.trim() || !problem.trim()) {
+      alert("Kripya saari details bharein.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const formUrl = `https://docs.google.com/forms/d/e/1FAIpQLSeEfgh1laeARcWSzZExLZijSHb4n1nrRCvy9PIWRJCla4-idg/formResponse?entry.1227657136=${encodeURIComponent(
+      name
+    )}&entry.1740240324=${encodeURIComponent(
+      phone
+    )}&entry.1595797954=${encodeURIComponent(problem)}&submit=Submit`;
+
+    try {
+      await fetch(formUrl, {
+        method: "POST",
+        mode: "no-cors",
+      });
+
+      setIsSubmitting(false);
+      setIsSuccess(true);
+      setProblem("");
+
+      setTimeout(() => {
+        setIsSuccess(false);
+        setShowSupport(false);
+      }, 2000);
+    } catch (err) {
+      setIsSubmitting(false);
+      alert("Request bhejte waqt dikkat aayi. Kripya dobara try karein.");
+    }
+  };
 
   return (
     <main className="more-page">
@@ -14,7 +74,7 @@ export default function MorePage() {
         <span></span>
       </header>
 
-      {/* HELP & SUPPORT (NEW SECTION) */}
+      {/* HELP & SUPPORT (NATIVE APP STYLE) */}
       <section className="more-section">
         <h2>Help & Support</h2>
 
@@ -29,10 +89,18 @@ export default function MorePage() {
               border: "none",
               cursor: "pointer",
               width: "100%",
-              fontFamily: "inherit"
+              fontFamily: "inherit",
             }}
           >
-            <div className="more-icon" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div
+              className="more-icon"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#102a56",
+              }}
+            >
               <svg
                 width="24"
                 height="24"
@@ -49,7 +117,7 @@ export default function MorePage() {
             </div>
             <div>
               <strong>Help & Support</strong>
-              <span>Problem report karein ya contact karein</span>
+              <span>Problem report karein ya helpline se judein</span>
             </div>
           </button>
         </div>
@@ -347,52 +415,52 @@ export default function MorePage() {
         </div>
       </section>
 
-      {/* SUPPORT MODAL POPUP */}
+      {/* CUSTOM NATIVE SUPPORT MODAL */}
       {showSupport && (
         <div
           style={{
             position: "fixed",
             inset: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.65)",
-            backdropFilter: "blur(4px)",
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
+            backdropFilter: "blur(3px)",
             zIndex: 9999,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: "16px"
+            padding: "16px",
           }}
         >
           <div
             style={{
               backgroundColor: "#ffffff",
               width: "100%",
-              maxWidth: "520px",
+              maxWidth: "460px",
               borderRadius: "16px",
               overflow: "hidden",
-              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.3)",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.2)",
               display: "flex",
               flexDirection: "column",
-              maxHeight: "90vh"
             }}
           >
-            {/* Modal Header */}
+            {/* Header */}
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                padding: "14px 18px",
+                padding: "16px 20px",
                 borderBottom: "1px solid #e2e8f0",
-                backgroundColor: "#f8fafc"
+                backgroundColor: "#102a56",
+                color: "#ffffff",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "bold", color: "#1e293b", fontSize: "15px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "600", fontSize: "16px" }}>
                 <svg
-                  width="18"
-                  height="18"
+                  width="20"
+                  height="20"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke="#2563eb"
+                  stroke="#ffffff"
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -400,53 +468,158 @@ export default function MorePage() {
                   <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
                   <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
                 </svg>
-                <span>HisabPro Help & Support</span>
+                <span>Help & Support</span>
               </div>
               <button
                 type="button"
-                onClick={() => setShowSupport(false)}
+                onClick={() => {
+                  setShowSupport(false);
+                  setIsSuccess(false);
+                }}
                 style={{
                   border: "none",
-                  backgroundColor: "#e2e8f0",
+                  backgroundColor: "rgba(255, 255, 255, 0.2)",
                   borderRadius: "50%",
-                  width: "30px",
-                  height: "30px",
+                  width: "28px",
+                  height: "28px",
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  color: "#475569"
+                  color: "#ffffff",
                 }}
               >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
+                ✕
               </button>
             </div>
 
-            {/* Google Form Embed */}
-            <div style={{ flex: 1, overflowY: "auto" }}>
-              <iframe
-                src="https://docs.google.com/forms/d/e/1FAIpQLSeEfgh1laeARcWSzZExLZijSHb4n1nrRCvy9PIWRJCla4-idg/viewform?embedded=true"
-                width="100%"
-                height="650"
-                frameBorder="0"
-                marginHeight={0}
-                marginWidth={0}
-                style={{ border: "none", display: "block" }}
-              >
-                Loading…
-              </iframe>
+            {/* Content Body */}
+            <div style={{ padding: "20px" }}>
+              {isSuccess ? (
+                <div style={{ textAlign: "center", padding: "24px 0" }}>
+                  <div
+                    style={{
+                      width: "56px",
+                      height: "56px",
+                      backgroundColor: "#dcfce7",
+                      color: "#16a34a",
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      margin: "0 auto 16px auto",
+                    }}
+                  >
+                    <svg
+                      width="32"
+                      height="32"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </div>
+                  <h3 style={{ fontSize: "18px", fontWeight: "700", color: "#1e293b", margin: "0 0 6px 0" }}>
+                    Request Bhej Di Gayi!
+                  </h3>
+                  <p style={{ fontSize: "13px", color: "#64748b", margin: 0 }}>
+                    Humari team aapse jald hi WhatsApp ya call par contact karegi.
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handleSupportSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#475569", marginBottom: "6px" }}>
+                      Vyapari / Dukan ka Naam
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Sunil General Store"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        borderRadius: "8px",
+                        border: "1px solid #cbd5e1",
+                        fontSize: "14px",
+                        outline: "none",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#475569", marginBottom: "6px" }}>
+                      WhatsApp / Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="e.g. 9876543210"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        borderRadius: "8px",
+                        border: "1px solid #cbd5e1",
+                        fontSize: "14px",
+                        outline: "none",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#475569", marginBottom: "6px" }}>
+                      Aapko kya dikkat aa rahi hai?
+                    </label>
+                    <textarea
+                      required
+                      rows={3}
+                      placeholder="Apni problem ya suggestion likhein..."
+                      value={problem}
+                      onChange={(e) => setProblem(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        borderRadius: "8px",
+                        border: "1px solid #cbd5e1",
+                        fontSize: "14px",
+                        outline: "none",
+                        resize: "none",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    style={{
+                      marginTop: "6px",
+                      padding: "12px",
+                      borderRadius: "8px",
+                      backgroundColor: "#102a56",
+                      color: "#ffffff",
+                      fontWeight: "600",
+                      fontSize: "14px",
+                      border: "none",
+                      cursor: isSubmitting ? "not-allowed" : "pointer",
+                      opacity: isSubmitting ? 0.7 : 1,
+                      transition: "0.2s",
+                    }}
+                  >
+                    {isSubmitting ? "Bheja ja raha hai..." : "Submit Request"}
+                  </button>
+                </form>
+              )}
             </div>
           </div>
         </div>
