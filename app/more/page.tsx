@@ -73,25 +73,8 @@ export default function MorePage() {
     } catch (e) {}
   }
 
-  // FIXED TRANSLATOR SWITCH HANDLER
   function handleLanguageSwitch(lang: "en" | "hi") {
     setLanguage(lang);
-    localStorage.setItem("hisabpro_language", lang);
-
-    if (lang === "en") {
-      // Clear cookie completely
-      const host = window.location.hostname;
-      document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; domain=.${host}; path=/;`;
-      document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; domain=${host}; path=/;`;
-      document.cookie = "googtrans=/auto/en; path=/;";
-    } else {
-      const host = window.location.hostname;
-      document.cookie = "googtrans=/auto/hi; path=/;";
-      document.cookie = `googtrans=/auto/hi; domain=.${host}; path=/;`;
-    }
-
-    window.location.reload();
   }
 
   function switchActiveBusiness(id: number) {
