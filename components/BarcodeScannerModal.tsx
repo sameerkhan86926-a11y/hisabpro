@@ -20,48 +20,101 @@ export default function BarcodeScannerModal({
   const scannerRef = useRef<any>(null);
 
   useEffect(() => {
+    if (typeof window !== "undefined" && (window as any).Html5Qrcode) {
+      setIsScriptReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
     if (!isOpen || !isScriptReady) return;
 
-    const Html5QrcodeClass = (window as any).Html5Qrcode;
-    if (!Html5QrcodeClass) return;
+    let isMounted = true;
+    setErrorMsg("");
 
-    const scannerId = "interactive-barcode-reader";
-    const html5QrCode = new Html5QrcodeClass(scannerId);
-    scannerRef.current = html5QrCode;
+    const startCamera = async () => {
+      try {
+        // Mobile camera explicit permission trigger
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" },
+          });
+        }
 
-    html5QrCode
-      .start(
-        { facingMode: "environment" },
-        {
+        const Html5QrcodeClass = (window as any).Html5Qrcode;
+        if (!Html5QrcodeClass) {
+          setErrorMsg("Scanner load ho raha hai, kripya 2 second wait karein...");
+          return;
+        }
+
+        const scannerId = "interactive-barcode-reader";
+        const html5QrCode = new Html5QrcodeClass(scannerId);
+        scannerRef.current = html5QrCode;
+
+        const config = {
           fps: 15,
           qrbox: { width: 260, height: 160 },
           aspectRatio: 1.0,
-        },
-        (decodedText: string) => {
-          try {
-            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            osc.type = "sine";
-            osc.frequency.setValueAtTime(880, ctx.currentTime);
-            osc.connect(ctx.destination);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.1);
-          } catch {}
+        };
 
-          html5QrCode.stop().then(() => {
-            onScanSuccess(decodedText);
-            onClose();
-          });
-        },
-        () => {}
-      )
-      .catch(() => {
-        setErrorMsg("Camera permission allow karein ya camera dusri app me open hai.");
-      });
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          config,
+          (decodedText: string) => {
+            // Beep sound
+            try {
+              const ctx = new (window.AudioContext ||
+                (window as any).webkitAudioContext)();
+              const osc = ctx.createOscillator();
+              osc.type = "sine";
+              osc.frequency.setValueAtTime(880, ctx.currentTime);
+              osc.connect(ctx.destination);
+              osc.start();
+              osc.stop(ctx.currentTime + 0.1);
+            } catch {}
+
+            html5QrCode
+              .stop()
+              .then(() => {
+                onScanSuccess(decodedText);
+                onClose();
+              })
+              .catch(() => {
+                onScanSuccess(decodedText);
+                onClose();
+              });
+          },
+          () => {}
+        );
+      } catch (err: any) {
+        if (!isMounted) return;
+        console.error("Camera start error:", err);
+
+        if (
+          window.location.protocol !== "https:" &&
+          window.location.hostname !== "localhost"
+        ) {
+          setErrorMsg(
+            "Camera open karne ke liye HTTPS zaroori hai. Link https:// se shuru honi chahiye."
+          );
+        } else {
+          setErrorMsg(
+            "Camera access nahi mila. Kripya browser settings me Camera Permission allow karein."
+          );
+        }
+      }
+    };
+
+    const timer = setTimeout(startCamera, 250);
 
     return () => {
-      if (scannerRef.current && scannerRef.current.isScanning) {
-        scannerRef.current.stop().catch(() => {});
+      isMounted = false;
+      clearTimeout(timer);
+      if (scannerRef.current) {
+        try {
+          if (scannerRef.current.isScanning) {
+            scannerRef.current.stop().catch(() => {});
+          }
+        } catch {}
       }
     };
   }, [isOpen, isScriptReady]);
@@ -83,7 +136,7 @@ export default function BarcodeScannerModal({
     <>
       <Script
         src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"
-        strategy="lazyOnload"
+        strategy="beforeInteractive"
         onLoad={() => setIsScriptReady(true)}
       />
 
@@ -123,7 +176,15 @@ export default function BarcodeScannerModal({
                 color: "#fff",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "600", fontSize: "15px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontWeight: "600",
+                  fontSize: "15px",
+                }}
+              >
                 <span>Scan Product Barcode</span>
               </div>
 
@@ -132,7 +193,9 @@ export default function BarcodeScannerModal({
                   type="button"
                   onClick={toggleTorch}
                   style={{
-                    background: torchOn ? "#eab308" : "rgba(255, 255, 255, 0.15)",
+                    background: torchOn
+                      ? "#eab308"
+                      : "rgba(255, 255, 255, 0.15)",
                     border: "none",
                     borderRadius: "50%",
                     width: "32px",
@@ -169,7 +232,13 @@ export default function BarcodeScannerModal({
               </div>
             </div>
 
-            <div style={{ position: "relative", minHeight: "300px", backgroundColor: "#000" }}>
+            <div
+              style={{
+                position: "relative",
+                minHeight: "280px",
+                backgroundColor: "#000",
+              }}
+            >
               <div id="interactive-barcode-reader" style={{ width: "100%" }}></div>
 
               {errorMsg && (
@@ -192,8 +261,15 @@ export default function BarcodeScannerModal({
               )}
             </div>
 
-            <div style={{ padding: "12px", textAlign: "center", color: "#94a3b8", fontSize: "12px" }}>
-              Barcode ko red line ya center box ke samne rakhein
+            <div
+              style={{
+                padding: "12px",
+                textAlign: "center",
+                color: "#94a3b8",
+                fontSize: "12px",
+              }}
+            >
+              Barcode ko camera box ke samne rakhein
             </div>
           </div>
         </div>
