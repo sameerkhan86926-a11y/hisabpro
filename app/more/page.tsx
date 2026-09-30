@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useLanguage } from "../../components/LanguageProvider";
+import { useLanguage } from "@/components/LanguageProvider";
 
 type Business = {
   id: number;
@@ -70,7 +70,7 @@ export default function MorePage() {
       setAppPin(savedPin ? "******" : "");
       setPinLength(savedPinLen);
       setAutoLock(savedAuto);
-    } catch (e) {}
+    } catch {}
   }
 
   function handleLanguageSwitch(lang: "en" | "hi") {
@@ -187,7 +187,7 @@ export default function MorePage() {
         <span></span>
       </header>
 
-      {/* QUICK PREFERENCES (LANGUAGE & ACTIVE STORE SWITCHER) */}
+      {/* QUICK PREFERENCES */}
       <section className="more-section">
         <h2>App Preferences</h2>
 
