@@ -163,7 +163,6 @@ export default function PurchasePage() {
     setSellingPrice(String(product.sellingPrice || ""));
   }
 
-  // Scan hone par: Pehle se dali hui quantity ya 1 packet add hoga
   function handleBarcodeScanned(decodedBarcode: string) {
     const cleanCode = decodedBarcode.trim().toLowerCase();
 
@@ -178,7 +177,6 @@ export default function PurchasePage() {
       return;
     }
 
-    // Dropdown me bhi select kar lo
     setProductId(String(matched.id));
     setPurchasePrice(String(matched.purchasePrice || ""));
     setSellingPrice(String(matched.sellingPrice || ""));
@@ -221,7 +219,6 @@ export default function PurchasePage() {
     setQuantity("");
   }
 
-  // Cart me directly quantity badhane/ghatane ke liye
   function updateCartItemQuantity(id: number, newQty: number) {
     if (newQty <= 0) {
       removeItem(id);
