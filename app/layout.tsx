@@ -20,16 +20,21 @@ export default function RootLayout({
     const hasShown = sessionStorage.getItem("hisabpro_splash_shown");
 
     if (!hasShown) {
-      // Pehli baar open hua hai -> Splash dikhayein & Brand Chime play karein
       setShowSplash(true);
       sessionStorage.setItem("hisabpro_splash_shown", "true");
 
-      // Chime trigger with slight delay for silky smooth audio sync
-      const audioTimer = setTimeout(() => {
-        try {
-          playSplashChime();
-        } catch {}
-      }, 150);
+      // Direct Play Attempt (APK / Installed PWA mode me seedha chalta hai)
+      playSplashChime();
+
+      // Screen par pehla touch/click aate hi sound unlock ho kar bajega
+      const handleUserUnlock = () => {
+        playSplashChime();
+        window.removeEventListener("pointerdown", handleUserUnlock);
+        window.removeEventListener("touchstart", handleUserUnlock);
+      };
+
+      window.addEventListener("pointerdown", handleUserUnlock, { once: true });
+      window.addEventListener("touchstart", handleUserUnlock, { once: true });
 
       const timer1 = setTimeout(() => {
         setFadeSplash(true);
@@ -37,12 +42,15 @@ export default function RootLayout({
 
       const timer2 = setTimeout(() => {
         setShowSplash(false);
+        window.removeEventListener("pointerdown", handleUserUnlock);
+        window.removeEventListener("touchstart", handleUserUnlock);
       }, 1900);
 
       return () => {
-        clearTimeout(audioTimer);
         clearTimeout(timer1);
         clearTimeout(timer2);
+        window.removeEventListener("pointerdown", handleUserUnlock);
+        window.removeEventListener("touchstart", handleUserUnlock);
       };
     }
   }, []);
@@ -160,6 +168,7 @@ export default function RootLayout({
         {/* CINEMATIC SPLASH INTRO (ONLY PLAYS ON FIRST LAUNCH) */}
         {showSplash && (
           <div
+            onClick={() => playSplashChime()}
             style={{
               position: "fixed",
               inset: 0,
@@ -174,6 +183,7 @@ export default function RootLayout({
               transform: fadeSplash ? "scale(1.04)" : "scale(1)",
               pointerEvents: fadeSplash ? "none" : "all",
               overflow: "hidden",
+              cursor: "pointer",
             }}
           >
             {/* Ambient Background Glow Orb */}
