@@ -13,8 +13,8 @@ export function playClickSound() {
     const gain = audioCtx.createGain();
 
     osc.type = "sine";
-    osc.frequency.setValueAtTime(800, audioCtx.currentTime); // Halka soft click tone
-    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);    // Halka volume taaki kaan me na chubhe
+    osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
 
     osc.connect(gain);
@@ -25,7 +25,7 @@ export function playClickSound() {
   } catch {}
 }
 
-// Brand Signature Startup Chime (Splash Screen ke liye)
+// Brand Signature Startup Chime (Bulletproof with Autoplay Unlock)
 export function playSplashChime() {
   if (typeof window === "undefined") return;
 
@@ -35,36 +35,40 @@ export function playSplashChime() {
     if (!AudioContextClass) return;
 
     const audioCtx = new AudioContextClass();
+
+    const triggerNotes = () => {
+      const now = audioCtx.currentTime;
+
+      // Harmonic blend: C5 -> E5 -> C6
+      const tones = [
+        { freq: 523.25, offset: 0.0,  gainVal: 0.22, dur: 0.7 },
+        { freq: 659.25, offset: 0.09, gainVal: 0.25, dur: 0.8 },
+        { freq: 1046.50, offset: 0.18, gainVal: 0.20, dur: 1.1 }
+      ];
+
+      tones.forEach(({ freq, offset, gainVal, dur }) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now + offset);
+
+        gain.gain.setValueAtTime(0.0001, now + offset);
+        gain.gain.exponentialRampToValueAtTime(gainVal, now + offset + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + dur);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start(now + offset);
+        osc.stop(now + offset + dur);
+      });
+    };
+
     if (audioCtx.state === "suspended") {
-      audioCtx.resume();
+      audioCtx.resume().then(() => triggerNotes()).catch(() => {});
+    } else {
+      triggerNotes();
     }
-
-    const now = audioCtx.currentTime;
-
-    // Harmonic blend: C5 (523.25Hz) -> E5 (659.25Hz) -> C6 (1046.5Hz)
-    const tones = [
-      { freq: 523.25, offset: 0.0,  gainVal: 0.12, dur: 0.8 },
-      { freq: 659.25, offset: 0.09, gainVal: 0.14, dur: 0.9 },
-      { freq: 1046.50, offset: 0.18, gainVal: 0.10, dur: 1.2 }
-    ];
-
-    tones.forEach(({ freq, offset, gainVal, dur }) => {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, now + offset);
-
-      // Smooth attack & long crystal fade out
-      gain.gain.setValueAtTime(0.0001, now + offset);
-      gain.gain.exponentialRampToValueAtTime(gainVal, now + offset + 0.04);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + dur);
-
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-
-      osc.start(now + offset);
-      osc.stop(now + offset + dur);
-    });
   } catch {}
 }
