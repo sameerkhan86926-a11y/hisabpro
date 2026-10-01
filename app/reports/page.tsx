@@ -3,7 +3,6 @@
 import { useEffect, useState, useMemo } from "react";
 
 type PaymentType = "cash" | "credit";
-
 type PaymentMode = "cash" | "upi" | "card" | "bank" | "online";
 
 type BatchDetail = {
@@ -68,6 +67,7 @@ type ReturnRecord = {
 };
 
 type Period = "today" | "week" | "month" | "custom" | "all";
+type ChartDesign = "bars" | "area" | "distribution";
 
 type ProductReport = {
   quantity: number;
@@ -83,6 +83,8 @@ export default function ReportsPage() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [storeName, setStoreName] = useState("HisabPro Store");
+  const [chartDesign, setChartDesign] = useState<ChartDesign>("bars");
+  const [printMode, setPrintMode] = useState<"a4" | "thermal">("a4");
 
   useEffect(() => {
     try {
@@ -90,11 +92,10 @@ export default function ReportsPage() {
       const savedExpenses = JSON.parse(localStorage.getItem("hisabpro_expenses") || "[]");
       const savedReturns = JSON.parse(localStorage.getItem("hisabpro_returns") || "[]");
 
-      setSales(savedSales);
-      setExpenses(savedExpenses);
-      setReturns(savedReturns);
+      setSales(Array.isArray(savedSales) ? savedSales : []);
+      setExpenses(Array.isArray(savedExpenses) ? savedExpenses : []);
+      setReturns(Array.isArray(savedReturns) ? savedReturns : []);
 
-      // Business Name Fetch
       const savedBusinesses = localStorage.getItem("hisabpro_businesses");
       const activeId = localStorage.getItem("hisabpro_active_business");
       const savedBusiness = localStorage.getItem("hisabpro_business");
@@ -143,21 +144,21 @@ export default function ReportsPage() {
 
   function getItemReport(item: SaleItem) {
     if (item.batchDetails && item.batchDetails.length > 0) {
-      let sales = 0;
-      let profit = 0;
-      let quantity = 0;
+      let salesSum = 0;
+      let profitSum = 0;
+      let quantitySum = 0;
 
       item.batchDetails.forEach((batch) => {
         const qty = Number(batch.quantity);
         const sellingPrice = Number(batch.sellingPrice);
         const purchasePrice = Number(batch.purchasePrice);
 
-        sales += sellingPrice * qty;
-        profit += (sellingPrice - purchasePrice) * qty;
-        quantity += qty;
+        salesSum += sellingPrice * qty;
+        profitSum += (sellingPrice - purchasePrice) * qty;
+        quantitySum += qty;
       });
 
-      return { quantity, sales, profit };
+      return { quantity: quantitySum, sales: salesSum, profit: profitSum };
     }
 
     return {
@@ -208,12 +209,10 @@ export default function ReportsPage() {
     return true;
   }
 
-  // Filtered lists
   const filteredSales = useMemo(() => sales.filter((s) => isInPeriod(s.date)), [sales, period, fromDate, toDate]);
   const filteredExpenses = useMemo(() => expenses.filter((e) => isInPeriod(e.date)), [expenses, period, fromDate, toDate]);
   const filteredReturns = useMemo(() => returns.filter((r) => isInPeriod(r.date)), [returns, period, fromDate, toDate]);
 
-  // Financial aggregates
   const salesReturns = filteredReturns
     .filter((item) => item.type === "sales")
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
@@ -244,7 +243,6 @@ export default function ReportsPage() {
   const netProfit = grossProfitAfterReturns - totalExpenses;
   const profitMarginPercent = totalSales > 0 ? ((netProfit / totalSales) * 100).toFixed(1) : "0.0";
 
-  // Mode-wise sales
   const cashSales = filteredSales
     .filter((s) => s.paymentType !== "credit" && (s.paymentMode || "cash") === "cash")
     .reduce((sum, s) => sum + Number(s.total || 0), 0);
@@ -271,7 +269,6 @@ export default function ReportsPage() {
 
   const paymentModeTotal = cashSales + upiSales + cardSales + bankSales + onlineSales + creditSales;
 
-  // Top Products
   const topProducts = useMemo(() => {
     const pMap = new Map<string, ProductReport>();
     filteredSales.forEach((sale) => {
@@ -301,10 +298,11 @@ export default function ReportsPage() {
       .slice(0, 10);
   }, [filteredSales]);
 
-  // Daily Trend Data for Interactive Chart
+  // Chart Data for Last 7 Days
   const chartDays = useMemo(() => {
     const daysMap = new Map<string, { label: string; sales: number; expenses: number }>();
-    const last7 = [];
+    const last7: string[] = [];
+
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
@@ -332,11 +330,51 @@ export default function ReportsPage() {
   }, [sales, expenses]);
 
   const maxChartVal = useMemo(() => {
-    const maxVal = Math.max(...chartDays.map((d) => Math.max(d.sales, d.expenses)), 100);
-    return maxVal;
+    return Math.max(...chartDays.map((d) => Math.max(d.sales, d.expenses)), 100);
   }, [chartDays]);
 
-  // EXCEL / CSV EXPORT FUNCTION
+  // Helper for Area Chart SVG points
+  const areaSvgPoints = useMemo(() => {
+    const width = 300;
+    const height = 90;
+    const step = width / (chartDays.length - 1 || 1);
+
+    const salesCoords = chartDays.map((d, idx) => {
+      const x = idx * step;
+      const y = height - (d.sales / maxChartVal) * (height - 10);
+      return { x, y };
+    });
+
+    const expCoords = chartDays.map((d, idx) => {
+      const x = idx * step;
+      const y = height - (d.expenses / maxChartVal) * (height - 10);
+      return { x, y };
+    });
+
+    const salesPath = salesCoords.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x},${p.y}`).join(" ");
+    const expPath = expCoords.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x},${p.y}`).join(" ");
+
+    const salesArea = `${salesPath} L ${width},${height} L 0,${height} Z`;
+
+    return { salesPath, expPath, salesArea, salesCoords };
+  }, [chartDays, maxChartVal]);
+
+  // Print Handlers
+  function triggerPrintA4() {
+    setPrintMode("a4");
+    setTimeout(() => {
+      window.print();
+    }, 50);
+  }
+
+  function triggerPrintThermal() {
+    setPrintMode("thermal");
+    setTimeout(() => {
+      window.print();
+    }, 50);
+  }
+
+  // Excel / CSV Export
   function exportToExcel() {
     try {
       const rows = [
@@ -363,19 +401,9 @@ export default function ReportsPage() {
         ["Online Sales", onlineSales],
         ["Credit (Udhar) Sales", creditSales],
         [],
-        ["TOP 10 SELLING PRODUCTS"],
+        ["TOP SELLING PRODUCTS"],
         ["Product Name", "Qty Sold", "Total Sales (INR)", "Profit (INR)"],
         ...topProducts.map((p) => [p.product, p.quantity, p.sales, p.profit]),
-        [],
-        ["RECENT BILLS BREAKDOWN"],
-        ["Bill ID", "Date", "Customer", "Payment Mode", "Amount (INR)"],
-        ...filteredSales.map((s) => [
-          s.id,
-          s.date,
-          s.customerName || "Walk-in",
-          getPaymentModeLabel(s.paymentType, s.paymentMode),
-          s.total,
-        ]),
       ];
 
       const csvContent =
@@ -408,20 +436,38 @@ export default function ReportsPage() {
 
   return (
     <main className="reports-page" style={{ paddingBottom: "100px" }}>
-      {/* PRINT STYLES FOR A4 PDF EXPORT */}
+      {/* PRINT STYLES (A4 & 58MM/80MM THERMAL SLIP DUAL ADAPTIVE) */}
       <style
         dangerouslySetInnerHTML={{
           __html: `
             @media print {
               .no-print { display: none !important; }
-              body { background: #ffffff !important; color: #000000 !important; }
+              body { background: #ffffff !important; color: #000000 !important; margin: 0; padding: 0; }
               .reports-header { display: none !important; }
-              .print-header { display: block !important; margin-bottom: 20px; }
-              .report-card, .report-section { break-inside: avoid; border: 1px solid #cbd5e1 !important; box-shadow: none !important; }
-              @page { size: A4 portrait; margin: 12mm; }
+              
+              /* When in Thermal Mode */
+              body.print-thermal .print-a4-view { display: none !important; }
+              body.print-thermal .reports-content-wrap { display: none !important; }
+              body.print-thermal .print-thermal-receipt { display: block !important; width: 58mm; max-width: 58mm; margin: 0 auto; font-family: monospace; font-size: 11px; line-height: 1.3; }
+
+              /* When in A4 Mode */
+              body.print-a4 .print-thermal-receipt { display: none !important; }
+              body.print-a4 .print-a4-view { display: block !important; margin-bottom: 20px; }
+              body.print-a4 .report-card, body.print-a4 .report-section { break-inside: avoid; border: 1px solid #cbd5e1 !important; box-shadow: none !important; }
+              @page {
+                size: ${printMode === "thermal" ? "58mm auto" : "A4 portrait"};
+                margin: ${printMode === "thermal" ? "2mm" : "12mm"};
+              }
             }
-            .print-header { display: none; }
+            .print-a4-view, .print-thermal-receipt { display: none; }
           `,
+        }}
+      />
+
+      {/* DYNAMIC BODY CLASS FOR PRINTING */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `document.body.className = "print-${printMode}";`,
         }}
       />
 
@@ -434,17 +480,39 @@ export default function ReportsPage() {
         >
           ← Back
         </button>
-        <h1 style={{ margin: 0, fontSize: "18px", fontWeight: "800" }}>Reports & Analytics</h1>
-        <div style={{ display: "flex", gap: "6px" }}>
+
+        <h1 style={{ margin: 0, fontSize: "17px", fontWeight: "800" }}>Reports & Analytics</h1>
+
+        <div style={{ display: "flex", gap: "5px" }}>
+          {/* EXCEL */}
           <button
             type="button"
             onClick={exportToExcel}
-            title="Download Excel / CSV"
+            title="Download CSV / Excel"
             style={{
               background: "#10b981",
               border: "none",
               color: "#ffffff",
-              padding: "7px 11px",
+              padding: "6px 10px",
+              borderRadius: "8px",
+              fontSize: "12px",
+              fontWeight: "700",
+              cursor: "pointer",
+            }}
+          >
+            📊 Excel
+          </button>
+
+          {/* THERMAL 58MM PRINT BUTTON */}
+          <button
+            type="button"
+            onClick={triggerPrintThermal}
+            title="Print 58mm Thermal Slip"
+            style={{
+              background: "#0284c7",
+              border: "none",
+              color: "#ffffff",
+              padding: "6px 10px",
               borderRadius: "8px",
               fontSize: "12px",
               fontWeight: "700",
@@ -454,41 +522,107 @@ export default function ReportsPage() {
               gap: "4px",
             }}
           >
-            <span>📊</span> Excel
+            <span>🧾</span> Thermal
           </button>
+
+          {/* A4 PDF */}
           <button
             type="button"
-            onClick={() => window.print()}
-            title="Save as PDF / Print"
+            onClick={triggerPrintA4}
+            title="Save as A4 PDF"
             style={{
               background: "#102a56",
               border: "none",
               color: "#ffffff",
-              padding: "7px 11px",
+              padding: "6px 10px",
               borderRadius: "8px",
               fontSize: "12px",
               fontWeight: "700",
               cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
             }}
           >
-            <span>🖨️</span> PDF
+            🖨️ A4
           </button>
         </div>
       </header>
 
-      {/* PRINT-ONLY OFFICIAL DOCUMENT HEADER */}
-      <div className="print-header">
+      {/* 58MM THERMAL RECEIPT SLIP (ONLY VISIBLE ON THERMAL PRINT) */}
+      <div className="print-thermal-receipt">
+        <div style={{ textAlign: "center", paddingBottom: "6px", borderBottom: "1px dashed #000" }}>
+          <h2 style={{ fontSize: "14px", fontWeight: "900", margin: "0 0 2px 0" }}>{storeName}</h2>
+          <div style={{ fontSize: "10px" }}>FINANCIAL CLOSING REPORT</div>
+          <div style={{ fontSize: "9px" }}>{new Date().toLocaleString("en-IN")}</div>
+          <div style={{ fontSize: "10px", fontWeight: "700", marginTop: "2px" }}>PERIOD: {period.toUpperCase()}</div>
+        </div>
+
+        <div style={{ padding: "6px 0", borderBottom: "1px dashed #000" }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span>Total Sales:</span>
+            <strong>₹{totalSales.toLocaleString("en-IN")}</strong>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span>Returns:</span>
+            <span>- ₹{salesReturns.toLocaleString("en-IN")}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold" }}>
+            <span>Net Sales:</span>
+            <span>₹{netSales.toLocaleString("en-IN")}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span>Expenses:</span>
+            <span>- ₹{totalExpenses.toLocaleString("en-IN")}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #000", marginTop: "4px", paddingTop: "2px", fontWeight: "900", fontSize: "12px" }}>
+            <span>NET PROFIT:</span>
+            <span>₹{netProfit.toLocaleString("en-IN")}</span>
+          </div>
+        </div>
+
+        <div style={{ padding: "6px 0", borderBottom: "1px dashed #000" }}>
+          <div style={{ fontWeight: "700", marginBottom: "3px" }}>PAYMENT SPLIT</div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span>Cash:</span> <span>₹{cashSales.toLocaleString("en-IN")}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span>UPI:</span> <span>₹{upiSales.toLocaleString("en-IN")}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span>Card / Bank:</span> <span>₹{(cardSales + bankSales + onlineSales).toLocaleString("en-IN")}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span>Udhar (Credit):</span> <span>₹{creditSales.toLocaleString("en-IN")}</span>
+          </div>
+        </div>
+
+        {topProducts.length > 0 && (
+          <div style={{ padding: "6px 0", borderBottom: "1px dashed #000" }}>
+            <div style={{ fontWeight: "700", marginBottom: "3px" }}>TOP SELLING ITEMS</div>
+            {topProducts.slice(0, 5).map((p, idx) => (
+              <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
+                <span>{p.product.slice(0, 14)} x{p.quantity}</span>
+                <span>₹{p.sales.toLocaleString("en-IN")}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ textAlign: "center", paddingTop: "8px", fontSize: "9px" }}>
+          *** END OF STATEMENT ***
+          <br />
+          Generated by HisabPro POS
+        </div>
+      </div>
+
+      {/* A4 PRINT LETTERHEAD (ONLY ON A4 PRINT) */}
+      <div className="print-a4-view">
         <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "2px solid #102a56", paddingBottom: "10px" }}>
           <div>
             <h2 style={{ margin: 0, fontSize: "22px", color: "#102a56" }}>{storeName}</h2>
-            <p style={{ margin: "2px 0 0 0", fontSize: "12px", color: "#64748b" }}>Financial Sales & Profit Statement</p>
+            <p style={{ margin: "2px 0 0 0", fontSize: "12px", color: "#64748b" }}>Financial Business & Profit Statement</p>
           </div>
           <div style={{ textAlign: "right", fontSize: "12px" }}>
             <div><strong>Period:</strong> {period.toUpperCase()}</div>
-            <div><strong>Date:</strong> {new Date().toLocaleDateString("en-IN")}</div>
+            <div><strong>Generated:</strong> {new Date().toLocaleDateString("en-IN")}</div>
           </div>
         </div>
       </div>
@@ -570,62 +704,218 @@ export default function ReportsPage() {
         </div>
       </section>
 
-      {/* REVENUE VS EXPENSES 7-DAY VISUAL BAR CHART */}
-      <section className="report-section" style={{ background: "#ffffff", borderRadius: "14px", padding: "16px", marginBottom: "16px", border: "1px solid #e2e8f0" }}>
-        <div className="report-section-title" style={{ marginBottom: "14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      {/* MULTI-DESIGN INTERACTIVE GRAPH STUDIO */}
+      <section
+        className="report-section no-print"
+        style={{
+          background: "#ffffff",
+          borderRadius: "16px",
+          padding: "16px",
+          marginBottom: "16px",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
+        }}
+      >
+        {/* Header with Design Switcher */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "16px",
+            flexWrap: "wrap",
+            gap: "10px",
+          }}
+        >
           <div>
-            <h2 style={{ margin: 0, fontSize: "15px", fontWeight: "800", color: "#1e293b" }}>Sales & Expense Trend</h2>
-            <span style={{ fontSize: "11px", color: "#64748b" }}>Past 7 days performance</span>
+            <h2 style={{ margin: 0, fontSize: "15px", fontWeight: "800", color: "#1e293b" }}>
+              Visual Analytics Studio
+            </h2>
+            <span style={{ fontSize: "11px", color: "#64748b" }}>Choose visual representation style</span>
           </div>
-          <div style={{ display: "flex", gap: "12px", fontSize: "11px", fontWeight: "700" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: "4px", color: "#0284c7" }}>
-              <span style={{ width: "9px", height: "9px", borderRadius: "2px", background: "#0284c7" }}></span> Sales
-            </span>
-            <span style={{ display: "flex", alignItems: "center", gap: "4px", color: "#ef4444" }}>
-              <span style={{ width: "9px", height: "9px", borderRadius: "2px", background: "#ef4444" }}></span> Expenses
-            </span>
+
+          {/* Graph Design Switch Tabs */}
+          <div style={{ display: "flex", background: "#f1f5f9", padding: "3px", borderRadius: "10px", gap: "2px" }}>
+            <button
+              type="button"
+              onClick={() => setChartDesign("bars")}
+              style={{
+                border: "none",
+                padding: "5px 10px",
+                borderRadius: "7px",
+                fontSize: "11px",
+                fontWeight: "700",
+                cursor: "pointer",
+                background: chartDesign === "bars" ? "#102a56" : "transparent",
+                color: chartDesign === "bars" ? "#ffffff" : "#475569",
+              }}
+            >
+              📊 Bars
+            </button>
+            <button
+              type="button"
+              onClick={() => setChartDesign("area")}
+              style={{
+                border: "none",
+                padding: "5px 10px",
+                borderRadius: "7px",
+                fontSize: "11px",
+                fontWeight: "700",
+                cursor: "pointer",
+                background: chartDesign === "area" ? "#102a56" : "transparent",
+                color: chartDesign === "area" ? "#ffffff" : "#475569",
+              }}
+            >
+              📈 Wave
+            </button>
+            <button
+              type="button"
+              onClick={() => setChartDesign("distribution")}
+              style={{
+                border: "none",
+                padding: "5px 10px",
+                borderRadius: "7px",
+                fontSize: "11px",
+                fontWeight: "700",
+                cursor: "pointer",
+                background: chartDesign === "distribution" ? "#102a56" : "transparent",
+                color: chartDesign === "distribution" ? "#ffffff" : "#475569",
+              }}
+            >
+              🥧 Share
+            </button>
           </div>
         </div>
 
-        {/* Responsive SVG Chart */}
-        <div style={{ width: "100%", overflowX: "auto" }}>
-          <div style={{ minWidth: "320px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", height: "150px", borderBottom: "1px solid #e2e8f0", paddingBottom: "6px" }}>
-            {chartDays.map((day, idx) => {
-              const salesH = Math.round((day.sales / maxChartVal) * 110);
-              const expH = Math.round((day.expenses / maxChartVal) * 110);
+        {/* DESIGN 1: SIDE-BY-SIDE DUAL BARS */}
+        {chartDesign === "bars" && (
+          <div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", fontSize: "11px", fontWeight: "700", marginBottom: "8px" }}>
+              <span style={{ display: "flex", alignItems: "center", gap: "4px", color: "#0284c7" }}>
+                <span style={{ width: "8px", height: "8px", borderRadius: "2px", background: "#0284c7" }}></span> Sales
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: "4px", color: "#ef4444" }}>
+                <span style={{ width: "8px", height: "8px", borderRadius: "2px", background: "#ef4444" }}></span> Expenses
+              </span>
+            </div>
 
-              return (
-                <div key={idx} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
-                  <div style={{ display: "flex", alignItems: "flex-end", gap: "4px", height: "120px" }}>
-                    {/* Sales Bar */}
-                    <div
-                      title={`Sales: ₹${day.sales.toLocaleString("en-IN")}`}
-                      style={{
-                        width: "16px",
-                        height: `${Math.max(salesH, 4)}px`,
-                        backgroundColor: "#0284c7",
-                        borderRadius: "4px 4px 0 0",
-                        transition: "height 0.3s ease",
-                      }}
-                    />
-                    {/* Expense Bar */}
-                    <div
-                      title={`Expense: ₹${day.expenses.toLocaleString("en-IN")}`}
-                      style={{
-                        width: "16px",
-                        height: `${Math.max(expH, 2)}px`,
-                        backgroundColor: "#ef4444",
-                        borderRadius: "4px 4px 0 0",
-                        transition: "height 0.3s ease",
-                      }}
-                    />
-                  </div>
-                  <span style={{ fontSize: "11px", fontWeight: "600", color: "#64748b" }}>{day.label}</span>
-                </div>
-              );
-            })}
+            <div style={{ width: "100%", overflowX: "auto" }}>
+              <div style={{ minWidth: "320px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", height: "140px", borderBottom: "1px solid #e2e8f0", paddingBottom: "6px" }}>
+                {chartDays.map((day, idx) => {
+                  const sH = Math.round((day.sales / maxChartVal) * 100);
+                  const eH = Math.round((day.expenses / maxChartVal) * 100);
+
+                  return (
+                    <div key={idx} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+                      <div style={{ display: "flex", alignItems: "flex-end", gap: "4px", height: "110px" }}>
+                        <div
+                          title={`Sales: ₹${day.sales.toLocaleString("en-IN")}`}
+                          style={{
+                            width: "14px",
+                            height: `${Math.max(sH, 4)}px`,
+                            backgroundColor: "#0284c7",
+                            borderRadius: "4px 4px 0 0",
+                            transition: "height 0.3s ease",
+                          }}
+                        />
+                        <div
+                          title={`Expense: ₹${day.expenses.toLocaleString("en-IN")}`}
+                          style={{
+                            width: "14px",
+                            height: `${Math.max(eH, 2)}px`,
+                            backgroundColor: "#ef4444",
+                            borderRadius: "4px 4px 0 0",
+                            transition: "height 0.3s ease",
+                          }}
+                        />
+                      </div>
+                      <span style={{ fontSize: "10px", fontWeight: "600", color: "#64748b" }}>{day.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* DESIGN 2: SMOOTH WAVE AREA CHART */}
+        {chartDesign === "area" && (
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#64748b", marginBottom: "8px" }}>
+              <span>7-Day Inflow / Outflow Gradient</span>
+              <strong style={{ color: "#0284c7" }}>Max Peak: ₹{maxChartVal.toLocaleString("en-IN")}</strong>
+            </div>
+
+            <div style={{ position: "relative", width: "100%", height: "130px" }}>
+              <svg viewBox="0 0 300 90" preserveAspectRatio="none" style={{ width: "100%", height: "100px", overflow: "visible" }}>
+                <defs>
+                  <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.45" />
+                    <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
+
+                {/* Sales Area Fill */}
+                <path d={areaSvgPoints.salesArea} fill="url(#salesGrad)" />
+
+                {/* Sales Stroke Line */}
+                <path d={areaSvgPoints.salesPath} fill="none" stroke="#0284c7" strokeWidth="2.5" strokeLinecap="round" />
+
+                {/* Expense Stroke Line */}
+                <path d={areaSvgPoints.expPath} fill="none" stroke="#ef4444" strokeWidth="2" strokeDasharray="3,3" />
+
+                {/* Data Points */}
+                {areaSvgPoints.salesCoords.map((pt, i) => (
+                  <circle key={i} cx={pt.x} cy={pt.y} r="3" fill="#0284c7" stroke="#ffffff" strokeWidth="1.5" />
+                ))}
+              </svg>
+
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px" }}>
+                {chartDays.map((d, i) => (
+                  <span key={i} style={{ fontSize: "10px", color: "#64748b", fontWeight: "600" }}>{d.label}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* DESIGN 3: REVENUE SHARE DISTRIBUTION BAR */}
+        {chartDesign === "distribution" && (
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
+              <span style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>Payment Inflow Contribution</span>
+              <strong style={{ fontSize: "12px", color: "#102a56" }}>₹{paymentModeTotal.toLocaleString("en-IN")}</strong>
+            </div>
+
+            {/* Proportion Bar */}
+            <div style={{ display: "flex", height: "18px", borderRadius: "10px", overflow: "hidden", backgroundColor: "#f1f5f9", marginBottom: "14px" }}>
+              <div style={{ width: `${(cashSales / (paymentModeTotal || 1)) * 100}%`, background: "#10b981" }} title={`Cash: ${((cashSales / (paymentModeTotal || 1)) * 100).toFixed(0)}%`} />
+              <div style={{ width: `${(upiSales / (paymentModeTotal || 1)) * 100}%`, background: "#0284c7" }} title={`UPI: ${((upiSales / (paymentModeTotal || 1)) * 100).toFixed(0)}%`} />
+              <div style={{ width: `${(cardSales / (paymentModeTotal || 1)) * 100}%`, background: "#8b5cf6" }} title={`Card: ${((cardSales / (paymentModeTotal || 1)) * 100).toFixed(0)}%`} />
+              <div style={{ width: `${(creditSales / (paymentModeTotal || 1)) * 100}%`, background: "#f59e0b" }} title={`Udhar: ${((creditSales / (paymentModeTotal || 1)) * 100).toFixed(0)}%`} />
+            </div>
+
+            {/* Legend Pills */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ width: "10px", height: "10px", borderRadius: "3px", background: "#10b981" }} />
+                <span>Cash: ₹{cashSales.toLocaleString("en-IN")}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ width: "10px", height: "10px", borderRadius: "3px", background: "#0284c7" }} />
+                <span>UPI: ₹{upiSales.toLocaleString("en-IN")}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ width: "10px", height: "10px", borderRadius: "3px", background: "#8b5cf6" }} />
+                <span>Card/Bank: ₹{(cardSales + bankSales).toLocaleString("en-IN")}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ width: "10px", height: "10px", borderRadius: "3px", background: "#f59e0b" }} />
+                <span>Udhar (Due): ₹{creditSales.toLocaleString("en-IN")}</span>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* PAYMENT BREAKDOWN */}
@@ -684,7 +974,7 @@ export default function ReportsPage() {
             <strong>{totalItems}</strong>
           </div>
           <div>
-            <span>↩️</span>
+            <span>↩️️</span>
             <p>Sales Returns</p>
             <strong>₹{salesReturns.toLocaleString("en-IN")}</strong>
           </div>
