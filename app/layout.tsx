@@ -5,6 +5,7 @@ import Script from "next/script";
 import "./globals.css";
 import AppLock from "../components/AppLock";
 import LanguageProvider from "../components/LanguageProvider";
+import { playSplashChime } from "@/utils/sound";
 
 export default function RootLayout({
   children,
@@ -19,9 +20,16 @@ export default function RootLayout({
     const hasShown = sessionStorage.getItem("hisabpro_splash_shown");
 
     if (!hasShown) {
-      // Pehli baar open hua hai -> Splash dikhayein
+      // Pehli baar open hua hai -> Splash dikhayein & Brand Chime play karein
       setShowSplash(true);
       sessionStorage.setItem("hisabpro_splash_shown", "true");
+
+      // Chime trigger with slight delay for silky smooth audio sync
+      const audioTimer = setTimeout(() => {
+        try {
+          playSplashChime();
+        } catch {}
+      }, 150);
 
       const timer1 = setTimeout(() => {
         setFadeSplash(true);
@@ -32,6 +40,7 @@ export default function RootLayout({
       }, 1900);
 
       return () => {
+        clearTimeout(audioTimer);
         clearTimeout(timer1);
         clearTimeout(timer2);
       };
@@ -364,14 +373,13 @@ export default function RootLayout({
           }}
         />
 
-                 {/* HisabPro Google Sheet Live App Tracker */}
+        {/* HisabPro Google Sheet Live App Tracker */}
         <Script
           id="hisabpro-app-tracker"
           strategy="lazyOnload"
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                // Public version.json se live version fetch karega
                 fetch('/hisabpro/version.json?t=' + Date.now())
                   .then(function(res) { return res.json(); })
                   .then(function(verData) {
@@ -405,7 +413,6 @@ export default function RootLayout({
                     var lastReportedVersion = localStorage.getItem("hisabpro_reported_version");
                     var now = Date.now();
 
-                    // Agar version change hua ho YA 4 ghante beet chuke ho
                     var isNewVersion = lastReportedVersion !== CURRENT_APP_VERSION;
                     var isTimeElapsed = !lastPing || (now - Number(lastPing) > 4 * 60 * 60 * 1000);
 
@@ -429,7 +436,6 @@ export default function RootLayout({
             `,
           }}
         />
-
 
         <LanguageProvider>
           <AppLock>{children}</AppLock>
