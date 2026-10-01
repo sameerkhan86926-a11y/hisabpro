@@ -364,57 +364,72 @@ export default function RootLayout({
           }}
         />
 
-        {/* HisabPro Google Sheet Live App Tracker */}
+                 {/* HisabPro Google Sheet Live App Tracker */}
         <Script
           id="hisabpro-app-tracker"
           strategy="lazyOnload"
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                var CURRENT_APP_VERSION = "1.0.6";
-                var deviceId = localStorage.getItem("hisabpro_tracker_device_id");
-                if (!deviceId) {
-                  deviceId = "DEV_" + Math.random().toString(36).substring(2, 9).toUpperCase();
-                  localStorage.setItem("hisabpro_tracker_device_id", deviceId);
-                }
+                // Public version.json se live version fetch karega
+                fetch('/hisabpro/version.json?t=' + Date.now())
+                  .then(function(res) { return res.json(); })
+                  .then(function(verData) {
+                    var CURRENT_APP_VERSION = (verData && verData.version) ? String(verData.version) : "1.0.0";
 
-                var businessName = "Not Set";
-                var savedBusinesses = localStorage.getItem("hisabpro_businesses");
-                var savedBusiness = localStorage.getItem("hisabpro_business");
-
-                if (savedBusinesses) {
-                  try {
-                    var list = JSON.parse(savedBusinesses);
-                    if (Array.isArray(list) && list.length > 0 && list[0].businessName) {
-                      businessName = list[0].businessName;
+                    var deviceId = localStorage.getItem("hisabpro_tracker_device_id");
+                    if (!deviceId) {
+                      deviceId = "DEV_" + Math.random().toString(36).substring(2, 9).toUpperCase();
+                      localStorage.setItem("hisabpro_tracker_device_id", deviceId);
                     }
-                  } catch(e) {}
-                } else if (savedBusiness) {
-                  try {
-                    var single = JSON.parse(savedBusiness);
-                    if (single.businessName) businessName = single.businessName;
-                  } catch(e) {}
-                }
 
-                var lastPing = localStorage.getItem("hisabpro_last_ping_time");
-                var now = Date.now();
-                if (!lastPing || (now - Number(lastPing) > 4 * 60 * 60 * 1000)) {
-                  var formUrl = "https://docs.google.com/forms/d/e/1FAIpQLSeX8cBddMUfla4KnUFrT8OLWQPLfVwmWDTOY3jL3EoPHVRIbA/formResponse?entry.1388543195=" 
-                    + encodeURIComponent(deviceId) 
-                    + "&entry.2095568272=" + encodeURIComponent(CURRENT_APP_VERSION) 
-                    + "&entry.1177986148=" + encodeURIComponent(businessName) 
-                    + "&submit=Submit";
+                    var businessName = "Not Set";
+                    var savedBusinesses = localStorage.getItem("hisabpro_businesses");
+                    var savedBusiness = localStorage.getItem("hisabpro_business");
 
-                  fetch(formUrl, { method: "POST", mode: "no-cors" })
-                    .then(function() {
-                      localStorage.setItem("hisabpro_last_ping_time", String(now));
-                    })
-                    .catch(function() {});
-                }
+                    if (savedBusinesses) {
+                      try {
+                        var list = JSON.parse(savedBusinesses);
+                        if (Array.isArray(list) && list.length > 0 && list[0].businessName) {
+                          businessName = list[0].businessName;
+                        }
+                      } catch(e) {}
+                    } else if (savedBusiness) {
+                      try {
+                        var single = JSON.parse(savedBusiness);
+                        if (single.businessName) businessName = single.businessName;
+                      } catch(e) {}
+                    }
+
+                    var lastPing = localStorage.getItem("hisabpro_last_ping_time");
+                    var lastReportedVersion = localStorage.getItem("hisabpro_reported_version");
+                    var now = Date.now();
+
+                    // Agar version change hua ho YA 4 ghante beet chuke ho
+                    var isNewVersion = lastReportedVersion !== CURRENT_APP_VERSION;
+                    var isTimeElapsed = !lastPing || (now - Number(lastPing) > 4 * 60 * 60 * 1000);
+
+                    if (isNewVersion || isTimeElapsed) {
+                      var formUrl = "https://docs.google.com/forms/d/e/1FAIpQLSeX8cBddMUfla4KnUFrT8OLWQPLfVwmWDTOY3jL3EoPHVRIbA/formResponse?entry.1388543195=" 
+                        + encodeURIComponent(deviceId) 
+                        + "&entry.2095568272=" + encodeURIComponent(CURRENT_APP_VERSION) 
+                        + "&entry.1177986148=" + encodeURIComponent(businessName) 
+                        + "&submit=Submit";
+
+                      fetch(formUrl, { method: "POST", mode: "no-cors" })
+                        .then(function() {
+                          localStorage.setItem("hisabpro_last_ping_time", String(now));
+                          localStorage.setItem("hisabpro_reported_version", CURRENT_APP_VERSION);
+                        })
+                        .catch(function() {});
+                    }
+                  })
+                  .catch(function() {});
               } catch (err) {}
             `,
           }}
         />
+
 
         <LanguageProvider>
           <AppLock>{children}</AppLock>
