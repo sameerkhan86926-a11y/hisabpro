@@ -1,6 +1,6 @@
 {
-  "versionCode": 10,
-  "versionName": "1.0.9",
+  "versionCode": 11,
+  "versionName": "1.1.0",
   "apkUrl": "https://github.com/sameerkhan86926-a11y/hisabpro/releases/download/latest/app-release.apk",
   "releaseNotes": "✨ Major POS Upgrade:\n• Naya Cash Drawer & Galla Tally Studio (Denomination counter + 58mm Thermal slip print)\n• Reports me 7-Day interactive sales trend chart aur 1-tap Excel/CSV & PDF export\n• Upgraded Bank-Grade App Lock (Smooth keypad, wrong PIN shake & brute-force defense)\n• Cinematic splash intro & lock sync fix"
 }
