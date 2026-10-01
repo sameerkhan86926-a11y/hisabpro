@@ -23,7 +23,7 @@ export default function BarcodeStudioPage() {
   const [mrp, setMrp] = useState("");
   const [offerPrice, setOfferPrice] = useState("");
   const [netWeight, setNetWeight] = useState("");
-  const [batchNo, setBatchNo] = useState("");
+  const [batchNo, setBatchNo] = useState("B-01");
   const [packDate, setPackDate] = useState("");
   const [copies, setCopies] = useState("24");
 
@@ -38,7 +38,7 @@ export default function BarcodeStudioPage() {
   const [showOfferPrice, setShowOfferPrice] = useState(false);
   const [showDate, setShowDate] = useState(true);
   const [showWeight, setShowWeight] = useState(true);
-  const [showBatch, setShowBatch] = useState(false);
+  const [showBatch, setShowBatch] = useState(true);
   const [showBorder, setShowBorder] = useState(true);
 
   useEffect(() => {
@@ -88,7 +88,6 @@ export default function BarcodeStudioPage() {
     setBarcodeText(code);
     setMrp(String(prod.salePrice || ""));
 
-    // Default QR link (UPI payment intent or barcode data)
     if (upi) {
       setQrContent(`upi://pay?pa=${upi}&pn=${encodeURIComponent(bName || "Store")}&am=${prod.salePrice || ""}&cu=INR`);
     } else {
@@ -135,7 +134,7 @@ export default function BarcodeStudioPage() {
 
       <header className="no-print" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
         <a href="/hisabpro/more/" style={{ textDecoration: "none", color: "#102a56", fontWeight: "700" }}>← Back to More</a>
-        <h1 style={{ fontSize: "20px", fontWeight: "800", color: "#102a56", margin: 0 }}>Barcode & QR Studio</h1>
+        <h1 style={{ fontSize: "20px", fontWeight: "800", color: "#102a56", margin: 0 }}>Barcode & QR Studio Pro</h1>
         <button
           type="button"
           onClick={() => window.print()}
@@ -205,7 +204,7 @@ export default function BarcodeStudioPage() {
             </label>
             <input
               type="text"
-              placeholder="Product Name"
+              placeholder="e.g. Premium Basmati Rice"
               value={productName}
               onChange={(e) => setProductName(e.target.value)}
               style={{ width: "100%", padding: "7px 9px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "13px", boxSizing: "border-box" }}
@@ -257,7 +256,7 @@ export default function BarcodeStudioPage() {
               />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: "11px", fontWeight: "700", color: "#475569", marginBottom: "4px" }}>Batch</label>
+              <label style={{ display: "block", fontSize: "11px", fontWeight: "700", color: "#475569", marginBottom: "4px" }}>Batch No</label>
               <input
                 type="text"
                 placeholder="B-01"
@@ -410,10 +409,13 @@ export default function BarcodeStudioPage() {
               <input type="checkbox" checked={showOfferPrice} onChange={(e) => setShowOfferPrice(e.target.checked)} /> Offer Price
             </label>
             <label style={{ display: "flex", alignItems: "center", gap: "5px", cursor: "pointer" }}>
+              <input type="checkbox" checked={showWeight} onChange={(e) => setShowWeight(e.target.checked)} /> Wt / Size
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: "5px", cursor: "pointer" }}>
               <input type="checkbox" checked={showDate} onChange={(e) => setShowDate(e.target.checked)} /> PKD Date
             </label>
             <label style={{ display: "flex", alignItems: "center", gap: "5px", cursor: "pointer" }}>
-              <input type="checkbox" checked={showWeight} onChange={(e) => setShowWeight(e.target.checked)} /> Wt / Size
+              <input type="checkbox" checked={showBatch} onChange={(e) => setShowBatch(e.target.checked)} /> Batch No
             </label>
             <label style={{ display: "flex", alignItems: "center", gap: "5px", cursor: "pointer" }}>
               <input type="checkbox" checked={showBorder} onChange={(e) => setShowBorder(e.target.checked)} /> Border
@@ -539,7 +541,7 @@ export default function BarcodeStudioPage() {
               )}
             </div>
 
-            {/* Bottom Meta */}
+            {/* Bottom Meta (Weight, Date, Batch) */}
             {(showDate || showWeight || showBatch) && (
               <div
                 style={{
@@ -554,8 +556,8 @@ export default function BarcodeStudioPage() {
                 }}
               >
                 {showWeight && netWeight ? <span>{netWeight}</span> : <span></span>}
-                {showDate && packDate ? <span>PKD: {packDate}</span> : null}
-                {showBatch && batchNo ? <span>B:{batchNo}</span> : null}
+                {showDate && packDate ? <span>PKD: {packDate}</span> : <span></span>}
+                {showBatch && batchNo ? <span>B: {batchNo}</span> : <span></span>}
               </div>
             )}
           </div>
