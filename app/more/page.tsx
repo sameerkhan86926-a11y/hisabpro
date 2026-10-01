@@ -313,6 +313,40 @@ export default function MorePage() {
         </div>
       </section>
 
+      {/* PRINT & HARDWARE TOOLS */}
+      <section className="more-section">
+        <h2>Print & Hardware Tools</h2>
+        <div className="more-grid">
+          <a href="/hisabpro/barcode/" className="more-card">
+            <div className="more-icon" style={{ display: "flex", alignItems: "center", justifyContent: "center", color: "#102a56" }}>
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+                <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+                <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+                <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+                <line x1="7" y1="8" x2="7" y2="16" />
+                <line x1="10" y1="8" x2="10" y2="16" />
+                <line x1="13" y1="8" x2="13" y2="16" />
+                <line x1="17" y1="8" x2="17" y2="16" />
+              </svg>
+            </div>
+            <div>
+              <strong>Barcode Generator & Print</strong>
+              <span>Create & print product barcode stickers</span>
+            </div>
+          </a>
+        </div>
+      </section>
+
       {/* BUSINESS */}
       <section className="more-section">
         <h2>Business</h2>
@@ -501,48 +535,6 @@ export default function MorePage() {
           </a>
         </div>
       </section>
-      {/* PRINT & HARDWARE TOOLS SECTION */}
-<section className="more-section">
-  <div className="more-section-title">
-    <h2>Print & Hardware Tools</h2>
-    <p>Barcode labels aur printer tools manage karein</p>
-  </div>
-
-  <div className="more-grid">
-    <a href="/hisabpro/barcode/" className="more-card">
-      <div className="more-icon" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-        {/* Crisp Barcode Scanner SVG Icon */}
-        <svg 
-          width="26" 
-          height="26" 
-          viewBox="0 0 24 24" 
-          fill="none" 
-          stroke="currentColor" 
-          strokeWidth="1.8" 
-          strokeLinecap="round" 
-          strokeLinejoin="round"
-        >
-          {/* Scanner frame corners */}
-          <path d="M3 7V5a2 2 0 0 1 2-2h2" />
-          <path d="M17 3h2a2 2 0 0 1 2 2v2" />
-          <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
-          <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
-
-          {/* Barcode lines */}
-          <line x1="7" y1="8" x2="7" y2="16" />
-          <line x1="10" y1="8" x2="10" y2="16" />
-          <line x1="13" y1="8" x2="13" y2="16" />
-          <line x1="17" y1="8" x2="17" y2="16" />
-        </svg>
-      </div>
-      <div>
-        <strong>Barcode Generator & Print</strong>
-        <span>Create & print product barcode stickers</span>
-      </div>
-    </a>
-  </div>
-</section>
-
 
       {/* BACKUP & RESTORE */}
       <section className="more-section">
