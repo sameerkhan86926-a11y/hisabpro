@@ -1,62 +1,45 @@
-import type { Metadata, Viewport } from "next";
+"use client";
+
+import { useEffect, useState } from "react";
 import Script from "next/script";
 import "./globals.css";
 import AppLock from "../components/AppLock";
 import LanguageProvider from "../components/LanguageProvider";
-
-export const viewport: Viewport = {
-  themeColor: "#102a56",
-};
-
-export const metadata: Metadata = {
-  title: "HisabPro",
-  description: "Sales • Stock • Khata • Profit",
-  manifest: "/hisabpro/manifest.json",
-
-  icons: {
-    icon: [
-      {
-        url: "/hisabpro/favicon-32.png",
-        type: "image/png",
-        sizes: "32x32",
-      },
-      {
-        url: "/hisabpro/icon-192.png",
-        type: "image/png",
-        sizes: "192x192",
-      },
-      {
-        url: "/hisabpro/icon-512.png",
-        type: "image/png",
-        sizes: "512x512",
-      },
-    ],
-
-    apple: [
-      {
-        url: "/hisabpro/apple-touch-icon.png",
-        type: "image/png",
-        sizes: "180x180",
-      },
-    ],
-  },
-
-  appleWebApp: {
-    capable: true,
-    title: "HisabPro",
-    statusBarStyle: "default",
-  },
-};
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const [showSplash, setShowSplash] = useState(true);
+  const [fadeSplash, setFadeSplash] = useState(false);
+
+  useEffect(() => {
+    // 1 second baad fade-out start hoga
+    const timer1 = setTimeout(() => {
+      setFadeSplash(true);
+    }, 1000);
+
+    // 1.3 second par poori tarah remove ho jayega
+    const timer2 = setTimeout(() => {
+      setShowSplash(false);
+    }, 1300);
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
+  }, []);
+
   return (
     <html lang="en">
       <head>
-        {/* Google Translate & Splash Screen Animation CSS */}
+        <meta name="theme-color" content="#102a56" />
+        <title>HisabPro</title>
+        <meta name="description" content="Sales • Stock • Khata • Profit" />
+        <link rel="manifest" href="/hisabpro/manifest.json" />
+
+        {/* Google Translate Hide Banners CSS */}
         <style
           dangerouslySetInnerHTML={{
             __html: `
@@ -88,93 +71,80 @@ export default function RootLayout({
               .skiptranslate iframe {
                 display: none !important;
               }
-
-              /* Splash Screen Styles */
-              #app-splash-screen {
-                position: fixed;
-                inset: 0;
-                background-color: #102a56;
-                z-index: 9999999;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                transition: opacity 0.4s ease-out, visibility 0.4s;
-              }
-              #app-splash-screen.splash-hidden {
-                opacity: 0;
-                visibility: hidden;
-                pointer-events: none;
-              }
-              .splash-logo-box {
-                width: 86px;
-                height: 86px;
-                background: #ffffff;
-                border-radius: 24px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
-                margin-bottom: 16px;
-                animation: splashZoom 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-              }
-              .splash-title {
-                color: #ffffff;
-                font-size: 28px;
-                font-weight: 800;
-                letter-spacing: 0.5px;
-                margin: 0 0 6px 0;
-                font-family: system-ui, -apple-system, sans-serif;
-              }
-              .splash-title span {
-                color: #38bdf8;
-              }
-              .splash-tagline {
-                color: #94a3b8;
-                font-size: 13px;
-                font-weight: 500;
-                margin: 0;
-                letter-spacing: 0.5px;
-                font-family: system-ui, -apple-system, sans-serif;
-              }
-              @keyframes splashZoom {
-                0% { transform: scale(0.7); opacity: 0; }
-                100% { transform: scale(1); opacity: 1; }
-              }
             `,
           }}
         />
       </head>
       <body>
-        {/* Animated App Splash Screen */}
-        <div id="app-splash-screen">
-          <div className="splash-logo-box">
-            <span style={{ fontSize: "44px" }}>📊</span>
-          </div>
-          <h1 className="splash-title">
-            Hisab<span>Pro</span>
-          </h1>
-          <p className="splash-tagline">Smart Vyapar • Asaan Billing</p>
-        </div>
+        {/* Splash Screen with Real App Logo */}
+        {showSplash && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              backgroundColor: "#102a56",
+              zIndex: 9999999,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "opacity 0.3s ease-out",
+              opacity: fadeSplash ? 0 : 1,
+              pointerEvents: fadeSplash ? "none" : "all",
+            }}
+          >
+            {/* Real Logo Box */}
+            <div
+              style={{
+                width: "90px",
+                height: "90px",
+                borderRadius: "22px",
+                overflow: "hidden",
+                boxShadow: "0 12px 30px rgba(0, 0, 0, 0.4)",
+                marginBottom: "16px",
+                backgroundColor: "#ffffff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <img
+                src="/hisabpro/icon-192.png"
+                alt="HisabPro Logo"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+              />
+            </div>
 
-        {/* Splash Screen Auto-dismiss Script */}
-        <Script
-          id="splash-screen-script"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.addEventListener("DOMContentLoaded", function() {
-                setTimeout(function() {
-                  var splash = document.getElementById("app-splash-screen");
-                  if (splash) {
-                    splash.classList.add("splash-hidden");
-                    setTimeout(function() { splash.remove(); }, 450);
-                  }
-                }, 1100);
-              });
-            `,
-          }}
-        />
+            <h1
+              style={{
+                color: "#ffffff",
+                fontSize: "28px",
+                fontWeight: "800",
+                letterSpacing: "0.5px",
+                margin: "0 0 6px 0",
+                fontFamily: "system-ui, -apple-system, sans-serif",
+              }}
+            >
+              Hisab<span style={{ color: "#38bdf8" }}>Pro</span>
+            </h1>
+            <p
+              style={{
+                color: "#94a3b8",
+                fontSize: "13px",
+                fontWeight: "500",
+                margin: 0,
+                letterSpacing: "0.5px",
+                fontFamily: "system-ui, -apple-system, sans-serif",
+              }}
+            >
+              Smart Vyapar • Asaan Billing
+            </p>
+          </div>
+        )}
 
         {/* Hidden Container for Google Translate Element */}
         <div id="google_translate_element"></div>
