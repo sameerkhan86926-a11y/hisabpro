@@ -164,18 +164,36 @@ _Generated automatically via HisabPro_`;
       <style
         dangerouslySetInnerHTML={{
           __html: `
+            .thermal-only {
+              display: none;
+            }
             @media print {
-              body * { visibility: hidden; }
-              #thermal-closing-slip, #thermal-closing-slip * { visibility: visible; }
-              #thermal-closing-slip {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 58mm;
-                padding: 4mm;
-                font-family: monospace;
+              body * { 
+                visibility: hidden !important; 
               }
-              .no-print { display: none !important; }
+              #thermal-closing-slip, #thermal-closing-slip * { 
+                visibility: visible !important; 
+              }
+              #thermal-closing-slip {
+                display: block !important;
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 58mm !important;
+                margin: 0 !important;
+                padding: 4mm !important;
+                box-sizing: border-box !important;
+                font-family: monospace, Courier, sans-serif !important;
+                color: #000000 !important;
+                background: #ffffff !important;
+              }
+              .no-print { 
+                display: none !important; 
+              }
+              @page {
+                size: 58mm auto;
+                margin: 0;
+              }
             }
           `,
         }}
@@ -203,7 +221,7 @@ _Generated automatically via HisabPro_`;
         </button>
       </header>
 
-      {/* TOP HERO STATUS HERO CARD */}
+      {/* TOP HERO STATUS CARD */}
       <section
         className="no-print"
         style={{
@@ -441,27 +459,53 @@ _Generated automatically via HisabPro_`;
         </button>
       </div>
 
-      {/* THERMAL PRINT SLIP (HIDDEN ON SCREEN, VISIBLE ON PRINT) */}
-      <div id="thermal-closing-slip" style={{ display: "none" }}>
+      {/* THERMAL PRINT SLIP (SCREEN PAR HIDDEN, PRINT DIALOG ME VISIBLE) */}
+      <div id="thermal-closing-slip" className="thermal-only">
         <center>
-          <h3 style={{ margin: "0 0 2px 0", fontSize: "13px" }}>{storeName.toUpperCase()}</h3>
-          <p style={{ margin: 0, fontSize: "10px" }}>DAILY SHIFT / GALLE REPORT</p>
+          <h3 style={{ margin: "0 0 2px 0", fontSize: "14px", fontWeight: "900" }}>
+            {storeName.toUpperCase()}
+          </h3>
+          <p style={{ margin: 0, fontSize: "10px", fontWeight: "700" }}>DAILY SHIFT / GALLE REPORT</p>
           <p style={{ margin: "2px 0 6px 0", fontSize: "9px" }}>{activeDate}</p>
-          <div>--------------------------------</div>
+          <div style={{ letterSpacing: "-1px", marginBottom: "4px" }}>--------------------------------</div>
         </center>
-        <div style={{ fontSize: "10px", lineHeight: "1.4" }}>
-          <div>Opening Cash:  Rs.{Number(openingCash).toLocaleString("en-IN")}</div>
-          <div>Cash Sales:    Rs.{cashSales.toLocaleString("en-IN")}</div>
-          <div>Expenses Out:  Rs.{cashExpenses.toLocaleString("en-IN")}</div>
-          <div>--------------------------------</div>
-          <div><strong>Expected Galla: Rs.{expectedCash.toLocaleString("en-IN")}</strong></div>
-          <div><strong>Counted Cash:  Rs.{countedCash.toLocaleString("en-IN")}</strong></div>
-          <div>--------------------------------</div>
-          <div style={{ fontWeight: "bold" }}>
-            Tally Result: {difference === 0 ? "PERFECT (Rs.0)" : (difference > 0 ? `EXTRA (+Rs.${difference})` : `SHORT (-Rs.${Math.abs(difference)})`)}
+
+        <div style={{ fontSize: "11px", lineHeight: "1.5" }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span>Opening Cash:</span>
+            <span>Rs.{Number(openingCash).toLocaleString("en-IN")}</span>
           </div>
-          <div>--------------------------------</div>
-          <center style={{ marginTop: "6px", fontSize: "8px" }}>Powered by HisabPro</center>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span>Cash Sales:</span>
+            <span>Rs.{cashSales.toLocaleString("en-IN")}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span>Expenses Out:</span>
+            <span>-Rs.{cashExpenses.toLocaleString("en-IN")}</span>
+          </div>
+          <div style={{ letterSpacing: "-1px", margin: "2px 0" }}>--------------------------------</div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold" }}>
+            <span>Expected Galla:</span>
+            <span>Rs.{expectedCash.toLocaleString("en-IN")}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold" }}>
+            <span>Counted Cash:</span>
+            <span>Rs.{countedCash.toLocaleString("en-IN")}</span>
+          </div>
+          <div style={{ letterSpacing: "-1px", margin: "2px 0" }}>--------------------------------</div>
+
+          <div style={{ marginTop: "4px", padding: "4px", border: "1px dashed #000", textAlign: "center" }}>
+            <strong>Tally: </strong>
+            {difference === 0
+              ? "PERFECT MATCH (Rs.0)"
+              : difference > 0
+              ? `EXTRA (+Rs.${difference.toLocaleString("en-IN")})`
+              : `SHORT (-Rs.${Math.abs(difference).toLocaleString("en-IN")})`}
+          </div>
+
+          <div style={{ letterSpacing: "-1px", margin: "4px 0 2px 0" }}>--------------------------------</div>
+          <center style={{ fontSize: "9px", marginTop: "6px" }}>*** End of Report ***</center>
+          <center style={{ fontSize: "8px", marginTop: "2px" }}>Powered by HisabPro</center>
         </div>
       </div>
     </main>
