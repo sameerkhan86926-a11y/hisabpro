@@ -414,7 +414,7 @@ export default function SearchPage() {
             </span>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
               <a
-                href="/hisabpro/billing/"
+                href="/hisabpro/sales/"
                 style={{
                   padding: "12px",
                   borderRadius: "10px",
