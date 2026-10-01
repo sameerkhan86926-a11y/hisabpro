@@ -344,6 +344,40 @@ export default function MorePage() {
               <span>Create & print product barcode stickers</span>
             </div>
           </a>
+
+          {/* CASH DRAWER & TALLY CARD */}
+          <a href="/hisabpro/cash-drawer/" className="more-card">
+            <div
+              className="more-icon"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#059669",
+              }}
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M4 4h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
+                <path d="M2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6" />
+                <circle cx="12" cy="16" r="1.2" fill="currentColor" />
+                <path d="M7 8h4" />
+                <path d="M15 8h2" />
+              </svg>
+            </div>
+            <div>
+              <strong>Cash Drawer & Tally</strong>
+              <span>Galla check, note counter & daily closing</span>
+            </div>
+          </a>
         </div>
       </section>
 
@@ -558,6 +592,7 @@ export default function MorePage() {
           <a href="/hisabpro/sales/">🧾 New Sale</a>
           <a href="/hisabpro/stock/">📦 Stock</a>
           <a href="/hisabpro/khata/">📒 Khata</a>
+          <a href="/hisabpro/cash-drawer/">💵 Cash Drawer & Tally</a>
           <a href="/hisabpro/purchase/">🛒 Purchase</a>
           <a href="/hisabpro/suppliers/">🏭 Suppliers</a>
           <a href="/hisabpro/cashbook/">💰 Cashbook</a>
