@@ -84,7 +84,6 @@ export default function ReportsPage() {
   const [toDate, setToDate] = useState("");
   const [storeName, setStoreName] = useState("HisabPro Store");
   const [chartDesign, setChartDesign] = useState<ChartDesign>("bars");
-  const [printMode, setPrintMode] = useState<"a4" | "thermal">("a4");
 
   useEffect(() => {
     try {
@@ -298,7 +297,6 @@ export default function ReportsPage() {
       .slice(0, 10);
   }, [filteredSales]);
 
-  // Chart Data for Last 7 Days
   const chartDays = useMemo(() => {
     const daysMap = new Map<string, { label: string; sales: number; expenses: number }>();
     const last7: string[] = [];
@@ -333,7 +331,6 @@ export default function ReportsPage() {
     return Math.max(...chartDays.map((d) => Math.max(d.sales, d.expenses)), 100);
   }, [chartDays]);
 
-  // Helper for Area Chart SVG points
   const areaSvgPoints = useMemo(() => {
     const width = 300;
     const height = 90;
@@ -353,28 +350,141 @@ export default function ReportsPage() {
 
     const salesPath = salesCoords.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x},${p.y}`).join(" ");
     const expPath = expCoords.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x},${p.y}`).join(" ");
-
     const salesArea = `${salesPath} L ${width},${height} L 0,${height} Z`;
 
     return { salesPath, expPath, salesArea, salesCoords };
   }, [chartDays, maxChartVal]);
 
-  // Print Handlers
-  function triggerPrintA4() {
-    setPrintMode("a4");
-    setTimeout(() => {
-      window.print();
-    }, 50);
-  }
-
+  // ISOLATED IFRAME THERMAL SLIP ENGINE
   function triggerPrintThermal() {
-    setPrintMode("thermal");
-    setTimeout(() => {
-      window.print();
-    }, 50);
+    try {
+      const topProductsRows = topProducts.slice(0, 5).map((p) => `
+        <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+          <span>${p.product.slice(0, 16)} x${p.quantity}</span>
+          <span>INR ${p.sales.toLocaleString("en-IN")}</span>
+        </div>
+      `).join("");
+
+      const receiptHtml = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <title>Closing Slip</title>
+            <style>
+              @page { size: 58mm auto; margin: 0; }
+              body {
+                width: 54mm;
+                margin: 0 auto;
+                padding: 6px 2px;
+                font-family: 'Courier New', Courier, monospace, system-ui;
+                font-size: 11px;
+                color: #000;
+                line-height: 1.25;
+                font-weight: 600;
+              }
+              .center { text-align: center; }
+              .bold { font-weight: 900; }
+              .divider { border-top: 1px dashed #000; margin: 5px 0; }
+              .double-divider { border-top: 2px solid #000; margin: 6px 0; }
+              .row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+            </style>
+          </head>
+          <body>
+            <div class="center">
+              <div class="bold" style="font-size: 15px; margin-bottom: 2px;">${storeName}</div>
+              <div style="font-size: 10px;">BUSINESS REPORT SUMMARY</div>
+              <div style="font-size: 9px;">${new Date().toLocaleString("en-IN")}</div>
+              <div class="bold" style="font-size: 10px; margin-top: 2px;">PERIOD: ${period.toUpperCase()}</div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="row">
+              <span>Gross Sales:</span>
+              <span>INR ${totalSales.toLocaleString("en-IN")}</span>
+            </div>
+            <div class="row">
+              <span>Returns:</span>
+              <span>-INR ${salesReturns.toLocaleString("en-IN")}</span>
+            </div>
+            <div class="row bold">
+              <span>Net Sales:</span>
+              <span>INR ${netSales.toLocaleString("en-IN")}</span>
+            </div>
+            <div class="row">
+              <span>Expenses:</span>
+              <span>-INR ${totalExpenses.toLocaleString("en-IN")}</span>
+            </div>
+
+            <div class="double-divider"></div>
+
+            <div class="row bold" style="font-size: 13px;">
+              <span>NET PROFIT:</span>
+              <span>INR ${netProfit.toLocaleString("en-IN")}</span>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="bold" style="margin-bottom: 3px;">PAYMENT BREAKUP:</div>
+            <div class="row">
+              <span>Cash:</span>
+              <span>INR ${cashSales.toLocaleString("en-IN")}</span>
+            </div>
+            <div class="row">
+              <span>UPI / Online:</span>
+              <span>INR ${(upiSales + cardSales + bankSales + onlineSales).toLocaleString("en-IN")}</span>
+            </div>
+            <div class="row">
+              <span>Udhar (Credit):</span>
+              <span>INR ${creditSales.toLocaleString("en-IN")}</span>
+            </div>
+
+            ${topProducts.length > 0 ? `
+              <div class="divider"></div>
+              <div class="bold" style="margin-bottom: 3px;">TOP ITEMS SOLD:</div>
+              ${topProductsRows}
+            ` : ""}
+
+            <div class="divider"></div>
+
+            <div class="center" style="font-size: 9px; margin-top: 6px; padding-bottom: 12px;">
+              *** END OF REPORT ***<br/>
+              HisabPro Smart Vyapar POS
+            </div>
+          </body>
+        </html>
+      `;
+
+      let printFrame = document.getElementById("thermal-print-frame") as HTMLIFrameElement;
+      if (!printFrame) {
+        printFrame = document.createElement("iframe");
+        printFrame.id = "thermal-print-frame";
+        printFrame.style.position = "fixed";
+        printFrame.style.right = "0";
+        printFrame.style.bottom = "0";
+        printFrame.style.width = "0";
+        printFrame.style.height = "0";
+        printFrame.style.border = "none";
+        document.body.appendChild(printFrame);
+      }
+
+      const frameDoc = printFrame.contentWindow?.document || printFrame.contentDocument;
+      if (frameDoc) {
+        frameDoc.open();
+        frameDoc.write(receiptHtml);
+        frameDoc.close();
+
+        setTimeout(() => {
+          printFrame.contentWindow?.focus();
+          printFrame.contentWindow?.print();
+        }, 300);
+      }
+    } catch {
+      alert("Thermal print error: Browser popups allow karein.");
+    }
   }
 
-  // Excel / CSV Export
   function exportToExcel() {
     try {
       const rows = [
@@ -436,38 +546,19 @@ export default function ReportsPage() {
 
   return (
     <main className="reports-page" style={{ paddingBottom: "100px" }}>
-      {/* PRINT STYLES (A4 & 58MM/80MM THERMAL SLIP DUAL ADAPTIVE) */}
       <style
         dangerouslySetInnerHTML={{
           __html: `
             @media print {
               .no-print { display: none !important; }
-              body { background: #ffffff !important; color: #000000 !important; margin: 0; padding: 0; }
+              body { background: #ffffff !important; color: #000000 !important; }
               .reports-header { display: none !important; }
-              
-              /* When in Thermal Mode */
-              body.print-thermal .print-a4-view { display: none !important; }
-              body.print-thermal .reports-content-wrap { display: none !important; }
-              body.print-thermal .print-thermal-receipt { display: block !important; width: 58mm; max-width: 58mm; margin: 0 auto; font-family: monospace; font-size: 11px; line-height: 1.3; }
-
-              /* When in A4 Mode */
-              body.print-a4 .print-thermal-receipt { display: none !important; }
-              body.print-a4 .print-a4-view { display: block !important; margin-bottom: 20px; }
-              body.print-a4 .report-card, body.print-a4 .report-section { break-inside: avoid; border: 1px solid #cbd5e1 !important; box-shadow: none !important; }
-              @page {
-                size: ${printMode === "thermal" ? "58mm auto" : "A4 portrait"};
-                margin: ${printMode === "thermal" ? "2mm" : "12mm"};
-              }
+              .print-a4-view { display: block !important; margin-bottom: 20px; }
+              .report-card, .report-section { break-inside: avoid; border: 1px solid #cbd5e1 !important; box-shadow: none !important; }
+              @page { size: A4 portrait; margin: 12mm; }
             }
-            .print-a4-view, .print-thermal-receipt { display: none; }
+            .print-a4-view { display: none; }
           `,
-        }}
-      />
-
-      {/* DYNAMIC BODY CLASS FOR PRINTING */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `document.body.className = "print-${printMode}";`,
         }}
       />
 
@@ -477,13 +568,18 @@ export default function ReportsPage() {
           type="button"
           onClick={() => (window.location.href = "/hisabpro/")}
           className="back-button"
+          style={{ display: "flex", alignItems: "center", gap: "6px" }}
         >
-          ← Back
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+          Back
         </button>
 
         <h1 style={{ margin: 0, fontSize: "17px", fontWeight: "800" }}>Reports & Analytics</h1>
 
-        <div style={{ display: "flex", gap: "5px" }}>
+        <div style={{ display: "flex", gap: "6px" }}>
           {/* EXCEL */}
           <button
             type="button"
@@ -498,12 +594,22 @@ export default function ReportsPage() {
               fontSize: "12px",
               fontWeight: "700",
               cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
             }}
           >
-            📊 Excel
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
+            Excel
           </button>
 
-          {/* THERMAL 58MM PRINT BUTTON */}
+          {/* THERMAL */}
           <button
             type="button"
             onClick={triggerPrintThermal}
@@ -522,13 +628,18 @@ export default function ReportsPage() {
               gap: "4px",
             }}
           >
-            <span>🧾</span> Thermal
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="6 9 6 2 18 2 18 9" />
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+              <rect x="6" y="14" width="12" height="8" />
+            </svg>
+            Thermal
           </button>
 
-          {/* A4 PDF */}
+          {/* A4 PRINT */}
           <button
             type="button"
-            onClick={triggerPrintA4}
+            onClick={() => window.print()}
             title="Save as A4 PDF"
             style={{
               background: "#102a56",
@@ -539,81 +650,21 @@ export default function ReportsPage() {
               fontSize: "12px",
               fontWeight: "700",
               cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
             }}
           >
-            🖨️ A4
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+            A4
           </button>
         </div>
       </header>
 
-      {/* 58MM THERMAL RECEIPT SLIP (ONLY VISIBLE ON THERMAL PRINT) */}
-      <div className="print-thermal-receipt">
-        <div style={{ textAlign: "center", paddingBottom: "6px", borderBottom: "1px dashed #000" }}>
-          <h2 style={{ fontSize: "14px", fontWeight: "900", margin: "0 0 2px 0" }}>{storeName}</h2>
-          <div style={{ fontSize: "10px" }}>FINANCIAL CLOSING REPORT</div>
-          <div style={{ fontSize: "9px" }}>{new Date().toLocaleString("en-IN")}</div>
-          <div style={{ fontSize: "10px", fontWeight: "700", marginTop: "2px" }}>PERIOD: {period.toUpperCase()}</div>
-        </div>
-
-        <div style={{ padding: "6px 0", borderBottom: "1px dashed #000" }}>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>Total Sales:</span>
-            <strong>₹{totalSales.toLocaleString("en-IN")}</strong>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>Returns:</span>
-            <span>- ₹{salesReturns.toLocaleString("en-IN")}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold" }}>
-            <span>Net Sales:</span>
-            <span>₹{netSales.toLocaleString("en-IN")}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>Expenses:</span>
-            <span>- ₹{totalExpenses.toLocaleString("en-IN")}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #000", marginTop: "4px", paddingTop: "2px", fontWeight: "900", fontSize: "12px" }}>
-            <span>NET PROFIT:</span>
-            <span>₹{netProfit.toLocaleString("en-IN")}</span>
-          </div>
-        </div>
-
-        <div style={{ padding: "6px 0", borderBottom: "1px dashed #000" }}>
-          <div style={{ fontWeight: "700", marginBottom: "3px" }}>PAYMENT SPLIT</div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>Cash:</span> <span>₹{cashSales.toLocaleString("en-IN")}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>UPI:</span> <span>₹{upiSales.toLocaleString("en-IN")}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>Card / Bank:</span> <span>₹{(cardSales + bankSales + onlineSales).toLocaleString("en-IN")}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>Udhar (Credit):</span> <span>₹{creditSales.toLocaleString("en-IN")}</span>
-          </div>
-        </div>
-
-        {topProducts.length > 0 && (
-          <div style={{ padding: "6px 0", borderBottom: "1px dashed #000" }}>
-            <div style={{ fontWeight: "700", marginBottom: "3px" }}>TOP SELLING ITEMS</div>
-            {topProducts.slice(0, 5).map((p, idx) => (
-              <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
-                <span>{p.product.slice(0, 14)} x{p.quantity}</span>
-                <span>₹{p.sales.toLocaleString("en-IN")}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div style={{ textAlign: "center", paddingTop: "8px", fontSize: "9px" }}>
-          *** END OF STATEMENT ***
-          <br />
-          Generated by HisabPro POS
-        </div>
-      </div>
-
-      {/* A4 PRINT LETTERHEAD (ONLY ON A4 PRINT) */}
+      {/* A4 PRINT LETTERHEAD */}
       <div className="print-a4-view">
         <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "2px solid #102a56", paddingBottom: "10px" }}>
           <div>
@@ -639,7 +690,7 @@ export default function ReportsPage() {
           This Month
         </button>
         <button className={period === "custom" ? "active" : ""} onClick={() => setPeriod("custom")}>
-          📅 Custom
+          Custom
         </button>
         <button className={period === "all" ? "active" : ""} onClick={() => setPeriod("all")}>
           All Time
@@ -704,7 +755,7 @@ export default function ReportsPage() {
         </div>
       </section>
 
-      {/* MULTI-DESIGN INTERACTIVE GRAPH STUDIO */}
+      {/* MULTI-DESIGN GRAPH STUDIO */}
       <section
         className="report-section no-print"
         style={{
@@ -716,7 +767,6 @@ export default function ReportsPage() {
           boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
         }}
       >
-        {/* Header with Design Switcher */}
         <div
           style={{
             display: "flex",
@@ -734,7 +784,6 @@ export default function ReportsPage() {
             <span style={{ fontSize: "11px", color: "#64748b" }}>Choose visual representation style</span>
           </div>
 
-          {/* Graph Design Switch Tabs */}
           <div style={{ display: "flex", background: "#f1f5f9", padding: "3px", borderRadius: "10px", gap: "2px" }}>
             <button
               type="button"
@@ -750,7 +799,7 @@ export default function ReportsPage() {
                 color: chartDesign === "bars" ? "#ffffff" : "#475569",
               }}
             >
-              📊 Bars
+              Bars
             </button>
             <button
               type="button"
@@ -766,7 +815,7 @@ export default function ReportsPage() {
                 color: chartDesign === "area" ? "#ffffff" : "#475569",
               }}
             >
-              📈 Wave
+              Wave
             </button>
             <button
               type="button"
@@ -782,12 +831,12 @@ export default function ReportsPage() {
                 color: chartDesign === "distribution" ? "#ffffff" : "#475569",
               }}
             >
-              🥧 Share
+              Share
             </button>
           </div>
         </div>
 
-        {/* DESIGN 1: SIDE-BY-SIDE DUAL BARS */}
+        {/* 1. DUAL BARS */}
         {chartDesign === "bars" && (
           <div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", fontSize: "11px", fontWeight: "700", marginBottom: "8px" }}>
@@ -838,12 +887,12 @@ export default function ReportsPage() {
           </div>
         )}
 
-        {/* DESIGN 2: SMOOTH WAVE AREA CHART */}
+        {/* 2. WAVE AREA */}
         {chartDesign === "area" && (
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#64748b", marginBottom: "8px" }}>
               <span>7-Day Inflow / Outflow Gradient</span>
-              <strong style={{ color: "#0284c7" }}>Max Peak: ₹{maxChartVal.toLocaleString("en-IN")}</strong>
+              <strong style={{ color: "#0284c7" }}>Peak: ₹{maxChartVal.toLocaleString("en-IN")}</strong>
             </div>
 
             <div style={{ position: "relative", width: "100%", height: "130px" }}>
@@ -855,16 +904,10 @@ export default function ReportsPage() {
                   </linearGradient>
                 </defs>
 
-                {/* Sales Area Fill */}
                 <path d={areaSvgPoints.salesArea} fill="url(#salesGrad)" />
-
-                {/* Sales Stroke Line */}
                 <path d={areaSvgPoints.salesPath} fill="none" stroke="#0284c7" strokeWidth="2.5" strokeLinecap="round" />
-
-                {/* Expense Stroke Line */}
                 <path d={areaSvgPoints.expPath} fill="none" stroke="#ef4444" strokeWidth="2" strokeDasharray="3,3" />
 
-                {/* Data Points */}
                 {areaSvgPoints.salesCoords.map((pt, i) => (
                   <circle key={i} cx={pt.x} cy={pt.y} r="3" fill="#0284c7" stroke="#ffffff" strokeWidth="1.5" />
                 ))}
@@ -879,7 +922,7 @@ export default function ReportsPage() {
           </div>
         )}
 
-        {/* DESIGN 3: REVENUE SHARE DISTRIBUTION BAR */}
+        {/* 3. DISTRIBUTION SHARE */}
         {chartDesign === "distribution" && (
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
@@ -887,15 +930,13 @@ export default function ReportsPage() {
               <strong style={{ fontSize: "12px", color: "#102a56" }}>₹{paymentModeTotal.toLocaleString("en-IN")}</strong>
             </div>
 
-            {/* Proportion Bar */}
             <div style={{ display: "flex", height: "18px", borderRadius: "10px", overflow: "hidden", backgroundColor: "#f1f5f9", marginBottom: "14px" }}>
-              <div style={{ width: `${(cashSales / (paymentModeTotal || 1)) * 100}%`, background: "#10b981" }} title={`Cash: ${((cashSales / (paymentModeTotal || 1)) * 100).toFixed(0)}%`} />
-              <div style={{ width: `${(upiSales / (paymentModeTotal || 1)) * 100}%`, background: "#0284c7" }} title={`UPI: ${((upiSales / (paymentModeTotal || 1)) * 100).toFixed(0)}%`} />
-              <div style={{ width: `${(cardSales / (paymentModeTotal || 1)) * 100}%`, background: "#8b5cf6" }} title={`Card: ${((cardSales / (paymentModeTotal || 1)) * 100).toFixed(0)}%`} />
-              <div style={{ width: `${(creditSales / (paymentModeTotal || 1)) * 100}%`, background: "#f59e0b" }} title={`Udhar: ${((creditSales / (paymentModeTotal || 1)) * 100).toFixed(0)}%`} />
+              <div style={{ width: `${(cashSales / (paymentModeTotal || 1)) * 100}%`, background: "#10b981" }} />
+              <div style={{ width: `${(upiSales / (paymentModeTotal || 1)) * 100}%`, background: "#0284c7" }} />
+              <div style={{ width: `${(cardSales / (paymentModeTotal || 1)) * 100}%`, background: "#8b5cf6" }} />
+              <div style={{ width: `${(creditSales / (paymentModeTotal || 1)) * 100}%`, background: "#f59e0b" }} />
             </div>
 
-            {/* Legend Pills */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "12px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 <span style={{ width: "10px", height: "10px", borderRadius: "3px", background: "#10b981" }} />
@@ -927,32 +968,58 @@ export default function ReportsPage() {
 
         <div className="report-breakdown">
           <div>
-            <span>💵</span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="6" width="20" height="12" rx="2" />
+              <circle cx="12" cy="12" r="2" />
+              <path d="M6 12h.01M18 12h.01" />
+            </svg>
             <p>Cash</p>
             <strong>₹{cashSales.toLocaleString("en-IN")}</strong>
           </div>
           <div>
-            <span>📱</span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+              <line x1="12" y1="18" x2="12.01" y2="18" />
+            </svg>
             <p>UPI</p>
             <strong>₹{upiSales.toLocaleString("en-IN")}</strong>
           </div>
           <div>
-            <span>💳</span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+              <line x1="1" y1="10" x2="23" y2="10" />
+            </svg>
             <p>Card</p>
             <strong>₹{cardSales.toLocaleString("en-IN")}</strong>
           </div>
           <div>
-            <span>🏦</span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="21" x2="21" y2="21" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+              <polyline points="5 6 12 3 19 6" />
+              <line x1="4" y1="10" x2="4" y2="21" />
+              <line x1="20" y1="10" x2="20" y2="21" />
+              <line x1="8" y1="14" x2="8" y2="17" />
+              <line x1="12" y1="14" x2="12" y2="17" />
+              <line x1="16" y1="14" x2="16" y2="17" />
+            </svg>
             <p>Bank</p>
             <strong>₹{bankSales.toLocaleString("en-IN")}</strong>
           </div>
           <div>
-            <span>🌐</span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="2" y1="12" x2="22" y2="12" />
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+            </svg>
             <p>Online</p>
             <strong>₹{onlineSales.toLocaleString("en-IN")}</strong>
           </div>
           <div>
-            <span>📒</span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+            </svg>
             <p>Credit</p>
             <strong>₹{creditSales.toLocaleString("en-IN")}</strong>
           </div>
@@ -964,22 +1031,38 @@ export default function ReportsPage() {
         <h2>Sales Breakdown</h2>
         <div className="report-breakdown">
           <div>
-            <span>🧾</span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
             <p>Total Bills</p>
             <strong>{filteredSales.length}</strong>
           </div>
           <div>
-            <span>📦</span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+              <line x1="12" y1="22.08" x2="12" y2="12" />
+            </svg>
             <p>Items Sold</p>
             <strong>{totalItems}</strong>
           </div>
           <div>
-            <span>↩️️</span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="1 4 1 10 7 10" />
+              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+            </svg>
             <p>Sales Returns</p>
             <strong>₹{salesReturns.toLocaleString("en-IN")}</strong>
           </div>
           <div>
-            <span>↩️</span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="23 4 23 10 17 10" />
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+            </svg>
             <p>Purchase Returns</p>
             <strong>₹{purchaseReturns.toLocaleString("en-IN")}</strong>
           </div>
