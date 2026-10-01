@@ -165,7 +165,7 @@ export default function RootLayout({
         />
       </head>
       <body>
-        {/* CINEMATIC SPLASH INTRO (ONLY PLAYS ON FIRST LAUNCH) */}
+        {/* CINEMATIC SPLASH INTRO (HIGHEST Z-INDEX: 99999999 TO ALWAYS STAY ON TOP OF LOCK SCREEN) */}
         {showSplash && (
           <div
             onClick={() => playSplashChime()}
@@ -173,7 +173,7 @@ export default function RootLayout({
               position: "fixed",
               inset: 0,
               background: "radial-gradient(circle at center, #132e5c 0%, #071224 100%)",
-              zIndex: 9999999,
+              zIndex: 99999999,
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
@@ -447,8 +447,9 @@ export default function RootLayout({
           }}
         />
 
+        {/* PASS isSplashActive PROP TO APPLOCK */}
         <LanguageProvider>
-          <AppLock>{children}</AppLock>
+          <AppLock isSplashActive={showSplash}>{children}</AppLock>
         </LanguageProvider>
       </body>
     </html>
