@@ -11,24 +11,31 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(false);
   const [fadeSplash, setFadeSplash] = useState(false);
 
   useEffect(() => {
-    // 1.5 second cinematic motion chalegi, fir fade-out
-    const timer1 = setTimeout(() => {
-      setFadeSplash(true);
-    }, 1500);
+    // Check karein ki kya app is session me pehle open ho chuki hai
+    const hasShown = sessionStorage.getItem("hisabpro_splash_shown");
 
-    // 1.9 second par DOM se poori tarah remove ho jayegi
-    const timer2 = setTimeout(() => {
-      setShowSplash(false);
-    }, 1900);
+    if (!hasShown) {
+      // Pehli baar open hua hai -> Splash dikhayein
+      setShowSplash(true);
+      sessionStorage.setItem("hisabpro_splash_shown", "true");
 
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-    };
+      const timer1 = setTimeout(() => {
+        setFadeSplash(true);
+      }, 1500);
+
+      const timer2 = setTimeout(() => {
+        setShowSplash(false);
+      }, 1900);
+
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+      };
+    }
   }, []);
 
   return (
@@ -141,7 +148,7 @@ export default function RootLayout({
         />
       </head>
       <body>
-        {/* CINEMATIC SPLASH INTRO */}
+        {/* CINEMATIC SPLASH INTRO (ONLY PLAYS ON FIRST LAUNCH) */}
         {showSplash && (
           <div
             style={{
