@@ -2,7 +2,7 @@
 
 import React from "react";
 
-// Standard Code-128B Encoding table
+// Standard Code-128B Encoding Table (Indices 0 to 106)
 const CODE128_PATTERNS = [
   "11011001100", "11001101100", "11001100110", "10010011000", "10010001100",
   "10001001100", "10011001000", "10011000100", "10001100100", "11001001000",
@@ -31,30 +31,58 @@ const CODE128_PATTERNS = [
 export default function BarcodeSvg({ text }: { text: string }) {
   if (!text) return null;
 
-  // Code-128B calculation
-  const startCode = 104; // Start B
+  // Safe ASCII parsing (ASCII 32 se 126 tak standard Code 128B)
+  const cleanText = text.trim();
+  const startCode = 104; // Code 128 Set B Start
   let checkSum = startCode;
-  const codes = [startCode];
+  const codes: number[] = [startCode];
 
-  for (let i = 0; i < text.length; i++) {
-    const code = text.charCodeAt(i) - 32;
-    codes.push(code);
-    checkSum += code * (i + 1);
+  for (let i = 0; i < cleanText.length; i++) {
+    let charCode = cleanText.charCodeAt(i) - 32;
+    // Boundary safe check
+    if (charCode < 0 || charCode > 95) {
+      charCode = 0; // fallback to space
+    }
+    codes.push(charCode);
+    checkSum += charCode * (i + 1);
   }
 
   codes.push(checkSum % 103);
-  codes.push(106); // Stop code
+  codes.push(106); // Stop Code (1100011101011)
 
-  let pattern = "";
+  let rawPattern = "";
   codes.forEach((c) => {
-    if (CODE128_PATTERNS[c]) pattern += CODE128_PATTERNS[c];
+    if (CODE128_PATTERNS[c]) {
+      rawPattern += CODE128_PATTERNS[c];
+    }
   });
 
+  // Quiet zone: Scanner detect karne ke liye dono taraf 10 module ka blank space
+  const quietZone = "0000000000";
+  const fullPattern = quietZone + rawPattern + quietZone;
+
   return (
-    <svg viewBox={`0 0 ${pattern.length} 40`} style={{ width: "100%", height: "38px" }}>
-      {pattern.split("").map((bit, idx) =>
+    <svg
+      viewBox={`0 0 ${fullPattern.length} 40`}
+      preserveAspectRatio="none"
+      style={{
+        width: "100%",
+        height: "38px",
+        display: "block",
+        margin: "0 auto",
+      }}
+    >
+      {fullPattern.split("").map((bit, idx) =>
         bit === "1" ? (
-          <rect key={idx} x={idx} y={0} width={1} height={40} fill="#000000" />
+          <rect
+            key={idx}
+            x={idx}
+            y={0}
+            width={1}
+            height={40}
+            fill="#000000"
+            shapeRendering="crispEdges"
+          />
         ) : null
       )}
     </svg>
