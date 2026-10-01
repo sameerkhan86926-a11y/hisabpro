@@ -15,15 +15,15 @@ export default function RootLayout({
   const [fadeSplash, setFadeSplash] = useState(false);
 
   useEffect(() => {
-    // 1 second baad fade-out start hoga
+    // 1.5 second cinematic motion chalegi, fir fade-out
     const timer1 = setTimeout(() => {
       setFadeSplash(true);
-    }, 1000);
+    }, 1500);
 
-    // 1.3 second par poori tarah remove ho jayega
+    // 1.9 second par DOM se poori tarah remove ho jayegi
     const timer2 = setTimeout(() => {
       setShowSplash(false);
-    }, 1300);
+    }, 1900);
 
     return () => {
       clearTimeout(timer1);
@@ -34,15 +34,26 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         <meta name="theme-color" content="#102a56" />
         <title>HisabPro</title>
         <meta name="description" content="Sales • Stock • Khata • Profit" />
-        <link rel="manifest" href="/hisabpro/manifest.json" />
 
-        {/* Google Translate Hide Banners CSS */}
+        {/* PWA & App Icons / Favicon */}
+        <link rel="manifest" href="/hisabpro/manifest.json" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/hisabpro/favicon-32.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/hisabpro/icon-192.png" />
+        <link rel="icon" type="image/png" sizes="512x512" href="/hisabpro/icon-512.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/hisabpro/apple-touch-icon.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="HisabPro" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
         <style
           dangerouslySetInnerHTML={{
             __html: `
+              /* Google Translate hide */
               .goog-te-banner-frame.skiptranslate, 
               .goog-te-gadget-simple, 
               .goog-te-gadget-icon,
@@ -54,10 +65,7 @@ export default function RootLayout({
                 top: 0px !important; 
                 position: static !important;
               }
-              .goog-tooltip { 
-                display: none !important; 
-              }
-              .goog-tooltip:hover { 
+              .goog-tooltip, .goog-tooltip:hover { 
                 display: none !important; 
               }
               .goog-text-highlight { 
@@ -65,47 +73,123 @@ export default function RootLayout({
                 border: none !important; 
                 box-shadow: none !important; 
               }
-              #google_translate_element { 
+              #google_translate_element, .skiptranslate iframe { 
                 display: none !important; 
               }
-              .skiptranslate iframe {
-                display: none !important;
+
+              /* CINEMATIC VIDEO-STYLE INTRO ANIMATIONS */
+              @keyframes orbPulse {
+                0% { transform: translate(-50%, -50%) scale(0.7); opacity: 0.3; }
+                50% { transform: translate(-50%, -50%) scale(1.15); opacity: 0.7; }
+                100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.5; }
+              }
+
+              @keyframes cinematicLogoIn {
+                0% {
+                  transform: scale(0.3) translateY(40px) rotate(-6deg);
+                  opacity: 0;
+                  filter: drop-shadow(0 0 0px rgba(56, 189, 248, 0));
+                }
+                60% {
+                  transform: scale(1.08) translateY(-6px) rotate(2deg);
+                  opacity: 1;
+                  filter: drop-shadow(0 15px 35px rgba(56, 189, 248, 0.6));
+                }
+                100% {
+                  transform: scale(1) translateY(0) rotate(0deg);
+                  opacity: 1;
+                  filter: drop-shadow(0 10px 25px rgba(56, 189, 248, 0.4));
+                }
+              }
+
+              @keyframes shimmerSweep {
+                0% { transform: translateX(-150%) skewX(-25deg); }
+                100% { transform: translateX(250%) skewX(-25deg); }
+              }
+
+              @keyframes textReveal {
+                0% {
+                  opacity: 0;
+                  transform: translateY(18px) scale(0.95);
+                  letter-spacing: 3px;
+                }
+                100% {
+                  opacity: 1;
+                  transform: translateY(0) scale(1);
+                  letter-spacing: 0.5px;
+                }
+              }
+
+              @keyframes taglineReveal {
+                0% {
+                  opacity: 0;
+                  transform: translateY(10px);
+                }
+                100% {
+                  opacity: 0.85;
+                  transform: translateY(0);
+                }
+              }
+
+              @keyframes progressBar {
+                0% { width: 0%; opacity: 0; }
+                20% { opacity: 1; }
+                100% { width: 100%; opacity: 1; }
               }
             `,
           }}
         />
       </head>
       <body>
-        {/* Splash Screen with Real App Logo */}
+        {/* CINEMATIC SPLASH INTRO */}
         {showSplash && (
           <div
             style={{
               position: "fixed",
               inset: 0,
-              backgroundColor: "#102a56",
+              background: "radial-gradient(circle at center, #132e5c 0%, #071224 100%)",
               zIndex: 9999999,
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              transition: "opacity 0.3s ease-out",
+              transition: "opacity 0.4s ease-out, transform 0.4s ease-out",
               opacity: fadeSplash ? 0 : 1,
+              transform: fadeSplash ? "scale(1.04)" : "scale(1)",
               pointerEvents: fadeSplash ? "none" : "all",
+              overflow: "hidden",
             }}
           >
-            {/* Real Logo Box */}
+            {/* Ambient Background Glow Orb */}
             <div
               style={{
-                width: "90px",
-                height: "90px",
-                borderRadius: "22px",
+                position: "absolute",
+                top: "45%",
+                left: "50%",
+                width: "320px",
+                height: "320px",
+                borderRadius: "50%",
+                background: "radial-gradient(circle, rgba(56, 189, 248, 0.35) 0%, rgba(16, 42, 86, 0) 70%)",
+                transform: "translate(-50%, -50%)",
+                pointerEvents: "none",
+                animation: "orbPulse 1.8s ease-in-out forwards",
+              }}
+            />
+
+            {/* Glowing Logo Card with Shimmer Beam */}
+            <div
+              style={{
+                position: "relative",
+                width: "96px",
+                height: "96px",
+                borderRadius: "26px",
                 overflow: "hidden",
-                boxShadow: "0 12px 30px rgba(0, 0, 0, 0.4)",
-                marginBottom: "16px",
+                marginBottom: "20px",
                 backgroundColor: "#ffffff",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+                animation: "cinematicLogoIn 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards",
               }}
             >
               <img
@@ -117,32 +201,72 @@ export default function RootLayout({
                   objectFit: "cover",
                 }}
               />
+
+              {/* Shimmer Light Ray */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background:
+                    "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent)",
+                  animation: "shimmerSweep 1.2s ease-in-out 0.4s forwards",
+                  pointerEvents: "none",
+                }}
+              />
             </div>
 
+            {/* Brand Title with Cinematic Reveal */}
             <h1
               style={{
                 color: "#ffffff",
-                fontSize: "28px",
+                fontSize: "30px",
                 fontWeight: "800",
-                letterSpacing: "0.5px",
                 margin: "0 0 6px 0",
-                fontFamily: "system-ui, -apple-system, sans-serif",
+                fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+                textShadow: "0 4px 18px rgba(0, 0, 0, 0.4)",
+                animation: "textReveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both",
               }}
             >
               Hisab<span style={{ color: "#38bdf8" }}>Pro</span>
             </h1>
+
+            {/* Tagline */}
             <p
               style={{
                 color: "#94a3b8",
-                fontSize: "13px",
-                fontWeight: "500",
+                fontSize: "12px",
+                fontWeight: "600",
+                letterSpacing: "1.2px",
+                textTransform: "uppercase",
                 margin: 0,
-                letterSpacing: "0.5px",
-                fontFamily: "system-ui, -apple-system, sans-serif",
+                fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+                animation: "taglineReveal 0.6s ease-out 0.45s both",
               }}
             >
               Smart Vyapar • Asaan Billing
             </p>
+
+            {/* Sleek bottom loader bar */}
+            <div
+              style={{
+                position: "absolute",
+                bottom: "45px",
+                width: "90px",
+                height: "3px",
+                borderRadius: "3px",
+                backgroundColor: "rgba(255, 255, 255, 0.12)",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  height: "100%",
+                  backgroundColor: "#38bdf8",
+                  boxShadow: "0 0 8px #38bdf8",
+                  animation: "progressBar 1.4s ease-in-out forwards",
+                }}
+              />
+            </div>
           </div>
         )}
 
