@@ -4,7 +4,6 @@ import "./globals.css";
 import AppLock from "../components/AppLock";
 import LanguageProvider from "../components/LanguageProvider";
 
-
 export const viewport: Viewport = {
   themeColor: "#102a56",
 };
@@ -118,6 +117,69 @@ export default function RootLayout({
           src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"
         />
 
+        {/* Global Tap & Click Sound Script */}
+        <Script
+          id="global-tap-sound"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                var audioCtx = null;
+
+                function getAudioContext() {
+                  if (!audioCtx) {
+                    var AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContextClass) {
+                      audioCtx = new AudioContextClass();
+                    }
+                  }
+                  if (audioCtx && audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                  }
+                  return audioCtx;
+                }
+
+                function playSoftClick() {
+                  try {
+                    var ctx = getAudioContext();
+                    if (!ctx) return;
+
+                    var osc = ctx.createOscillator();
+                    var gain = ctx.createGain();
+
+                    osc.type = "sine";
+                    osc.frequency.setValueAtTime(800, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.04, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.04);
+                  } catch(e) {}
+                }
+
+                window.addEventListener("click", function(e) {
+                  var target = e.target;
+                  if (!target) return;
+
+                  if (
+                    target.closest("button") ||
+                    target.closest("a") ||
+                    target.closest("input[type='checkbox']") ||
+                    target.closest("select") ||
+                    target.closest(".more-card") ||
+                    target.closest(".bottom-nav a")
+                  ) {
+                    playSoftClick();
+                  }
+                }, { passive: true });
+              })();
+            `,
+          }}
+        />
+
         {/* HisabPro Google Sheet Live App Tracker */}
         <Script
           id="hisabpro-app-tracker"
@@ -152,7 +214,6 @@ export default function RootLayout({
 
                 var lastPing = localStorage.getItem("hisabpro_last_ping_time");
                 var now = Date.now();
-                // Har 4 ghante me ek baar ping karega taaki sheet me bematlab duplicate rows na bhare
                 if (!lastPing || (now - Number(lastPing) > 4 * 60 * 60 * 1000)) {
                   var formUrl = "https://docs.google.com/forms/d/e/1FAIpQLSeX8cBddMUfla4KnUFrT8OLWQPLfVwmWDTOY3jL3EoPHVRIbA/formResponse?entry.1388543195=" 
                     + encodeURIComponent(deviceId) 
