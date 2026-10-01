@@ -15,9 +15,10 @@ type AutoLockTime = "immediately" | "1" | "5" | "15";
 
 type AppLockProps = {
   children: ReactNode;
+  isSplashActive?: boolean;
 };
 
-export default function AppLock({ children }: AppLockProps) {
+export default function AppLock({ children, isSplashActive = false }: AppLockProps) {
   const [ready, setReady] = useState(false);
   const [locked, setLocked] = useState(false);
   const [enteredPin, setEnteredPin] = useState("");
@@ -82,7 +83,6 @@ export default function AppLock({ children }: AppLockProps) {
     }, minutes * 60 * 1000);
   };
 
-  // Cooldown / Rate Limiting Handler
   const checkCooldown = () => {
     const lockedUntil = Number(localStorage.getItem(LOCKOUT_KEY)) || 0;
     const remaining = Math.ceil((lockedUntil - Date.now()) / 1000);
@@ -214,7 +214,7 @@ export default function AppLock({ children }: AppLockProps) {
     localStorage.setItem(ATTEMPTS_KEY, String(currentAttempts));
 
     if (currentAttempts >= 5) {
-      const lockDuration = 30; // 30 seconds cooldown
+      const lockDuration = 30;
       const lockoutTime = Date.now() + lockDuration * 1000;
       localStorage.setItem(LOCKOUT_KEY, String(lockoutTime));
       setError(`Too many attempts. Wait ${lockDuration}s.`);
@@ -244,7 +244,6 @@ export default function AppLock({ children }: AppLockProps) {
         return;
       }
 
-      // Success
       markUnlocked();
       setEnteredPin("");
       setError("");
@@ -300,11 +299,9 @@ export default function AppLock({ children }: AppLockProps) {
     setError("");
   };
 
-  if (!ready) {
+  if (!ready || isSplashActive) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0b1b33", color: "#38bdf8" }}>
-        Loading...
-      </div>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#071224" }} />
     );
   }
 
@@ -335,7 +332,7 @@ export default function AppLock({ children }: AppLockProps) {
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 9999999,
+        zIndex: 999999,
         background: "radial-gradient(circle at center, #102a56 0%, #071224 100%)",
         display: "flex",
         flexDirection: "column",
@@ -365,7 +362,6 @@ export default function AppLock({ children }: AppLockProps) {
         }}
       />
 
-      {/* Hidden input for physical keyboard support */}
       <input
         type="password"
         inputMode="numeric"
@@ -377,7 +373,6 @@ export default function AppLock({ children }: AppLockProps) {
         autoFocus
       />
 
-      {/* Top Branding */}
       <div style={{ textAlign: "center", marginBottom: "24px" }}>
         <div
           style={{
@@ -403,7 +398,6 @@ export default function AppLock({ children }: AppLockProps) {
         </p>
       </div>
 
-      {/* PIN Dots (With Shake on Error) */}
       <div
         className={shake ? "shake-animation" : ""}
         style={{
@@ -433,7 +427,6 @@ export default function AppLock({ children }: AppLockProps) {
         })}
       </div>
 
-      {/* Error Message */}
       {error && (
         <div
           style={{
@@ -449,7 +442,6 @@ export default function AppLock({ children }: AppLockProps) {
         </div>
       )}
 
-      {/* Fintech Dial Keypad */}
       <div
         style={{
           display: "flex",
@@ -495,9 +487,7 @@ export default function AppLock({ children }: AppLockProps) {
           </div>
         ))}
 
-        {/* Bottom Row: Clear, 0, Backspace */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          {/* Clear Button */}
           <button
             type="button"
             className="keypad-btn"
@@ -519,7 +509,6 @@ export default function AppLock({ children }: AppLockProps) {
             Clear
           </button>
 
-          {/* 0 Key */}
           <button
             type="button"
             className="keypad-btn"
@@ -544,7 +533,6 @@ export default function AppLock({ children }: AppLockProps) {
             0
           </button>
 
-          {/* Delete / Backspace Button */}
           <button
             type="button"
             className="keypad-btn"
