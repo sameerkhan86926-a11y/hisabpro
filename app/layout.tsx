@@ -59,7 +59,11 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+        {/* ADDED: viewport-fit=cover to enable safe-area insets */}
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+        />
         <meta name="theme-color" content="#102a56" />
         <title>HisabPro</title>
         <meta name="description" content="Sales • Stock • Khata • Profit" />
@@ -77,6 +81,20 @@ export default function RootLayout({
         <style
           dangerouslySetInnerHTML={{
             __html: `
+              /* ANDROID / IOS SYSTEM NAVIGATION BAR OVERLAP FIX */
+              .bottom-nav, 
+              .footer-bar, 
+              nav.bottom {
+                padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
+                box-sizing: border-box !important;
+              }
+
+              main,
+              .reports-page {
+                padding-bottom: calc(85px + env(safe-area-inset-bottom)) !important;
+                box-sizing: border-box !important;
+              }
+
               /* Google Translate hide */
               .goog-te-banner-frame.skiptranslate, 
               .goog-te-gadget-simple, 
