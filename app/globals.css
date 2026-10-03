@@ -9377,3 +9377,16 @@ button {
     height: 68px;
   }
 }
+/* Bottom Navigation Bar ya Footer Menu */
+.bottom-nav, 
+.footer-bar, 
+nav.bottom {
+  /* Phone ke navigation bar se upar rakhne ke liye */
+  padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
+}
+
+/* Poore page ka scroll content bhi bottom button ke peeche na chupe */
+main {
+  padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+}
+
