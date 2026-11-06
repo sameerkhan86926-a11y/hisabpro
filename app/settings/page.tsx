@@ -266,7 +266,7 @@ export default function SettingsPage() {
             <label>Phone Number</label>
             <input
               type="tel"
-              placeholder="e.g. 9876543210"
+              placeholder="Enter Number"
               value={business.phone}
               onChange={(e) => handleChange("phone", e.target.value)}
             />
@@ -276,7 +276,7 @@ export default function SettingsPage() {
             <label>UPI ID (For Bill QR Code)</label>
             <input
               type="text"
-              placeholder="e.g. 9876543210@upi, shop@paytm, name@okhdfcbank"
+              placeholder="Enter upi id ,@upi, shop@paytm, name@okhdfcbank"
               value={business.upiId}
               onChange={(e) => handleChange("upiId", e.target.value.trim().toLowerCase())}
             />
