@@ -889,7 +889,7 @@ export default function MorePage() {
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Sunil General Store"
+                      placeholder="e.g. Sameer General Store"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "14px", outline: "none", boxSizing: "border-box" }}
@@ -903,7 +903,7 @@ export default function MorePage() {
                     <input
                       type="tel"
                       required
-                      placeholder="e.g. 9876543210"
+                      placeholder="Enter Your Number"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "14px", outline: "none", boxSizing: "border-box" }}
